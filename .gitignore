@@ -1,0 +1,64 @@
+# =============== Unity ===============
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+
+# Asset meta data should be tracked
+# *.meta
+
+# Unity Crash Reports
+sysinfo.txt
+
+# ================= VS =================
+.vs/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.vsconfig
+*.slnx
+
+# ================= Packages / Plugins =================
+# Don't ignore the plugin source itself (_Project/ThirdParty or Plugins)
+# Ignore downloaded Unity packages cache
+Packages/com.unity.package-manager-ui/
+Packages/com.unity.collab-proxy/
+Packages/com.unity.analytics/
+Packages/com.unity.ads/
+
+# Dotween
+# ignore DOTween auto-generated settings
+Assets/DOTweenPro/Editor/ DOTweenSettings.asset
+
+# Fusion
+# Fusion usually installed in Packages, so no ignore needed
+# If in Plugins folder, track source, ignore binaries if needed
+
+# Steamworks.NET
+# Steamworks.NET source is tracked; ignore generated DLLs if you want
+steam_appid.txt
+
+# ============== OS / IDE =================
+.DS_Store
+Thumbs.db
+
+# ============== User-specific Unity settings =================
+UserSettings/
+
+# ============== Cache / temp files =================
+*.pidb
+*.pdb
+*.mdb
+*.opendb
+*.svd
+*.apk
+*.aab
+*.unitypackage
