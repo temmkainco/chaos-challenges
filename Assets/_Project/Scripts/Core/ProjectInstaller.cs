@@ -9,6 +9,7 @@ namespace Core
     {
         [Header("Module toggles")]
         public bool UseFusion = true;
+        public bool UseSteam = true;
 
         [Header("NetworkRunner Prefab (optional)")]
         public NetworkRunner NetworkRunnerPrefab;
@@ -19,7 +20,7 @@ namespace Core
 
             Container.Bind<GameSettings>().AsSingle();
 
-            if (SteamManager.Initialized)
+            if (SteamManager.Initialized && UseSteam)
             {
                 Container.Bind<IPlatformService>().To<SteamPlatformService>().AsSingle();
             }

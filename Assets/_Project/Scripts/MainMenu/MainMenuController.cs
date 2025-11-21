@@ -1,23 +1,30 @@
 using Networking;
+using Platform;
 using Zenject;
 
 public class MainMenuController
 {
-    [Inject] private INetworkRunner _networkRunner;
+    private readonly INetworkRunner _networkRunner;
+    private readonly IPlatformService _platformService;
+
+    [Inject]
+    public MainMenuController(INetworkRunner networkRunner, IPlatformService platformService)
+    {
+        _networkRunner = networkRunner;
+        _platformService = platformService;
+    }
 
     public void OnHostButtonClicked()
     {
-        if (_networkRunner != null)
-        {
-            _networkRunner.Host("MyRoom");
-        }
+        string roomName = _platformService.GetPlayerName() + "_Room";
+
+        _networkRunner.Host(roomName);
     }
 
     public void OnJoinButtonClicked()
     {
-        if (_networkRunner != null)
-        {
-            _networkRunner.Join("MyRoom");
-        }
+        string roomName = _platformService.GetPlayerName() + "_Room";
+
+        _networkRunner.Join(roomName);
     }
 }

@@ -6,10 +6,14 @@ namespace Platform
     {
         private string _localPlayerName;
 
-        public bool IsAvailable => true;
+        public bool IsAvailable => _isInitialized;
+
+        private bool _isInitialized = false;
 
         public void Init()
         {
+            if(!IsAvailable) return;
+
             if (PlayerPrefs.HasKey("LocalPlayerName"))
             {
                 _localPlayerName = PlayerPrefs.GetString("LocalPlayerName");
@@ -20,7 +24,7 @@ namespace Platform
                 PlayerPrefs.SetString("LocalPlayerName", _localPlayerName);
             }
 
-            Debug.Log($"LocalPlatformService initialized: {_localPlayerName}");
+            _isInitialized = true;
         }
 
         public void Shutdown()
