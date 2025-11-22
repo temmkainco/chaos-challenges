@@ -1,5 +1,6 @@
 using Networking;
 using Platform;
+using UnityEditor;
 using UnityEngine;
 using Zenject;
 
@@ -35,6 +36,11 @@ namespace Core
                          .FromComponentInNewPrefab(NetworkRunnerPrefab)
                          .AsSingle()
                          .NonLazy();
+            }
+
+            if (Debug.isDebugBuild)
+            {
+                Debug.developerConsoleVisible = true;
             }
 
             Debug.Log("ProjectInstaller: Bindings complete (modular)");

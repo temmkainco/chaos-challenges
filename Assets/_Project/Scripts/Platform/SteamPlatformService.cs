@@ -6,7 +6,7 @@ namespace Platform
 {
     public class SteamPlatformService : IPlatformService
     {
-        public event Action<CSteamID> OnInviteReceived;
+        //public event Action<CSteamID> OnInviteReceived;
         public bool IsAvailable => SteamManager.Initialized;
 
         public void Init()

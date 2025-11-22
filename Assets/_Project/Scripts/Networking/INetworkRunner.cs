@@ -1,13 +1,19 @@
+using Cysharp.Threading.Tasks;
+using Fusion;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace Networking
 {
     public interface INetworkRunner
     {
         bool IsConnected { get; }
-        void Init();
         void Shutdown();
 
-        void Host(string roomName, string password = "");
-        void Join(string roomName, string password = "");
+        Task<string> CreateLobbyAsync(int maxPlayers, bool isPublic);
+        Task<bool> JoinByCodeAsync(string code);
+        Task<bool> JoinRandomPublicAsync();
+        UniTask Init();
         void Leave();
     }
 }

@@ -1,6 +1,7 @@
 using Networking;
 using Platform;
 using Zenject;
+using UnityEngine;
 
 public class MainMenuController
 {
@@ -14,17 +15,27 @@ public class MainMenuController
         _platformService = platformService;
     }
 
-    public void OnHostButtonClicked()
+    public async void OnHostLobbyButtonClicked(bool isPublic)
     {
-        string roomName = _platformService.GetPlayerName() + "_Room";
+        int maxPlayers = 8;
+        string code = await _networkRunner.CreateLobbyAsync(maxPlayers, isPublic);
 
-        _networkRunner.Host(roomName);
+        Debug.LogError($"HOST CREATED LOBBY WITH CODE: {code}, Public: {isPublic}");
     }
 
-    public void OnJoinButtonClicked()
+    public async void OnJoinRandomButtonClicked()
     {
-        string roomName = _platformService.GetPlayerName() + "_Room";
+        bool ok = await _networkRunner.JoinRandomPublicAsync();
+        Debug.Log("JOIN RANDOM = " + ok);
+    }
 
-        _networkRunner.Join(roomName);
+    public async void OnJoinByCodeButtonClicked(string code)
+    {
+        if (string.IsNullOrEmpty(code))
+            return;
+
+        bool ok = await _networkRunner.JoinByCodeAsync(code);
+
+        Debug.Log($"JOIN BY CODE ({code}) RESULT = {ok}");
     }
 }
