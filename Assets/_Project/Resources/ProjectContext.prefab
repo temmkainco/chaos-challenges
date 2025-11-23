@@ -77,3 +77,4 @@ MonoBehaviour:
   UseFusion: 1
   UseSteam: 1
   NetworkRunnerPrefab: {fileID: 6928447700472731887, guid: 8fbdfbdf4191a7b41a60a6d02ec8c6a7, type: 3}
+  NetworkSteamInviteListenerPrefab: {fileID: 8733457799886377051, guid: c822902a3fc98f94197ebed8611cc6e9, type: 3}
