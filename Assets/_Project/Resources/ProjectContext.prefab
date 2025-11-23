@@ -74,6 +74,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e45d2dd400822914da851d804817cc6a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Core.ProjectInstaller
-  UseSteam: 1
   UseFusion: 1
+  UseSteam: 1
   NetworkRunnerPrefab: {fileID: 6928447700472731887, guid: 8fbdfbdf4191a7b41a60a6d02ec8c6a7, type: 3}
