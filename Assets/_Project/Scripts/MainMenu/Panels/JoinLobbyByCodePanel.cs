@@ -1,5 +1,6 @@
 using Networking;
 using Platform;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,6 +11,7 @@ public class JoinLobbyByCodePanel : PanelBase
     [SerializeField] private TMP_InputField _lobbyCodeInput;
     [SerializeField] private Button _joinButton;
     [SerializeField] private Button _closeButton;
+    [Inject] private LoadingPanel _loadingPanel;
 
     private MainMenuController _controller;
 
@@ -24,12 +26,14 @@ public class JoinLobbyByCodePanel : PanelBase
 
     private void OnEnable()
     {
+        _lobbyCodeInput.text = string.Empty;
+        _joinButton.interactable = false;
+
         _lobbyCodeInput.onSubmit.AddListener(OnLobbyCodeInputFieldSubmit);
         _lobbyCodeInput.onValueChanged.AddListener(OnLobbyCodeInputFieldChanged);
 
         _closeButton.onClick.AddListener(Close);
         _joinButton.onClick.AddListener(OnJoinButtonClicked);
-        _joinButton.interactable = false;
     }
 
     private void OnDisable()
@@ -68,11 +72,30 @@ public class JoinLobbyByCodePanel : PanelBase
         _lobbyCode = value.ToUpper();
     }
 
-    private void OnJoinButtonClicked()
+    private async void OnJoinButtonClicked()
     {
-        _joinButton.interactable = false;
-        _lobbyCodeInput.interactable = false;
+        Close();
 
-        _controller.OnJoinByCodeButtonClicked(_lobbyCode);
+        _loadingPanel.Open();
+
+        try
+        {
+            bool ok = await _controller.OnJoinByCodeButtonClicked(_lobbyCode);
+
+            if (!ok)
+            {
+                Debug.LogError("Failed to join lobby.");
+                // TODO: Show an error message (e.g., ErrorPanel.Open("Failed to create lobby."))
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error joining lobby: {e.Message}");
+            // TODO: Show a connection error message
+        }
+        finally
+        {
+            _loadingPanel.Close();
+        }
     }
 }

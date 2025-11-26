@@ -13,7 +13,7 @@ namespace Core
         public bool UseSteam = true;
 
         [Header("NetworkRunner Prefab (optional)")]
-        public NetworkRunner NetworkRunnerPrefab;
+        public FusionNetworkRunner NetworkRunnerPrefab;
         public NetworkSteamInviteListener NetworkSteamInviteListenerPrefab;
         public override void InstallBindings()
         {

@@ -5,5 +5,6 @@ public class MainMenuInstaller : MonoInstaller
     public override void InstallBindings()
     {
         Container.Bind<MainMenuController>().AsSingle();
+        Container.Bind<LoadingPanel>().FromComponentInHierarchy().AsSingle();
     }
 }

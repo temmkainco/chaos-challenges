@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Platform;
 using TMPro;
-using UnityEngine.SocialPlatforms;
+using System;
 
 public class MainMenuView : MonoBehaviour
 {
@@ -14,6 +14,7 @@ public class MainMenuView : MonoBehaviour
 
     [SerializeField] private PanelBase _joinLobbyByCodePanel;
     [SerializeField] private PanelBase _hostLobbyPanel;
+    [Inject] private LoadingPanel _loadingPanel;
 
     private MainMenuController _controller;
     private IPlatformService _platformService;
@@ -27,7 +28,7 @@ public class MainMenuView : MonoBehaviour
 
     private void OnEnable()
     {
-        _joinRandomButton.onClick.AddListener(_controller.OnJoinRandomButtonClicked);
+        _joinRandomButton.onClick.AddListener(OnJoinRandomButtonClicked);
         _hostButton.onClick.AddListener(_hostLobbyPanel.Open);
         _joinByCodeButton.onClick.AddListener(_joinLobbyByCodePanel.Open);
 
@@ -36,6 +37,7 @@ public class MainMenuView : MonoBehaviour
         _playerNameInput.text = _platformService.GetPlayerName();
         _playerNameInput.onEndEdit.AddListener(OnPlayerNameInputFieldChanged);
     }
+
     private void OnPlayerNameInputFieldChanged(string newName)
     {
         if (_platformService is LocalPlatformService local)
@@ -44,12 +46,37 @@ public class MainMenuView : MonoBehaviour
         }
     }
 
+    private async void OnJoinRandomButtonClicked()
+    {
+        _loadingPanel.Open();
+
+        try
+        {
+            bool success = await _controller.OnJoinRandomButtonClicked();
+
+            if (!success)
+            {
+                Debug.LogError("Failed to join random lobby.");
+                //TODO: Show not joined message
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error joining random lobby: {e.Message}");
+            //TODO: Show error message
+        }
+        finally
+        {
+            _loadingPanel.Close();
+        }
+    }
+
     private void OnDestroy()
     {
         _playerNameInput.onEndEdit.RemoveListener(OnPlayerNameInputFieldChanged);
 
         _hostButton.onClick.RemoveListener(_hostLobbyPanel.Open);
-        _joinRandomButton.onClick.RemoveListener(_controller.OnJoinRandomButtonClicked);
+        _joinRandomButton.onClick.RemoveListener(OnJoinRandomButtonClicked);
         _joinByCodeButton.onClick.RemoveListener(_joinLobbyByCodePanel.Open);
     }
 }

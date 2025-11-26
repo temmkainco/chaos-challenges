@@ -39,7 +39,7 @@ public class NetworkSteamInviteListener : MonoBehaviour
         Debug.LogError("ON GAME LOBBY JOIN REQUESTED CALLBACK TRIGGERED");
 
         CSteamID lobby = data.m_steamIDLobby;
-        var runner = _networkRunner as NetworkRunner;
+        var runner = _networkRunner as FusionNetworkRunner;
 
         if (lobby == runner.CurrentSteamLobby)
         {
@@ -80,7 +80,7 @@ public class NetworkSteamInviteListener : MonoBehaviour
         Debug.LogError("[Steam] Joining Fusion session via invite: " + fusionCode);
 
         if (!_networkRunner.IsConnected)
-            await _networkRunner.Init();
+            await _networkRunner.InitAsync();
 
         await _networkRunner.JoinByCodeAsync(fusionCode);
     }
