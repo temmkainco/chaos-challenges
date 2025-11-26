@@ -14,7 +14,7 @@ namespace Core
 
         [Header("NetworkRunner Prefab (optional)")]
         public NetworkRunner NetworkRunnerPrefab;
-
+        public NetworkSteamInviteListener NetworkSteamInviteListenerPrefab;
         public override void InstallBindings()
         {
             Container.BindInterfacesTo<Bootstrapper>().FromComponentInHierarchy().AsSingle();
@@ -24,6 +24,10 @@ namespace Core
             if (SteamManager.Initialized && UseSteam)
             {
                 Container.Bind<IPlatformService>().To<SteamPlatformService>().AsSingle();
+                Container.Bind<NetworkSteamInviteListener>()
+                    .FromComponentInNewPrefab(NetworkSteamInviteListenerPrefab)
+                    .AsSingle()
+                    .NonLazy();
             }
             else
             {

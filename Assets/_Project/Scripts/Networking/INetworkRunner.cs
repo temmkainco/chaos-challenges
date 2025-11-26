@@ -8,6 +8,7 @@ namespace Networking
     public interface INetworkRunner
     {
         bool IsConnected { get; }
+        string CurrentLobbyCode { get; }
         void Shutdown();
 
         Task<string> CreateLobbyAsync(int maxPlayers, bool isPublic);

@@ -1,7 +1,8 @@
 using Networking;
 using Platform;
-using Zenject;
+using Steamworks;
 using UnityEngine;
+using Zenject;
 
 public class MainMenuController
 {
@@ -21,6 +22,9 @@ public class MainMenuController
         string code = await _networkRunner.CreateLobbyAsync(maxPlayers, isPublic);
 
         Debug.LogError($"HOST CREATED LOBBY WITH CODE: {code}, Public: {isPublic}");
+        var runner = _networkRunner as NetworkRunner;
+        Debug.LogError($"CURRENT STEAM LOBBY: {runner.CurrentSteamLobby} | Fusion code: {SteamMatchmaking.GetLobbyData(runner.CurrentSteamLobby, "FusionCode")}");
+
     }
 
     public async void OnJoinRandomButtonClicked()

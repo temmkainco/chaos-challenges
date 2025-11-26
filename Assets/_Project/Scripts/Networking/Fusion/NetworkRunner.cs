@@ -1,9 +1,10 @@
+using Cysharp.Threading.Tasks;
 using Fusion;
 using Fusion.Sockets;
+using Steamworks;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using Cysharp.Threading.Tasks;
 
 namespace Networking
 {
@@ -13,8 +14,14 @@ namespace Networking
         private Fusion.NetworkRunner _runner;
         private NetworkLobbyCodeGenerator _codeGenerator;
 
+        private Callback<LobbyCreated_t> _steamLobbyCreatedCallback;
+        private TaskCompletionSource<bool> _steamLobbyReady;
+
         private List<SessionInfo> _sessions = new();
         private const int GAME_SCENE_BUILD_INDEX = 2;
+
+        public string CurrentLobbyCode { get; private set; }
+        public CSteamID CurrentSteamLobby { get; private set; }
 
         public bool IsConnected => _runner != null && _runner.IsRunning;
 
@@ -24,6 +31,11 @@ namespace Networking
 
             _controls = new PlayerInputActions();
             _controls.Enable();
+
+            if (SteamManager.Initialized)
+            {
+                _steamLobbyCreatedCallback = Callback<LobbyCreated_t>.Create(OnSteamLobbyCreated);
+            }
         }
 
         public async UniTask Init()
@@ -52,6 +64,21 @@ namespace Networking
             string code = _codeGenerator.GenerateCode(_sessions);
             if (code == null) return null;
 
+
+            CurrentLobbyCode = code;
+
+            if (SteamManager.Initialized)
+            {
+                _steamLobbyReady = new TaskCompletionSource<bool>();
+
+                SteamMatchmaking.CreateLobby(
+                    isPublic ? ELobbyType.k_ELobbyTypePublic : ELobbyType.k_ELobbyTypeFriendsOnly,
+                    maxPlayers
+                );
+
+                await _steamLobbyReady.Task;
+            }
+
             var props = new Dictionary<string, SessionProperty>()
             {
                 { "code", code },
@@ -75,7 +102,7 @@ namespace Networking
                 return code;
             }
 
-            Debug.LogError("Failed to create lobby: " + result.ShutdownReason);
+            Debug.LogWarning("Failed to create lobby: " + result.ShutdownReason);
             return null;
         }
 
@@ -111,13 +138,21 @@ namespace Networking
 
         public async Task<bool> JoinByCodeAsync(string code)
         {
+            if (_runner == null)
+            {
+                Debug.LogError("Runner not initialized!");
+                return false;
+            }
+
+            if (IsConnected) return true;
+
             var lobby = _sessions.Find(s =>
                 s.Properties.ContainsKey("code") &&
                 ((string)s.Properties["code"]) == code);
 
             if (lobby == null)
             {
-                Debug.Log("Lobby not found");
+                Debug.LogWarning("Fusion session not found: " + code);
                 return false;
             }
 
@@ -128,15 +163,37 @@ namespace Networking
             };
 
             var result = await _runner.StartGame(args);
+            Debug.LogWarning(result.Ok ? "[Fusion] Joined session!" : "[Fusion] Failed to join session: " + result.ShutdownReason);
 
             return result.Ok;
         }
 
+        private void OnSteamLobbyCreated(LobbyCreated_t callback)
+        {
+            if (callback.m_eResult != EResult.k_EResultOK)
+            {
+                Debug.LogWarning("Steam lobby creation failed: " + callback.m_eResult);
+                _steamLobbyReady?.TrySetResult(false);
+                return;
+            }
+
+            CurrentSteamLobby = new CSteamID(callback.m_ulSteamIDLobby);
+
+            SteamMatchmaking.SetLobbyData(CurrentSteamLobby, "FusionCode", CurrentLobbyCode);
+
+            Debug.LogError($"[Steam] Lobby created. Fusion code: {CurrentLobbyCode}");
+
+            SteamFriends.ActivateGameOverlayInviteDialog(CurrentSteamLobby);
+
+            _steamLobbyReady?.TrySetResult(true);
+        }
 
         public void Leave()
         {
             if (_runner == null || !_runner.IsRunning)
                 return;
+
+            CurrentLobbyCode = null;
             
             _runner.Shutdown();
         }
