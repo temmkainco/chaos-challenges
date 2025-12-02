@@ -30,7 +30,7 @@ namespace Core
 
             if (_networkRunner != null)
             {
-                await _networkRunner.Init();
+                await _networkRunner.InitAsync();
             }
 
             LoadMainMenu();

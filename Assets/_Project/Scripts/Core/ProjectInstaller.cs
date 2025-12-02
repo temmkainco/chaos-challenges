@@ -12,9 +12,13 @@ namespace Core
         public bool UseFusion = true;
         public bool UseSteam = true;
 
+        [Header("UI Prefabs")]
+        [field: SerializeField] public LoadingPanel LoadingPanelPrefab { get; private set; }
+
         [Header("NetworkRunner Prefab (optional)")]
-        public NetworkRunner NetworkRunnerPrefab;
-        public NetworkSteamInviteListener NetworkSteamInviteListenerPrefab;
+        [field: SerializeField] public FusionNetworkRunner NetworkRunnerPrefab { get; private set; }
+        [field: SerializeField] public SteamInviteListener NetworkSteamInviteListenerPrefab { get; private set; }
+
         public override void InstallBindings()
         {
             Container.BindInterfacesTo<Bootstrapper>().FromComponentInHierarchy().AsSingle();
@@ -24,7 +28,7 @@ namespace Core
             if (SteamManager.Initialized && UseSteam)
             {
                 Container.Bind<IPlatformService>().To<SteamPlatformService>().AsSingle();
-                Container.Bind<NetworkSteamInviteListener>()
+                Container.Bind<SteamInviteListener>()
                     .FromComponentInNewPrefab(NetworkSteamInviteListenerPrefab)
                     .AsSingle()
                     .NonLazy();
@@ -40,6 +44,14 @@ namespace Core
                          .FromComponentInNewPrefab(NetworkRunnerPrefab)
                          .AsSingle()
                          .NonLazy();
+            }
+
+            if (LoadingPanelPrefab != null)
+            {
+                Container.Bind<LoadingPanel>()
+                    .FromComponentInNewPrefab(LoadingPanelPrefab)
+                    .AsSingle()
+                    .NonLazy();
             }
 
             if (Debug.isDebugBuild)

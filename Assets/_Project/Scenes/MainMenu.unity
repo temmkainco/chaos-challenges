@@ -3505,7 +3505,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HostLobbyPanel
   _closeButton: {fileID: 695810897}
   _hostButton: {fileID: 1323461544}
-  _publicToggle: {fileID: 1376299452}
+  _isPublicToggle: {fileID: 1376299452}
 --- !u!224 &1795589773
 RectTransform:
   m_ObjectHideFlags: 0

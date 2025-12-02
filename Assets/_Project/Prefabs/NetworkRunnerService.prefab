@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 264166273104876166}
-  - component: {fileID: 6928447700472731887}
+  - component: {fileID: 5555079133856916929}
   m_Layer: 0
   m_Name: NetworkRunnerService
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6928447700472731887
+--- !u!114 &5555079133856916929
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,8 +41,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 7240761549299503881}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 68f77d83c1261b848b0c25937041839f, type: 3}
+  m_Script: {fileID: 11500000, guid: c763ee4a48192a74793db7edc0bd826d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Networking.NetworkRunnerService
-  _playerPrefab:
-    RawGuidValue: 4c99d9e257fb95842b66e6861a25daba
+  m_EditorClassIdentifier: Assembly-CSharp::Networking.FusionNetworkRunner
