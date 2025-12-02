@@ -14,7 +14,9 @@ public class MainMenuView : MonoBehaviour
 
     [SerializeField] private PanelBase _joinLobbyByCodePanel;
     [SerializeField] private PanelBase _hostLobbyPanel;
+
     [Inject] private LoadingPanel _loadingPanel;
+    [Inject] private SteamInviteListener _steamInviteListener;
 
     private MainMenuController _controller;
     private IPlatformService _platformService;

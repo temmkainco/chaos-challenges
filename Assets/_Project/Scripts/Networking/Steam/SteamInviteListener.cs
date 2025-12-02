@@ -4,18 +4,20 @@ using Networking;
 using Zenject;
 using Cysharp.Threading.Tasks;
 
-public class NetworkSteamInviteListener : MonoBehaviour
+public class SteamInviteListener : MonoBehaviour
 {
     private INetworkRunner _networkRunner;
     private Callback<GameLobbyJoinRequested_t> _gameLobbyJoinRequested;
     private Callback<LobbyDataUpdate_t> _lobbyDataUpdate;
-
     private CSteamID _pendingLobby;
 
+    private LoadingPanel _loadingPanel;
+
     [Inject]
-    public void Construct(INetworkRunner runner)
+    public void Construct(INetworkRunner runner, LoadingPanel loadingPanel)
     {
         _networkRunner = runner;
+        _loadingPanel = loadingPanel;
     }
 
     private void OnEnable()
@@ -36,17 +38,16 @@ public class NetworkSteamInviteListener : MonoBehaviour
 
     private async void OnGameLobbyJoinRequested(GameLobbyJoinRequested_t data)
     {
-        Debug.LogError("ON GAME LOBBY JOIN REQUESTED CALLBACK TRIGGERED");
-
+        _loadingPanel.Open();
         CSteamID lobby = data.m_steamIDLobby;
-        var runner = _networkRunner as FusionNetworkRunner;
 
+        var runner = _networkRunner as FusionNetworkRunner;
         if (lobby == runner.CurrentSteamLobby)
         {
-            Debug.Log("[Steam] Host entered own lobby, ignoring invite callback.");
+            _loadingPanel.Close();
             return;
         }
-
+        
         string fusionCode = SteamMatchmaking.GetLobbyData(lobby, "FusionCode");
 
         if (!string.IsNullOrEmpty(fusionCode))
@@ -57,7 +58,6 @@ public class NetworkSteamInviteListener : MonoBehaviour
         {
             _pendingLobby = lobby;
             SteamMatchmaking.RequestLobbyData(lobby);
-            Debug.LogError("[Steam] FusionCode not yet available, waiting for LobbyDataUpdate...");
         }
     }
 
@@ -68,17 +68,18 @@ public class NetworkSteamInviteListener : MonoBehaviour
         if (_pendingLobby != lobby) return;
 
         string fusionCode = SteamMatchmaking.GetLobbyData(lobby, "FusionCode");
-        if (string.IsNullOrEmpty(fusionCode)) return;
+        if (string.IsNullOrEmpty(fusionCode))
+        {
+            _loadingPanel.Close();
+            return;
+        }
 
-        Debug.LogError($"[Steam] LobbyDataUpdate received. Steam Lobby ID: {lobby} | FusionCode: {fusionCode}");
         _pendingLobby = default;
         await JoinFusionSession(fusionCode);
     }
 
     private async UniTask JoinFusionSession(string fusionCode)
     {
-        Debug.LogError("[Steam] Joining Fusion session via invite: " + fusionCode);
-
         if (!_networkRunner.IsConnected)
             await _networkRunner.InitAsync();
 

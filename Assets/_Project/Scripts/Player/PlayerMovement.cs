@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class PlayerMovement : NetworkBehaviour
 {
-    [SerializeField] private float _movementSpeed = 5f;
+    [SerializeField] private float _movementSpeed;
     private NetworkCharacterController _charachterController;
 
     private void Awake()
@@ -17,7 +17,7 @@ public class PlayerMovement : NetworkBehaviour
         {
             Vector3 move = new Vector3(data.Direction.x, 0, data.Direction.z);
             if (move.sqrMagnitude > 1f) move.Normalize();
-            _charachterController.Move(_movementSpeed * move);
+            _charachterController.Move(_movementSpeed * move * Runner.DeltaTime);
         }
     }
 }

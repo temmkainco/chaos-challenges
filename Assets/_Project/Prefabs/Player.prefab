@@ -188,8 +188,8 @@ MonoBehaviour:
   gravity: -20
   jumpImpulse: 8
   acceleration: 10
-  braking: 10
-  maxSpeed: 2
+  braking: 0.5
+  maxSpeed: 10
   rotationSpeed: 15
 --- !u!114 &-4257660747238865832
 MonoBehaviour:
@@ -203,7 +203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6944c0623e15b814aacf1c5eb1955948, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  _movementSpeed: 25
+  _movementSpeed: 100
 --- !u!114 &-4485358517636813635
 MonoBehaviour:
   m_ObjectHideFlags: 0
