@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class PlayerMovement : NetworkBehaviour
 {
+    [Networked] public Vector3 CurrentVelocity { get; private set; }
+
     [SerializeField] private float _movementSpeed;
     private NetworkCharacterController _charachterController;
 
@@ -17,7 +19,17 @@ public class PlayerMovement : NetworkBehaviour
         {
             Vector3 move = new Vector3(data.Direction.x, 0, data.Direction.z);
             if (move.sqrMagnitude > 1f) move.Normalize();
-            _charachterController.Move(_movementSpeed * move * Runner.DeltaTime);
+
+            Vector3 displacement = _movementSpeed * move * Runner.DeltaTime;
+            _charachterController.Move(displacement);
+
+            if(Object.HasStateAuthority)
+                CurrentVelocity = displacement / Runner.DeltaTime;
+        }
+        else
+        {
+            if (Object.HasStateAuthority)
+                CurrentVelocity = Vector3.zero;
         }
     }
 }

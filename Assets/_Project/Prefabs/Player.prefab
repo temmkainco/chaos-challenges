@@ -10,12 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 3955228478746711193}
   - component: {fileID: 6721015576220504767}
-  - component: {fileID: 3957594400407398779}
-  - component: {fileID: 7074476573255473254}
   - component: {fileID: -4257660747238865832}
   - component: {fileID: -4485358517636813635}
   - component: {fileID: 1350921103817962917}
-  - component: {fileID: 4165568617902202150}
+  - component: {fileID: 753884614225668945}
+  - component: {fileID: 5937864814966360503}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -56,54 +55,11 @@ MonoBehaviour:
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 7074476573255473254}
   - {fileID: -4257660747238865832}
   - {fileID: -4485358517636813635}
+  - {fileID: 5937864814966360503}
+  - {fileID: 3001662693769037708}
   ForceRemoteRenderTimeframe: 0
---- !u!143 &3957594400407398779
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6170267390684344883}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &7074476573255473254
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6170267390684344883}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 378411a89480da345945c2f888327a2d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Fusion.Unity::Fusion.NetworkCharacterController
-  _stateAuthorityChangeErrorCorrectionDelta: 0
-  gravity: -20
-  jumpImpulse: 8
-  acceleration: 10
-  braking: 0.5
-  maxSpeed: 10
-  rotationSpeed: 15
 --- !u!114 &-4257660747238865832
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -116,7 +72,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6944c0623e15b814aacf1c5eb1955948, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  _movementSpeed: 100
+  _movementSpeed: 10
 --- !u!114 &-4485358517636813635
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -141,28 +97,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c9575709ad724074db94186771a47760, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInput
---- !u!95 &4165568617902202150
-Animator:
-  serializedVersion: 7
+--- !u!143 &753884614225668945
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6170267390684344883}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 1.4085398
+  m_Radius: 0.25660834
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0.82, z: 0}
+--- !u!114 &5937864814966360503
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6170267390684344883}
   m_Enabled: 1
-  m_Avatar: {fileID: 9000000, guid: 2d3b625fb5887eb499c95e4ae31f0b93, type: 3}
-  m_Controller: {fileID: 9100000, guid: 99bfd685c4843d34dae0354c9b4da86d, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 378411a89480da345945c2f888327a2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Unity::Fusion.NetworkCharacterController
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  gravity: -20
+  jumpImpulse: 8
+  acceleration: 10
+  braking: 10
+  maxSpeed: 2
+  rotationSpeed: 15
 --- !u!1001 &5431743993985818536
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -274,6 +252,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7d2d65dddd7b9134ca10899ad00e62f3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8788695815963667762}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7d2d65dddd7b9134ca10899ad00e62f3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3001662693769037708}
   m_SourcePrefab: {fileID: 100100000, guid: 7d2d65dddd7b9134ca10899ad00e62f3, type: 3}
 --- !u!1 &5161133641240142585 stripped
 GameObject:
@@ -302,6 +283,19 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &3001662693769037708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5161133641240142585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff554281353931544b5a9935a959ec03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
+  movement: {fileID: -4257660747238865832}
 --- !u!4 &5542760295474116675 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 7d2d65dddd7b9134ca10899ad00e62f3, type: 3}
