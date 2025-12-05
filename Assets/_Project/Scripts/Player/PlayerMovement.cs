@@ -17,9 +17,11 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (GetInput(out NetworkInputData data))
         {
-            Vector3 move = new Vector3(data.Direction.x, 0, data.Direction.z);
-            if (move.sqrMagnitude > 1f) move.Normalize();
+            Vector3 inputDirection = new Vector3(data.Direction.x, 0, data.Direction.z);
+            if (inputDirection.sqrMagnitude > 1f) inputDirection.Normalize();
 
+            Quaternion flatCameraRotation = Quaternion.Euler(0, data.CameraRotation.eulerAngles.y, 0);
+            Vector3 move = flatCameraRotation * inputDirection;
             Vector3 displacement = _movementSpeed * move * Runner.DeltaTime;
             _charachterController.Move(displacement);
 

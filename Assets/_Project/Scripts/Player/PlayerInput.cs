@@ -7,6 +7,7 @@ public class PlayerInput : MonoBehaviour
 
     public Vector2 Move { get; private set; }
     public bool Jump { get; private set; }
+    public Quaternion CameraRotation { get; private set; }
 
     private PlayerInputActions _controls;
 
@@ -21,5 +22,8 @@ public class PlayerInput : MonoBehaviour
     {
         Move = _controls.Player.Move.ReadValue<Vector2>();
         Jump = _controls.Player.Jump.WasPressedThisFrame();
+
+        Quaternion cameraRotation = Camera.main.transform.rotation;
+        CameraRotation = Quaternion.Euler(0, cameraRotation.eulerAngles.y, 0);
     }
 }

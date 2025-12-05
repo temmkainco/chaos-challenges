@@ -186,6 +186,7 @@ namespace Networking
                 return;
 
             data.Direction = new Vector3(localInput.Move.x, 0, localInput.Move.y);
+            data.CameraRotation = localInput.CameraRotation;
 
             input.Set(data);
         }
