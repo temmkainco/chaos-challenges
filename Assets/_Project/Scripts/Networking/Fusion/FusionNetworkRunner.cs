@@ -117,7 +117,12 @@ namespace Networking
 
             if (best == null)
                 return false;
-            
+
+            if (best.Properties.TryGetValue("code", out var codeProperty))
+            {
+                CurrentLobbyCode = (string)codeProperty;
+            }
+
             var args = new StartGameArgs()
             {
                 GameMode = GameMode.Client,
@@ -139,6 +144,8 @@ namespace Networking
             var lobby = _sessions.Find(s =>
                 s.Properties.ContainsKey("code") &&
                 ((string)s.Properties["code"]) == code);
+
+            CurrentLobbyCode = code;
 
             if (lobby == null)    
                 return false;
