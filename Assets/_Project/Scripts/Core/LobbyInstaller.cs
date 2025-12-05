@@ -11,6 +11,7 @@ public class LobbyInstaller : MonoInstaller, IInitializable
 
     public void Initialize()
     {
+        Cursor.visible = false;
         if (_loadingPanel != null)
         {
             _loadingPanel.Close();
