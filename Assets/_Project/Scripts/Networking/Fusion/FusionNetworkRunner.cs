@@ -14,7 +14,7 @@ namespace Networking
         public CSteamID CurrentSteamLobby { get; private set; }
 
         private NetworkLobbyCodeGenerator _codeGenerator;
-        private PlayerInputActions _controls;
+
         private NetworkRunner _runner;
 
         private List<SessionInfo> _sessions = new();
@@ -29,9 +29,6 @@ namespace Networking
         public async UniTask InitAsync()
         {
             if (_runner != null) return;
-
-            _controls = new PlayerInputActions();
-            _controls.Enable();
 
             _runner = gameObject.AddComponent<NetworkRunner>();
             _runner.ProvideInput = true;
@@ -183,8 +180,12 @@ namespace Networking
         {
             var data = new NetworkInputData();
 
-            Vector2 move = _controls.Player.Move.ReadValue<Vector2>();
-            data.Direction = new Vector3(move.x, 0, move.y);
+            var localInput = PlayerInput.Local;
+
+            if (localInput == null)
+                return;
+
+            data.Direction = new Vector3(localInput.Move.x, 0, localInput.Move.y);
 
             input.Set(data);
         }
