@@ -4,8 +4,11 @@ using UnityEngine;
 public class PlayerMovement : NetworkBehaviour
 {
     [Networked] public Vector3 CurrentVelocity { get; private set; }
+    [Networked] public NetworkButtons ButtonsPrevious { get; private set; }
 
     [SerializeField] private float _movementSpeed;
+    [Networked] public NetworkButtons PreviousButtons { get; private set;}
+
     private NetworkCharacterController _charachterController;
 
     private void Awake()
@@ -25,7 +28,16 @@ public class PlayerMovement : NetworkBehaviour
             Vector3 displacement = _movementSpeed * move * Runner.DeltaTime;
             _charachterController.Move(displacement);
 
-            if(Object.HasStateAuthority)
+
+            var pressed = data.Buttons.GetPressed(PreviousButtons);
+            if (pressed.WasPressed(PreviousButtons, InputButtons.Jump))
+            {
+                _charachterController.Jump();
+            }
+
+            PreviousButtons = data.Buttons;
+
+            if (Object.HasStateAuthority)
                 CurrentVelocity = displacement / Runner.DeltaTime;
         }
         else
