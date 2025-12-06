@@ -7,6 +7,7 @@ public class LobbyInstaller : MonoInstaller, IInitializable
     public override void InstallBindings()
     {
         Container.BindInterfacesTo<LobbyInstaller>().FromInstance(this).AsSingle();
+        Container.Bind<NetworkPlayerSpawner>().FromComponentInHierarchy().AsSingle();
     }
 
     public void Initialize()
