@@ -343,6 +343,7 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: -4257660747238865832}
   - {fileID: -4485358517636813635}
+  - {fileID: 1350921103817962917}
   - {fileID: 5937864814966360503}
   - {fileID: 3001662693769037708}
   ForceRemoteRenderTimeframe: 0
@@ -373,6 +374,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Player
   _camera: {fileID: 8188439976133406392}
+  _input: {fileID: 0}
 --- !u!114 &1350921103817962917
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -23,7 +23,7 @@ namespace Networking
         private Callback<LobbyCreated_t> _steamLobbyCreatedCallback;
 
         private const int GAME_SCENE_BUILD_INDEX = 2;
-
+        private PlayerInput _localInputCache = null;
         public bool IsConnected => _runner != null && _runner.IsRunning;
 
         public async UniTask InitAsync()
@@ -178,6 +178,7 @@ namespace Networking
             if (_runner == null || !_runner.IsRunning)
                 return;
 
+            _localInputCache = null;
             CurrentLobbyCode = null;
             
             _runner.Shutdown();
@@ -188,12 +189,14 @@ namespace Networking
             var data = new NetworkInputData();
 
             var localInput = PlayerInput.Local;
+            if (localInput != null)
+            {
+                data.Direction = new Vector3(localInput.Move.x, 0, localInput.Move.y);
+                data.CameraRotation = localInput.CameraRotation;
 
-            if (localInput == null)
+                input.Set(data);
                 return;
-
-            data.Direction = new Vector3(localInput.Move.x, 0, localInput.Move.y);
-            data.CameraRotation = localInput.CameraRotation;
+            }
 
             input.Set(data);
         }
