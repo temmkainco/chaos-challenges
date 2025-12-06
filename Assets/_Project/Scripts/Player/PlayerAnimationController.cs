@@ -8,6 +8,7 @@ public class PlayerAnimationController : NetworkBehaviour
     private Animator _animator;
 
     private static readonly int SpeedParam = Animator.StringToHash("Speed");
+    private static readonly int JumpParam = Animator.StringToHash("Jump");
 
     private void Awake()
     {
@@ -17,6 +18,8 @@ public class PlayerAnimationController : NetworkBehaviour
     private void Update()
     {
         float speed = movement.CurrentVelocity.magnitude;
+
         _animator.SetFloat(SpeedParam, speed);
+        _animator.SetBool(JumpParam, !movement.IsGrounded);
     }
 }

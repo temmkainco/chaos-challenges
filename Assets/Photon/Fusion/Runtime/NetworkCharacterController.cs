@@ -54,7 +54,7 @@ namespace Fusion {
       set => Data.Velocity = value;
     }
 
-    public bool Grounded {
+    public bool IsGrounded {
       get => Data.Grounded;
       set => Data.Grounded = value;
     }

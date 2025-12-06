@@ -5,12 +5,17 @@ using UnityEngine.SocialPlatforms;
 public class PlayerInput : NetworkBehaviour
 {
     public static PlayerInput Local { get; private set; }
+    public NetworkButtons Buttons { get; private set; }
     public Vector2 Move { get; private set; }
-    public bool Jump { get; private set; }
     public Quaternion CameraRotation { get; private set; }
+    public bool IsJumpPressed => _isJumpPressed;
 
-    private PlayerInputActions _controls;
 
+    private bool _isJumpPressed;
+
+    public PlayerInputActions _controls;
+    private Camera _camera;
+     
     public override void Spawned()
     {
         if (Object.HasInputAuthority)
@@ -18,42 +23,37 @@ public class PlayerInput : NetworkBehaviour
             _controls = new PlayerInputActions();
             Local = this;
 
-            Debug.Log("Enabling Player Controls and Setting Local Singleton.");
             _controls.Enable();
+            _camera = Camera.main;
         }
     }
 
     private void Update()
     {
-        if (_controls != null)
-        {
-            Move = _controls.Player.Move.ReadValue<Vector2>();
-            Jump = _controls.Player.Jump.WasPressedThisFrame();
+        if (_controls == null)
+            return;
 
-            if (Camera.main != null)
-            {
-                Quaternion cameraRotation = Camera.main.transform.rotation;
-                CameraRotation = Quaternion.Euler(0, cameraRotation.eulerAngles.y, 0);
-            }
-        }
+        Move = _controls.Player.Move.ReadValue<Vector2>();
+        _isJumpPressed = _controls.Player.Jump.IsPressed();
+
+        Quaternion cameraRotation = _camera.transform.rotation;
+        CameraRotation = Quaternion.Euler(0, cameraRotation.eulerAngles.y, 0);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
-        if (Local == this)
-        {
-            Local = null;
-            _controls.Disable();    
-            Debug.Log("Clearing Local Singleton reference on Despawn.");
-        }
+        if (Local != this)
+            return;
 
+        Local = null;
+        _controls.Disable();    
     }
 
     private void OnDestroy()
     {
-        if (Local == this)
-        {
-            Local = null;
-        }
+        if (Local != this)
+            return;
+
+        Local = null; 
     }
 }

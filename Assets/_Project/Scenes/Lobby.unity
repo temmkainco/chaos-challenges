@@ -636,6 +636,7 @@ GameObject:
   - component: {fileID: 319188260}
   - component: {fileID: 319188262}
   - component: {fileID: 319188261}
+  - component: {fileID: 319188263}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -713,6 +714,28 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 319188259}
+  m_Mesh: {fileID: -5495902117074765545, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
+--- !u!64 &319188263
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 319188259}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
   m_Mesh: {fileID: -5495902117074765545, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
 --- !u!1 &691132474
 GameObject:
@@ -1277,6 +1300,7 @@ GameObject:
   - component: {fileID: 1105974718}
   - component: {fileID: 1105974720}
   - component: {fileID: 1105974719}
+  - component: {fileID: 1105974721}
   m_Layer: 0
   m_Name: ScreenCRT
   m_TagString: Untagged
@@ -1355,6 +1379,28 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1105974717}
+  m_Mesh: {fileID: 4493585093827132993, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
+--- !u!64 &1105974721
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1105974717}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
   m_Mesh: {fileID: 4493585093827132993, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
 --- !u!1 &1153756381
 GameObject:
@@ -1865,6 +1911,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1358724425}
+  - component: {fileID: 1358724426}
   m_Layer: 0
   m_Name: tv_camera
   m_TagString: Untagged
@@ -1889,6 +1936,28 @@ Transform:
   - {fileID: 187669881}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -116.604, z: 0}
+--- !u!64 &1358724426
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1358724424}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &1527456748
 GameObject:
   m_ObjectHideFlags: 0
@@ -2846,9 +2915,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
-  m_RenderShadows: 1
-  m_RequiresDepthTextureOption: 2
-  m_RequiresOpaqueTextureOption: 2
+  m_RenderShadows: 0
+  m_RequiresDepthTextureOption: 0
+  m_RequiresOpaqueTextureOption: 0
   m_CameraType: 0
   m_Cameras: []
   m_RendererIndex: -1
@@ -2910,10 +2979,10 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 1000
-  field of view: 60
+  far clip plane: 100
+  field of view: 100
   orthographic: 0
-  orthographic size: 5
+  orthographic size: 13
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -2937,13 +3006,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1709820306}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.20744568, y: 0.8535508, z: -0.25015837, w: -0.40723222}
-  m_LocalPosition: {x: 12.45, y: -4.13, z: 11.38}
+  m_LocalRotation: {x: 0.097464465, y: 0.8735574, z: -0.2082015, w: 0.42901084}
+  m_LocalPosition: {x: -10.42, y: -10.41, z: 6.68}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 36.584, y: -132.566, z: -10.794}
+  m_LocalEulerAnglesHint: {x: 26.576, y: 127.561, z: -0.536}
 --- !u!1 &1747846136
 GameObject:
   m_ObjectHideFlags: 0
@@ -3420,6 +3489,7 @@ GameObject:
   - component: {fileID: 3745622627543998198}
   - component: {fileID: 5334037120131639400}
   - component: {fileID: 4539702727582545079}
+  - component: {fileID: 5334037120131639401}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -3832,6 +3902,28 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 832149485003903004}
+  m_Mesh: {fileID: -5495902117074765545, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
+--- !u!64 &5334037120131639401
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 832149485003903004}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
   m_Mesh: {fileID: -5495902117074765545, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
 --- !u!33 &5366159435550349885
 MeshFilter:
