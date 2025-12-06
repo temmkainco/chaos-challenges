@@ -15,7 +15,7 @@ namespace Core
         [Header("UI Prefabs")]
         [field: SerializeField] public LoadingPanel LoadingPanelPrefab { get; private set; }
 
-        [Header("NetworkRunner Prefab (optional)")]
+        [Header("NetworkRunner Prefab")]
         [field: SerializeField] public FusionNetworkRunner NetworkRunnerPrefab { get; private set; }
         [field: SerializeField] public SteamInviteListener NetworkSteamInviteListenerPrefab { get; private set; }
 

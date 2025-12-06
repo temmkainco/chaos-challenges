@@ -18,7 +18,6 @@ namespace Platform
         public void Shutdown() { }
 
         public string GetPlayerName() => IsAvailable ? SteamFriends.GetPersonaName() : "SteamUser";
-
         // TODO:
         public void CreateFriendsLobby() { /* SteamMatchmaking.CreateLobby */ }
         public void JoinLobby(CSteamID lobbyId) { /* SteamMatchmaking.JoinLobby */ }
