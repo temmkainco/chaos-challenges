@@ -366,7 +366,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   _CurrentVelocity: {x: 0, y: 0, z: 0}
+  _IsGrounded: 1
   _movementSpeed: 25
+  _rotationSpeed: 10
 --- !u!114 &-4485358517636813635
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -433,10 +435,10 @@ MonoBehaviour:
   _stateAuthorityChangeErrorCorrectionDelta: 0
   gravity: -20
   jumpImpulse: 8
-  acceleration: 10
+  acceleration: 70
   braking: 10
-  maxSpeed: 3
-  rotationSpeed: 15
+  maxSpeed: 4
+  rotationSpeed: 10
 --- !u!1001 &5431743993985818536
 PrefabInstance:
   m_ObjectHideFlags: 0

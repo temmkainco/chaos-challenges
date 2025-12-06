@@ -1300,6 +1300,7 @@ GameObject:
   - component: {fileID: 1105974718}
   - component: {fileID: 1105974720}
   - component: {fileID: 1105974719}
+  - component: {fileID: 1105974721}
   m_Layer: 0
   m_Name: ScreenCRT
   m_TagString: Untagged
@@ -1378,6 +1379,28 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1105974717}
+  m_Mesh: {fileID: 4493585093827132993, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
+--- !u!64 &1105974721
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1105974717}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
   m_Mesh: {fileID: 4493585093827132993, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
 --- !u!1 &1153756381
 GameObject:
@@ -3466,6 +3489,7 @@ GameObject:
   - component: {fileID: 3745622627543998198}
   - component: {fileID: 5334037120131639400}
   - component: {fileID: 4539702727582545079}
+  - component: {fileID: 5334037120131639401}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -3878,6 +3902,28 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 832149485003903004}
+  m_Mesh: {fileID: -5495902117074765545, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
+--- !u!64 &5334037120131639401
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 832149485003903004}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
   m_Mesh: {fileID: -5495902117074765545, guid: 0463559579ac45d4ba9cc8292d352b56, type: 3}
 --- !u!33 &5366159435550349885
 MeshFilter:

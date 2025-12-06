@@ -34,9 +34,9 @@ public class PlayerMovement : NetworkBehaviour
         Quaternion flatCameraRotation = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f);
         Vector3 targetDir = flatCameraRotation * inputDirection;
 
-        Vector3 displacement = targetDir * _movementSpeed * Runner.DeltaTime;
+        Vector3 velocity = targetDir * _movementSpeed;
 
-        _characterController.Move(displacement);
+        _characterController.Move(velocity);
 
         if (targetDir.sqrMagnitude > 0.01f)
         {
@@ -64,7 +64,7 @@ public class PlayerMovement : NetworkBehaviour
 
         if (Object.HasStateAuthority)
         {
-            CurrentVelocity = displacement / Runner.DeltaTime;
+            CurrentVelocity = velocity;
         }
     }
 }
