@@ -14,8 +14,28 @@ public class NetworkPlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlayerLeft
     [SerializeField] private Transform[] _spawnPoints;
     [Inject] private DiContainer _container;
 
-    [Networked, Capacity(8)]
+    [Networked, Capacity(6)]
     public NetworkDictionary<PlayerRef, Player> Players => default;
+
+    public void RequestSpawn(Player player)
+    {
+        if(!HasStateAuthority)
+            return;
+
+        RespawnPlayer(player);
+    }
+
+    private void RespawnPlayer(Player player)
+    {
+        Vector3 spawnPosition = _spawnPoints[DeterministicRandom.Next(0, _spawnPoints.Length)].position;
+        Quaternion spawnRotation = Quaternion.identity;
+
+        if (player.TryGetComponent<NetworkCharacterController>(out var controller))
+        {
+            controller.Teleport(spawnPosition, spawnRotation);
+            controller.Velocity = Vector3.zero;
+        }
+    }
 
     public void PlayerJoined(PlayerRef player)
     {
