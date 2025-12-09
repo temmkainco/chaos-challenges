@@ -18,27 +18,23 @@ namespace Core
         [Inject]
         public async void Initialize()
         {
-            if (_platformService != null)
-                Debug.Log($"PlatformService loaded: {_platformService.GetType().Name}");
-
-            if (_networkRunner != null)
-                Debug.Log($"NetworkService loaded: {_networkRunner.GetType().Name}");
-            else
-                Debug.Log("NetworkService not bound, local play only.");
-
+            SetTargetFrameRateToMonitorHz();
             _platformService.Init();
-
-            if (_networkRunner != null)
-            {
-                await _networkRunner.InitAsync();
-            }
-
+            await _networkRunner.InitAsync();
             LoadMainMenu();
         }
 
         private void LoadMainMenu()
         {
             SceneManager.LoadSceneAsync("MainMenu", LoadSceneMode.Single);
+        }
+
+        private void SetTargetFrameRateToMonitorHz()
+        {
+            int refreshRate = (int)Screen.currentResolution.refreshRateRatio.value;
+            Application.targetFrameRate = refreshRate;
+
+            Debug.Log($"Target FPS set to monitor refresh rate: {refreshRate}");
         }
     }
 }
