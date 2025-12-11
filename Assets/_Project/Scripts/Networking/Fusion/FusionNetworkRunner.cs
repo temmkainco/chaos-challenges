@@ -23,6 +23,7 @@ namespace Networking
         private Callback<LobbyCreated_t> _steamLobbyCreatedCallback;
 
         private const int GAME_SCENE_BUILD_INDEX = 2;
+        private const int MAX_PLAYERS_COUNT = 6;
         public bool IsConnected => _runner != null && _runner.IsRunning;
 
         public async UniTask InitAsync()
@@ -56,7 +57,7 @@ namespace Networking
             _runner = null;
         }
 
-        public async Task<string> CreateLobbyAsync(int maxPlayers, bool isPublic)
+        public async Task<string> CreateLobbyAsync(bool isPublic)
         {
             string code = _codeGenerator.GenerateCode(_sessions);
             if (code == null) return null;
@@ -69,7 +70,7 @@ namespace Networking
 
                 SteamMatchmaking.CreateLobby(
                     isPublic ? ELobbyType.k_ELobbyTypePublic : ELobbyType.k_ELobbyTypeFriendsOnly,
-                    maxPlayers
+                    MAX_PLAYERS_COUNT
                 );
 
                 await _steamLobbyReady.Task;
@@ -79,7 +80,6 @@ namespace Networking
             {
                 { "code", code },
                 { "public", isPublic ? 1 : 0 },
-                { "maxPlayers", maxPlayers }
             };
 
             var args = new StartGameArgs()
@@ -87,7 +87,7 @@ namespace Networking
                 GameMode = GameMode.Host,
                 SessionName = code,
                 Scene = SceneRef.FromIndex(GAME_SCENE_BUILD_INDEX),
-                PlayerCount = maxPlayers,
+                PlayerCount = MAX_PLAYERS_COUNT,
                 SessionProperties = props
             };
 

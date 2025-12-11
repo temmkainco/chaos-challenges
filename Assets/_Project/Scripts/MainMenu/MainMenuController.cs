@@ -15,8 +15,7 @@ public class MainMenuController
 
     public async UniTask<string> OnHostLobbyButtonClicked(bool isPublic)
     {
-        int maxPlayers = 8;
-        string code = await _networkRunner.CreateLobbyAsync(maxPlayers, isPublic);
+        string code = await _networkRunner.CreateLobbyAsync(isPublic);
         return code;
     }
 

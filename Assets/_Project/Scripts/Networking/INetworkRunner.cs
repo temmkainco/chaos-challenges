@@ -11,7 +11,7 @@ namespace Networking
         string CurrentLobbyCode { get; }
         void Shutdown();
 
-        Task<string> CreateLobbyAsync(int maxPlayers, bool isPublic);
+        Task<string> CreateLobbyAsync(bool isPublic);
         Task<bool> JoinByCodeAsync(string code);
         Task<bool> JoinRandomPublicAsync();
         UniTask InitAsync();
