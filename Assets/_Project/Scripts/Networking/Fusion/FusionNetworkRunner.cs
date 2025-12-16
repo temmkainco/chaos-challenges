@@ -5,6 +5,7 @@ using Steamworks;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
+using static Unity.Collections.Unicode;
 
 namespace Networking
 {
@@ -87,6 +88,7 @@ namespace Networking
                 GameMode = GameMode.Host,
                 SessionName = code,
                 Scene = SceneRef.FromIndex(GAME_SCENE_BUILD_INDEX),
+                SceneManager = GetComponent<NetworkSceneManagerDefault>(),
                 PlayerCount = MAX_PLAYERS_COUNT,
                 SessionProperties = props
             };
@@ -111,6 +113,7 @@ namespace Networking
                 data.Direction = new Vector3(localInput.Move.x, 0, localInput.Move.y);
                 data.CameraRotation = localInput.CameraRotation;
                 data.Buttons.Set(InputButtons.Jump, localInput.IsJumpPressed);
+                data.Buttons.Set(InputButtons.Interact, localInput.IsInteractPressed);
 
                 input.Set(data);
                 return;

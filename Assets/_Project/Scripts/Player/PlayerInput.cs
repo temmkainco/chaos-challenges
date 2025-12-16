@@ -8,10 +8,8 @@ public class PlayerInput : NetworkBehaviour
     public NetworkButtons Buttons { get; private set; }
     public Vector2 Move { get; private set; }
     public Quaternion CameraRotation { get; private set; }
-    public bool IsJumpPressed => _isJumpPressed;
-
-
-    private bool _isJumpPressed;
+    public bool IsJumpPressed { get; private set; }
+    public bool IsInteractPressed { get; private set; }
 
     public PlayerInputActions _controls;
     private Camera _camera;
@@ -34,7 +32,8 @@ public class PlayerInput : NetworkBehaviour
             return;
 
         Move = _controls.Player.Move.ReadValue<Vector2>();
-        _isJumpPressed = _controls.Player.Jump.IsPressed();
+        IsJumpPressed = _controls.Player.Jump.IsPressed();
+        IsInteractPressed = _controls.Player.Interact.IsPressed();
 
         Quaternion cameraRotation = _camera.transform.rotation;
         CameraRotation = Quaternion.Euler(0, cameraRotation.eulerAngles.y, 0);

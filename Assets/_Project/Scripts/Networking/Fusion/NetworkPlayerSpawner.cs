@@ -49,6 +49,7 @@ public class NetworkPlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         _container.InjectGameObject(playerBehaviour.gameObject);
 
         Players.Add(player, playerBehaviour);
+        Runner.SetPlayerObject(player, playerObject);
         RPC_UpdateList();
     }
 

@@ -9,8 +9,9 @@ public class Player : NetworkBehaviour, ISpawned
 {
     public event Action<string> OnNicknameUpdated;
     [Networked, OnChangedRender(nameof(OnNicknameChanged))] public string Nickname { get; private set; }
+    [field: SerializeField] public CinemachineCamera Camera { get; private set; }
+    [field: SerializeField] public PlayerInteraction Interaction { get; private set; }
 
-    [SerializeField] private CinemachineCamera _camera;
     [SerializeField] private PlayerInput _input;
 
     private IPlatformService _platformService;
@@ -25,7 +26,7 @@ public class Player : NetworkBehaviour, ISpawned
     {
         if (Object.HasInputAuthority)
         {
-            _camera.gameObject.SetActive(true);
+            Camera.gameObject.SetActive(true);
             _platformService = ProjectContext.Instance.Container.Resolve<IPlatformService>();
             InitializePlayer();
         }
