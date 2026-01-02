@@ -3913,7 +3913,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78dc0c662a209cd4382e5eb94ea82c3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GrabbableObject
-  VisualRoot: {fileID: 2001545094}
+  _IsGrabbed:
+    _value: 0
+  visualRoot: {fileID: 0}
+  followSpeed: 20
+  rotationSpeed: 10
 --- !u!114 &1785040176
 MonoBehaviour:
   m_ObjectHideFlags: 0

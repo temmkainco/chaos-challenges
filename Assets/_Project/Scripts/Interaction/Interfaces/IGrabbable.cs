@@ -3,6 +3,7 @@ using Fusion;
 public interface IGrabbable
 {
     bool CanBeGrabbed { get; }
-    void RPC_RequestGrab(PlayerRef player);
-    void RPC_RequestRelease(PlayerRef player);
+    PlayerRef CurrentHolder { get; }
+    void Grab(PlayerRef player);
+    void Release(PlayerRef player);
 }
