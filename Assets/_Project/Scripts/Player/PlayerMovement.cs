@@ -24,6 +24,7 @@ public class PlayerMovement : NetworkBehaviour
         {
             if (Object.HasStateAuthority)
                 CurrentVelocity = Vector3.zero;
+
             return;
         }
 
@@ -33,7 +34,6 @@ public class PlayerMovement : NetworkBehaviour
 
         Quaternion flatCameraRotation = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f);
         Vector3 targetDir = flatCameraRotation * inputDirection;
-
         Vector3 velocity = targetDir * _movementSpeed;
 
         _characterController.Move(velocity);

@@ -1,31 +1,28 @@
 using Fusion;
-using Unity.Cinemachine;
 using UnityEngine;
 
 [RequireComponent(typeof(Player))]
 public class PlayerInteraction : NetworkBehaviour
 {
+    [Networked] public NetworkObject HeldObject { get; private set; }
+    [Networked] private NetworkButtons PreviousButtons { get; set; }
+
     [SerializeField] private float _distance = 3f;
     [SerializeField] private LayerMask _mask;
     [SerializeField] public Transform ObjectHolder;
-    [SerializeField] private Transform _eyesPoint;
-
-    [Networked] private NetworkButtons PreviousButtons { get; set; }
-
-    private CinemachineCamera _camera;
+    [SerializeField] private Transform EyesPoint;
+    public Vector3 PredictedGrabPosition { get; private set; }
+    public Quaternion PredictedGrabRotation { get; private set; }
 
     private IGrabbable _currentTarget;
-
-    private void Awake()
-    {
-        var player = GetComponent<Player>();
-        _camera = player.Camera;
-    }
 
     public override void FixedUpdateNetwork()
     {
         if (!Object.HasInputAuthority)
             return;
+
+        PredictedGrabPosition = ObjectHolder.position;
+        PredictedGrabRotation = ObjectHolder.rotation;
 
         UpdateTarget();
         HandleInput();
@@ -35,7 +32,9 @@ public class PlayerInteraction : NetworkBehaviour
     {
         _currentTarget = null;
 
-        Ray ray = new Ray(_eyesPoint.position, _camera.transform.forward);
+        var lookDirection = GetComponent<Player>().Camera.transform.forward;
+
+        Ray ray = new Ray(EyesPoint.position, lookDirection);
 
         if (Runner.GetPhysicsScene().Raycast(ray.origin, ray.direction, out var hit, _distance, _mask))
         {
@@ -45,18 +44,25 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void HandleInput()
     {
-        if (!GetInput(out NetworkInputData input))
-            return;
+        if (!GetInput(out NetworkInputData input)) return;
 
         var pressed = input.Buttons.GetPressed(PreviousButtons);
 
-        if (pressed.WasPressed(PreviousButtons, InputButtons.Interact) && _currentTarget != null)
+        if (pressed.WasPressed(PreviousButtons, InputButtons.Interact))
         {
-            Debug.Log("Try Interact");
-            if (_currentTarget.CanBeGrabbed)
-                _currentTarget.RequestGrab(Object.InputAuthority);
-            else
-                _currentTarget.RequestRelease(Object.InputAuthority);
+            if (_currentTarget is GrabbableObject grabbable)
+            {
+                if (grabbable.CanBeGrabbed)
+                {
+                    grabbable.RPC_RequestGrab(Object.InputAuthority);
+                    HeldObject = grabbable.Object;
+                }
+                else if (HeldObject == grabbable.Object)
+                {
+                    grabbable.RPC_RequestRelease(Object.InputAuthority);
+                    HeldObject = null;
+                }
+            }
         }
 
         PreviousButtons = input.Buttons;
@@ -65,10 +71,17 @@ public class PlayerInteraction : NetworkBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmos()
     {
-        if (_camera == null) return;
+        if (EyesPoint == null) return;
+
         Gizmos.color = Color.yellow;
-        Gizmos.DrawLine(_eyesPoint.position,
-                        _eyesPoint.position + _camera.transform.forward * _distance);
+
+        var player = GetComponent<Player>();
+        Vector3 direction = (player != null && player.Camera != null)
+            ? player.Camera.transform.forward
+            : EyesPoint.forward;
+
+        Gizmos.DrawLine(EyesPoint.position, EyesPoint.position + direction * _distance);
     }
 #endif
+
 }
