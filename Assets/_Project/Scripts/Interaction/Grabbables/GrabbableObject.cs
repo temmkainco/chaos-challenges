@@ -1,124 +1,81 @@
 using Fusion;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody))]
 public class GrabbableObject : NetworkBehaviour, IGrabbable
 {
     [Networked] public PlayerRef CurrentHolder { get; private set; }
     [Networked] public NetworkBool IsGrabbed { get; private set; }
+    [Networked] public NetworkObject HolderObject { get; private set; }
 
-    private Rigidbody _rigidbody;
-    private Collider _collider;
-    private Transform _originalParent;
-    private Vector3 _originalScale;
+    [Header("Hold Settings")]
+    public Vector3 _holdPositionOffset = Vector3.zero;
+    public Vector3 _holdRotationOffset = Vector3.zero;
 
-    [SerializeField] private Vector3 _holdPositionOffset = Vector3.zero;
-    [SerializeField] private Vector3 _holdRotationOffset = Vector3.zero;
-
-    public bool CanBeGrabbed => !IsGrabbed;
+    private Rigidbody _rb;
+    private Collider _myCollider;
+    private NetworkObject _lastHolder;
 
     private void Awake()
     {
-        _rigidbody = GetComponent<Rigidbody>();
-        _collider = GetComponent<Collider>();
-        _originalParent = transform.parent;
-        _originalScale = transform.localScale;
+        _rb = GetComponent<Rigidbody>();
+        _myCollider = GetComponent<Collider>();
     }
 
-    public void Grab(PlayerRef player, Transform handTransform)
+    public bool CanBeGrabbed => !IsGrabbed;
+
+    public void Grab(PlayerRef player, NetworkObject playerObject)
     {
         if (!Object.HasStateAuthority) return;
-        if (IsGrabbed) return;
 
         CurrentHolder = player;
+        HolderObject = playerObject;
         IsGrabbed = true;
 
-        ParentToHand(handTransform);
+        _rb.isKinematic = true;
+        _rb.useGravity = false;
     }
 
-    public void Release(PlayerRef player)
+    public void Release(Vector3 force)
     {
         if (!Object.HasStateAuthority) return;
-        if (!IsGrabbed || CurrentHolder != player) return;
+
+        ToggleCollisions(HolderObject, false);
 
         CurrentHolder = PlayerRef.None;
+        HolderObject = null;
         IsGrabbed = false;
 
-        UnparentFromHand();
+        _rb.isKinematic = false;
+        _rb.useGravity = true;
+        _rb.WakeUp();
+
+        if (force.sqrMagnitude > 0)
+            _rb.AddForce(force, ForceMode.Impulse);
     }
 
-    private void ParentToHand(Transform handTransform)
+    public override void Render()
     {
-        if (handTransform == null) return;
-
-        if (_rigidbody != null)
+        if (IsGrabbed && HolderObject != null)
         {
-            _rigidbody.isKinematic = true;
-            _rigidbody.linearVelocity = Vector3.zero;
-            _rigidbody.angularVelocity = Vector3.zero;
+            ToggleCollisions(HolderObject, true);
+            _lastHolder = HolderObject;
         }
-
-        if (_collider != null)
+        else if (!IsGrabbed && _lastHolder != null)
         {
-            _collider.enabled = false;
-        }
-
-        Vector3 worldScale = transform.lossyScale;
-
-        transform.SetParent(handTransform);
-
-        transform.localPosition = _holdPositionOffset;
-        transform.localRotation = Quaternion.Euler(_holdRotationOffset);
-
-        Vector3 targetLocalScale = new Vector3(
-            worldScale.x / handTransform.lossyScale.x,
-            worldScale.y / handTransform.lossyScale.y,
-            worldScale.z / handTransform.lossyScale.z
-        );
-        transform.localScale = targetLocalScale;
-    }
-
-    private void UnparentFromHand()
-    {
-        transform.SetParent(_originalParent);
-        transform.localScale = _originalScale;
-
-        if (_rigidbody != null)
-        {
-            _rigidbody.isKinematic = false;
-        }
-
-        if (_collider != null)
-        {
-            _collider.enabled = true;
+            ToggleCollisions(_lastHolder, false);
+            _lastHolder = null;
         }
     }
 
-    public override void Spawned()
+    private void ToggleCollisions(NetworkObject playerObj, bool ignore)
     {
-        if (IsGrabbed && CurrentHolder != PlayerRef.None)
-        {
-            var holder = FindPlayerWithRef(CurrentHolder);
-            if (holder != null)
-            {
-                var handTransform = holder.GetHandTransform();
-                if (handTransform != null)
-                {
-                    ParentToHand(handTransform);
-                }
-            }
-        }
-    }
+        if (playerObj == null || _myCollider == null) return;
 
-    private PlayerInteraction FindPlayerWithRef(PlayerRef playerRef)
-    {
-        var players = FindObjectsByType<PlayerInteraction>(sortMode: FindObjectsSortMode.None);
-        foreach (var player in players)
+        var colliders = playerObj.GetComponentsInChildren<Collider>();
+        foreach (var col in colliders)
         {
-            if (player.Object.InputAuthority == playerRef)
-            {
-                return player;
-            }
+            Physics.IgnoreCollision(_myCollider, col, ignore);
         }
-        return null;
     }
 }

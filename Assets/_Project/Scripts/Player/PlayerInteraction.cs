@@ -1,7 +1,6 @@
 using Fusion;
 using UnityEngine;
 
-[RequireComponent(typeof(Player))]
 public class PlayerInteraction : NetworkBehaviour
 {
     [Networked] public NetworkObject HeldObject { get; private set; }
@@ -9,209 +8,103 @@ public class PlayerInteraction : NetworkBehaviour
     [SerializeField] private float _distance = 3f;
     [SerializeField] private LayerMask _mask;
     [SerializeField] private Transform _eyesPoint;
-
-    [Header("Hand Configuration")]
-    [SerializeField] private string _rightHandBoneName = "Hand.R";
-    [SerializeField] private string _leftHandBoneName = "Hand.L";
-    [SerializeField] private bool _useRightHand = true;
+    [SerializeField] private string _handBoneName = "Hand.R";
+    [SerializeField] private float _throwForce = 12f;
 
     private Transform _handTransform;
-    private IGrabbable _currentTarget;
-    private GrabbableObject _currentTargetObj;
     private NetworkButtons _previousButtons;
+    private Player _player;
 
-    private void Start()
-    {
-        FindHandTransform();
-    }
+    public GrabbableObject CurrentTarget { get; private set; }
 
-    private void FindHandTransform()
+    public override void Spawned()
     {
-        string boneName = _useRightHand ? _rightHandBoneName : _leftHandBoneName;
+        _player = GetComponent<Player>();
+
+        if (Object.HasStateAuthority || Object.HasInputAuthority)
+        {
+            Runner.SetPlayerObject(Object.InputAuthority, Object);
+        }
 
         foreach (Transform child in GetComponentsInChildren<Transform>())
         {
-            if (child.name == boneName)
-            {
-                _handTransform = child;
-                return;
-            }
+            if (child.name == _handBoneName) { _handTransform = child; break; }
         }
     }
 
     public Transform GetHandTransform() => _handTransform;
 
-    public override void FixedUpdateNetwork()
+    void Update()
     {
         if (!Object.HasInputAuthority) return;
+        UpdateLocalTarget();
+    }
 
-        UpdateTarget();
+    private void UpdateLocalTarget()
+    {
+        if (HeldObject != null)
+        {
+            CurrentTarget = null;
+            return;
+        }
 
+        Ray ray = new Ray(_eyesPoint.position, _player.Camera.transform.forward);
+        if (Physics.Raycast(ray, out var hit, _distance, _mask))
+        {
+            CurrentTarget = hit.collider.GetComponentInParent<GrabbableObject>();
+        }
+        else
+        {
+            CurrentTarget = null;
+        }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
         if (!GetInput(out NetworkInputData input)) return;
 
         var pressed = input.Buttons.GetPressed(_previousButtons);
 
-        if (pressed.WasPressed(_previousButtons, InputButtons.Interact))
+        if (Object.HasInputAuthority && Runner.IsForward)
         {
-            if (HeldObject == null)
+            if (pressed.WasPressed(_previousButtons, InputButtons.Interact))
             {
-                TryGrab();
-            }
-            else
-            {
-                TryRelease();
+                if (HeldObject == null)
+                {
+                    RPC_RequestGrab(_player.Camera.transform.forward);
+                }
+                else
+                {
+                    RPC_RequestRelease(_player.Camera.transform.forward * _throwForce);
+                }
             }
         }
 
         _previousButtons = input.Buttons;
     }
 
-    private void UpdateTarget()
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestGrab(Vector3 lookDir)
     {
-        _currentTarget = null;
-        _currentTargetObj = null;
-
-        if (HeldObject != null) return;
-
-        var player = GetComponent<Player>();
-        if (player?.Camera == null || _eyesPoint == null)
-            return;
-        
-
-        var ray = new Ray(_eyesPoint.position, player.Camera.transform.forward);
+        Ray ray = new Ray(_eyesPoint.position, lookDir);
 
         if (Runner.GetPhysicsScene().Raycast(ray.origin, ray.direction, out var hit, _distance, _mask))
         {
-            _currentTarget = hit.collider.GetComponent<IGrabbable>();
-            _currentTargetObj = hit.collider.GetComponent<GrabbableObject>();
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (_currentTargetObj != null)
-        {
-            _currentTargetObj = null;
-        }
-    }
-
-    private void TryGrab()
-    {
-        if (_currentTarget == null || !_currentTarget.CanBeGrabbed)
-            return;
- 
-
-        if (_handTransform == null)
-            return;
-        
-
-        var targetObj = (_currentTarget as GrabbableObject);
-        if (targetObj != null && targetObj.Object != null)
-        {
-            if (Object.HasStateAuthority)
+            var grabbable = hit.collider.GetComponentInParent<GrabbableObject>();
+            if (grabbable != null && grabbable.CanBeGrabbed)
             {
-                PerformGrab(targetObj.Object, Object.InputAuthority);
-            }
-            else
-            {
-                RPC_RequestGrab(targetObj.Object);
+                grabbable.Grab(Object.InputAuthority, Object);
+                HeldObject = grabbable.Object;
             }
         }
-    }
-
-    private void PerformGrab(NetworkObject targetObject, PlayerRef player)
-    {
-        if (targetObject == null) return;
-
-        var grabbable = targetObject.GetComponent<IGrabbable>();
-        if (grabbable == null || !grabbable.CanBeGrabbed) return;
-
-        Transform gripTransform = GetHandTransform();
-        if (gripTransform == null)
-            return;
-
-        grabbable.Grab(player, gripTransform);
-        HeldObject = targetObject;
-    }
-
-    private void TryRelease()
-    {
-        if (HeldObject == null) return;
-
-        if (Object.HasStateAuthority)
-        {
-            PerformRelease(Object.InputAuthority);
-        }
-        else
-        {
-            RPC_RequestRelease(HeldObject);
-        }
-    }
-
-    private void PerformRelease(PlayerRef player)
-    {
-        if (HeldObject == null) return;
-
-        var grabbable = HeldObject.GetComponent<IGrabbable>();
-        if (grabbable == null) return;
-
-        grabbable.Release(player);
-        HeldObject = null;
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestGrab(NetworkObject targetObject, RpcInfo info = default)
+    private void RPC_RequestRelease(Vector3 force)
     {
-        PerformGrab(targetObject, info.Source);
-    }
-
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestRelease(NetworkObject targetObject, RpcInfo info = default)
-    {
-        if (targetObject == null) return;
-
-        var grabbable = targetObject.GetComponent<IGrabbable>();
-        if (grabbable == null || grabbable.CurrentHolder != info.Source) return;
-
-        PerformRelease(info.Source);
-    }
-
-    public override void Despawned(NetworkRunner runner, bool hasState)
-    {
-        if (HeldObject != null && HeldObject.IsValid)
-        {
-            var grabbable = HeldObject.GetComponent<IGrabbable>();
-            if (grabbable != null && Object != null && Object.IsValid)
-            {
-                grabbable.Release(Object.InputAuthority);
-            }
-        }
+        if (HeldObject == null) return;
+        var grabbable = HeldObject.GetComponent<GrabbableObject>();
+        if (grabbable != null) grabbable.Release(force);
         HeldObject = null;
     }
-
-#if UNITY_EDITOR
-    private void OnDrawGizmos()
-    {
-        if (_eyesPoint == null) return;
-
-        var player = GetComponent<Player>();
-        Gizmos.color = HeldObject != null ? Color.green : (_currentTarget != null ? Color.cyan : Color.yellow);
-
-        if (player?.Camera == null)
-        {
-            Gizmos.DrawLine(_eyesPoint.position, _eyesPoint.position + transform.forward * _distance);
-        }
-        else
-        {
-            Gizmos.DrawLine(_eyesPoint.position, _eyesPoint.position + player.Camera.transform.forward * _distance);
-        }
-
-        if (_handTransform != null)
-        {
-            Gizmos.color = Color.magenta;
-            Gizmos.DrawWireSphere(_handTransform.position, 0.1f);
-            Gizmos.DrawLine(_handTransform.position, _handTransform.position + _handTransform.forward * 0.2f);
-        }
-    }
-#endif
 }

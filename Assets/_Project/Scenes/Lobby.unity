@@ -486,6 +486,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8805445510405251592, guid: fa3df6b70bf478341a9954cb362b45b1, type: 3}
       insertIndex: -1
       addedObject: {fileID: 231147677}
+    - targetCorrespondingSourceObject: {fileID: 8805445510405251592, guid: fa3df6b70bf478341a9954cb362b45b1, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 231147680}
   m_SourcePrefab: {fileID: 100100000, guid: fa3df6b70bf478341a9954cb362b45b1, type: 3}
 --- !u!1 &231147673 stripped
 GameObject:
@@ -511,6 +514,7 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 231147675}
   - {fileID: 231147679}
+  - {fileID: 231147680}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &231147675
 MonoBehaviour:
@@ -526,13 +530,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GrabbableObject
   _IsGrabbed:
     _value: 0
-  _enableColorFeedback: 1
-  _renderer: {fileID: 0}
-  _normalColor: {r: 1, g: 1, b: 1, a: 1}
-  _targetedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  _heldColor: {r: 0, g: 1, b: 0, a: 1}
   _holdPositionOffset: {x: 0, y: 0, z: 0}
   _holdRotationOffset: {x: 0, y: 0, z: 0}
+--- !u!4 &231147676 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5019655868114943610, guid: fa3df6b70bf478341a9954cb362b45b1, type: 3}
+  m_PrefabInstance: {fileID: 231147672}
+  m_PrefabAsset: {fileID: 0}
 --- !u!64 &231147677
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -594,6 +598,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eef6da937829f0a499641e5e4098f4c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkParentSync
+--- !u!114 &231147680
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 231147673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a591d221a634417e9827eb58e17de84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Addons.Physics::Fusion.Addons.Physics.NetworkRigidbody3D
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 1
+  _interpolationTarget: {fileID: 231147676}
+  UsePreciseRotation: 0
+  UseRenderSleepThresholds: 1
+  RenderThresholds:
+    UseEnergy: 1
+    Position: 0.01
+    Rotation: 0.01
+    Scale: 0.01
 --- !u!1 &267654912
 GameObject:
   m_ObjectHideFlags: 0
