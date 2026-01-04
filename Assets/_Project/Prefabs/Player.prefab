@@ -481,13 +481,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 1.4085398
-  m_Radius: 0.25660834
+  m_Height: 1.8142183
+  m_Radius: 0.5
   m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
+  m_StepOffset: 0.2
+  m_SkinWidth: 0.05
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0.7, z: 0}
+  m_Center: {x: 0, y: 0.9, z: 0}
 --- !u!114 &4876833765741705288
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -526,7 +526,7 @@ MonoBehaviour:
     m_Bits: 64
   _eyesPoint: {fileID: 3328439859221240228}
   _handBoneName: Hand.R
-  _throwForce: 10
+  _throwForce: 5
 --- !u!1 &6603823816612214639
 GameObject:
   m_ObjectHideFlags: 0

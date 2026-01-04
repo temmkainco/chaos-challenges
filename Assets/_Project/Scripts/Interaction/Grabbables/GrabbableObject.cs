@@ -4,8 +4,10 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class GrabbableObject : NetworkBehaviour, IGrabbable
 {
+    [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
+    public NetworkBool IsGrabbed { get; private set; }
+
     [Networked] public PlayerRef CurrentHolder { get; private set; }
-    [Networked] public NetworkBool IsGrabbed { get; private set; }
     [Networked] public NetworkObject HolderObject { get; private set; }
 
     [Header("Hold Settings")]
@@ -22,10 +24,61 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
         _myCollider = GetComponent<Collider>();
     }
 
+    public override void Spawned()
+    {
+        _rb.position = transform.position;
+        _rb.rotation = transform.rotation;
+
+        if (_myCollider != null)
+        {
+            _myCollider.enabled = false;
+            _myCollider.enabled = true;
+        }
+
+        Physics.SyncTransforms();
+
+        if (IsGrabbed)
+        {
+            _rb.isKinematic = true;
+            _rb.useGravity = false;
+
+            if (HolderObject != null)
+            {
+                ToggleCollisions(HolderObject, true);
+                _lastHolder = HolderObject;
+            }
+        }
+    }
+
+    void OnGrabbedChanged()
+    {
+        if (IsGrabbed && HolderObject != null)
+        {
+            ToggleCollisions(HolderObject, true);
+            _lastHolder = HolderObject;
+        }
+        else if (!IsGrabbed && _lastHolder != null)
+        {
+            ToggleCollisions(_lastHolder, false);
+            _lastHolder = null;
+        }
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (IsGrabbed)
+        {
+            _rb.position = transform.position;
+            _rb.rotation = transform.rotation;
+        }
+    }
+
     public bool CanBeGrabbed => !IsGrabbed;
 
     public void Grab(PlayerRef player, NetworkObject playerObject)
     {
+        ToggleCollisions(playerObject, true);
+
         if (!Object.HasStateAuthority) return;
 
         CurrentHolder = player;
@@ -40,7 +93,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
     {
         if (!Object.HasStateAuthority) return;
 
-        ToggleCollisions(HolderObject, false);
+        _lastHolder = HolderObject;
 
         CurrentHolder = PlayerRef.None;
         HolderObject = null;
@@ -54,20 +107,6 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
             _rb.AddForce(force, ForceMode.Impulse);
     }
 
-    public override void Render()
-    {
-        if (IsGrabbed && HolderObject != null)
-        {
-            ToggleCollisions(HolderObject, true);
-            _lastHolder = HolderObject;
-        }
-        else if (!IsGrabbed && _lastHolder != null)
-        {
-            ToggleCollisions(_lastHolder, false);
-            _lastHolder = null;
-        }
-    }
-
     private void ToggleCollisions(NetworkObject playerObj, bool ignore)
     {
         if (playerObj == null || _myCollider == null) return;
@@ -75,7 +114,10 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
         var colliders = playerObj.GetComponentsInChildren<Collider>();
         foreach (var col in colliders)
         {
-            Physics.IgnoreCollision(_myCollider, col, ignore);
+            if (col != _myCollider)
+            {
+                Physics.IgnoreCollision(_myCollider, col, ignore);
+            }
         }
     }
 }

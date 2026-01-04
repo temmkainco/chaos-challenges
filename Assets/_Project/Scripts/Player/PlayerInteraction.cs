@@ -9,7 +9,7 @@ public class PlayerInteraction : NetworkBehaviour
     [SerializeField] private LayerMask _mask;
     [SerializeField] private Transform _eyesPoint;
     [SerializeField] private string _handBoneName = "Hand.R";
-    [SerializeField] private float _throwForce = 12f;
+    [SerializeField] private float _throwForce = 5f;
 
     private Transform _handTransform;
     private NetworkButtons _previousButtons;
