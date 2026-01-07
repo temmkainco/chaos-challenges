@@ -1,7 +1,9 @@
 using Fusion;
+using Fusion.Addons.Physics;
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(NetworkRigidbody3D))]
+[RequireComponent(typeof(AuthorityHandler))]
 public class GrabbableObject : NetworkBehaviour, IGrabbable
 {
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
@@ -11,42 +13,38 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
     [Networked] public NetworkObject HolderObject { get; private set; }
 
     [Header("Hold Settings")]
-    public Vector3 _holdPositionOffset = Vector3.zero;
-    public Vector3 _holdRotationOffset = Vector3.zero;
+    public Vector3 _holdPositionOffset = new Vector3(0, 2, 0);
 
-    private Rigidbody _rb;
-    private Collider _myCollider;
+    private NetworkRigidbody3D _nrb;
+    private Collider _collider;
     private NetworkObject _lastHolder;
 
     private void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
-        _myCollider = GetComponent<Collider>();
+        _nrb = GetComponent<NetworkRigidbody3D>();
+        _collider = GetComponent<Collider>();
     }
 
     public override void Spawned()
     {
-        _rb.position = transform.position;
-        _rb.rotation = transform.rotation;
-
-        if (_myCollider != null)
+        if (_collider != null)
         {
-            _myCollider.enabled = false;
-            _myCollider.enabled = true;
+            _collider.enabled = false;
+            _collider.enabled = true;
         }
 
         Physics.SyncTransforms();
 
-        if (IsGrabbed)
+        if (IsGrabbed && HolderObject != null)
         {
-            _rb.isKinematic = true;
-            _rb.useGravity = false;
+            _nrb.Rigidbody.isKinematic = true;
+            _nrb.Rigidbody.useGravity = false;
+            _collider.enabled = false;
+            _lastHolder = HolderObject;
 
-            if (HolderObject != null)
-            {
-                ToggleCollisions(HolderObject, true);
-                _lastHolder = HolderObject;
-            }
+            transform.SetParent(HolderObject.transform);
+            transform.localPosition = _holdPositionOffset;
+            transform.localRotation = Quaternion.identity;
         }
     }
 
@@ -54,39 +52,65 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
     {
         if (IsGrabbed && HolderObject != null)
         {
-            ToggleCollisions(HolderObject, true);
+            _nrb.Rigidbody.isKinematic = true;
+            _nrb.Rigidbody.useGravity = false;
+            _collider.enabled = false;
             _lastHolder = HolderObject;
+
+            transform.SetParent(HolderObject.transform);
+            transform.localPosition = _holdPositionOffset;
+            transform.localRotation = Quaternion.identity;
         }
         else if (!IsGrabbed && _lastHolder != null)
         {
-            ToggleCollisions(_lastHolder, false);
+            _nrb.Rigidbody.isKinematic = false;
+            _nrb.Rigidbody.useGravity = true;
+            _collider.enabled = true;
             _lastHolder = null;
+
+            transform.SetParent(null);
         }
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (IsGrabbed)
-        {
-            _rb.position = transform.position;
-            _rb.rotation = transform.rotation;
-        }
+        if (!IsGrabbed || HolderObject == null)
+            return;
+
+        _nrb.Rigidbody.position = transform.position;
+        _nrb.Rigidbody.rotation = transform.rotation;
+    }
+
+    public override void Render()
+    {
+        if (!IsGrabbed || HolderObject == null)
+            return;
+
+        _nrb.Rigidbody.position = transform.position;
+        _nrb.Rigidbody.rotation = transform.rotation;
     }
 
     public bool CanBeGrabbed => !IsGrabbed;
 
     public void Grab(PlayerRef player, NetworkObject playerObject)
     {
-        ToggleCollisions(playerObject, true);
-
         if (!Object.HasStateAuthority) return;
 
         CurrentHolder = player;
         HolderObject = playerObject;
         IsGrabbed = true;
 
-        _rb.isKinematic = true;
-        _rb.useGravity = false;
+        _nrb.Rigidbody.isKinematic = true;
+        _nrb.Rigidbody.useGravity = false;
+
+        _collider.enabled = false;
+
+        transform.SetParent(playerObject.transform);
+        transform.localPosition = _holdPositionOffset;
+        transform.localRotation = Quaternion.identity;
+
+        _nrb.Rigidbody.position = transform.position;
+        _nrb.Rigidbody.rotation = transform.rotation;
     }
 
     public void Release(Vector3 force)
@@ -99,25 +123,17 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
         HolderObject = null;
         IsGrabbed = false;
 
-        _rb.isKinematic = false;
-        _rb.useGravity = true;
-        _rb.WakeUp();
+        _nrb.Rigidbody.isKinematic = false;
+        _nrb.Rigidbody.useGravity = true;
+        _nrb.Rigidbody.WakeUp();
+
+        _collider.enabled = true;
+
+        transform.SetParent(null);
 
         if (force.sqrMagnitude > 0)
-            _rb.AddForce(force, ForceMode.Impulse);
-    }
-
-    private void ToggleCollisions(NetworkObject playerObj, bool ignore)
-    {
-        if (playerObj == null || _myCollider == null) return;
-
-        var colliders = playerObj.GetComponentsInChildren<Collider>();
-        foreach (var col in colliders)
         {
-            if (col != _myCollider)
-            {
-                Physics.IgnoreCollision(_myCollider, col, ignore);
-            }
+            _nrb.Rigidbody.AddForce(force, ForceMode.Impulse);
         }
     }
 }

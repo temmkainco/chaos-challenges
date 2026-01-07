@@ -527,6 +527,7 @@ MonoBehaviour:
   _eyesPoint: {fileID: 3328439859221240228}
   _handBoneName: Hand.R
   _throwForce: 5
+  _handTransform: {fileID: 5262407278972814617}
 --- !u!1 &6603823816612214639
 GameObject:
   m_ObjectHideFlags: 0

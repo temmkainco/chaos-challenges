@@ -1,4 +1,5 @@
 using Fusion;
+using System.Linq;
 using UnityEngine;
 
 public class PlayerInteraction : NetworkBehaviour
@@ -11,7 +12,7 @@ public class PlayerInteraction : NetworkBehaviour
     [SerializeField] private string _handBoneName = "Hand.R";
     [SerializeField] private float _throwForce = 5f;
 
-    private Transform _handTransform;
+    [SerializeField] private Transform _handTransform;
     private NetworkButtons _previousButtons;
     private Player _player;
 
@@ -26,10 +27,9 @@ public class PlayerInteraction : NetworkBehaviour
             Runner.SetPlayerObject(Object.InputAuthority, Object);
         }
 
-        foreach (Transform child in GetComponentsInChildren<Transform>())
-        {
-            if (child.name == _handBoneName) { _handTransform = child; break; }
-        }
+
+        _handTransform = System.Array.Find(GetComponentsInChildren<Transform>(true),
+                t => t.name == _handBoneName);
     }
 
     public Transform GetHandTransform() => _handTransform;
