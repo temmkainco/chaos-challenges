@@ -4,16 +4,21 @@ using UnityEngine;
 
 [RequireComponent(typeof(NetworkRigidbody3D))]
 [RequireComponent(typeof(AuthorityHandler))]
-public class GrabbableObject : NetworkBehaviour, IGrabbable
+public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInteractable
 {
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
     public NetworkBool IsGrabbed { get; private set; }
+
+    public bool CanBeInteractedWith => !IsGrabbed;
+    public Outline Outline { get; private set; }
 
     [Networked] public PlayerRef CurrentHolder { get; private set; }
     [Networked] public NetworkObject HolderObject { get; private set; }
 
     [Header("Hold Settings")]
     public Vector3 _holdPositionOffset = new Vector3(0, 2, 0);
+    [SerializeField] private float _throwForce = 5f;
+
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;
@@ -23,6 +28,8 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
     {
         _nrb = GetComponent<NetworkRigidbody3D>();
         _collider = GetComponent<Collider>();
+        Outline = GetComponent<Outline>();
+        Outline.enabled = false;
     }
 
     public override void Spawned()
@@ -90,9 +97,8 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
         _nrb.Rigidbody.rotation = transform.rotation;
     }
 
-    public bool CanBeGrabbed => !IsGrabbed;
 
-    public void Grab(PlayerRef player, NetworkObject playerObject)
+    public void Interact(PlayerRef player, NetworkObject playerObject)
     {
         if (!Object.HasStateAuthority) return;
 
@@ -113,7 +119,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
         _nrb.Rigidbody.rotation = transform.rotation;
     }
 
-    public void Release(Vector3 force)
+    public void CancelInteraction(PlayerRef player, NetworkObject playerObject)
     {
         if (!Object.HasStateAuthority) return;
 
@@ -130,6 +136,12 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable
         _collider.enabled = true;
 
         transform.SetParent(null);
+        
+        var playerBehaviour = playerObject.GetComponent<Player>();
+
+        var force = playerBehaviour != null
+            ? playerBehaviour.Camera.transform.forward * _throwForce
+            : Vector3.zero;
 
         if (force.sqrMagnitude > 0)
         {
