@@ -10,7 +10,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     public NetworkBool IsGrabbed { get; private set; }
 
     public bool CanBeInteractedWith => !IsGrabbed;
-
+    public Outline Outline { get; private set; }
 
     [Networked] public PlayerRef CurrentHolder { get; private set; }
     [Networked] public NetworkObject HolderObject { get; private set; }
@@ -18,6 +18,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Header("Hold Settings")]
     public Vector3 _holdPositionOffset = new Vector3(0, 2, 0);
     [SerializeField] private float _throwForce = 5f;
+
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;
@@ -27,6 +28,8 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     {
         _nrb = GetComponent<NetworkRigidbody3D>();
         _collider = GetComponent<Collider>();
+        Outline = GetComponent<Outline>();
+        Outline.enabled = false;
     }
 
     public override void Spawned()

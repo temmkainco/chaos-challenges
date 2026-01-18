@@ -3,15 +3,20 @@ using UnityEngine.UI;
 
 public class FocusHighlighter
 {
-    public void Highlight(GameObject target)
-    {
-        Clear();
+    private Outline _currentOutline;
 
-        // Outline
+    public void Highlight(IInteractable target)
+    {
+        if (_currentOutline != null)
+            return;
+        _currentOutline = target.Outline;
+        _currentOutline.enabled = true;
     }
 
     public void Clear()
     {
-        // Clear outline
+        if (_currentOutline == null) return;
+        _currentOutline.enabled = false;
+        _currentOutline = null;
     }
 }

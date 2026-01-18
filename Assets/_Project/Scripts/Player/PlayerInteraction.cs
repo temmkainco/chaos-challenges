@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerInteraction : NetworkBehaviour
 {
     [Networked] public NetworkObject HeldObject { get; private set; }
-    public GameObject CurrentTarget { get; private set; }
+    public IInteractable CurrentTarget { get; private set; }
 
     [SerializeField] private float _distance = 3f;
     [SerializeField] private LayerMask _mask;
@@ -13,10 +13,7 @@ public class PlayerInteraction : NetworkBehaviour
 
     private NetworkButtons _previousButtons;
     private Player _player;
-    private Ray _lookRay;
-
-    //private FocusContext _focusContext;
-    //private readonly FocusHighlighter _highlighter = new();
+    private FocusHighlighter _focusHighlighter = new();
 
     public override void Spawned()
     {
@@ -45,10 +42,12 @@ public class PlayerInteraction : NetworkBehaviour
         Ray ray = new Ray(_eyesPoint.position, _player.Camera.transform.forward);
         if (Physics.Raycast(ray, out var hit, _distance, _mask))
         {
-            CurrentTarget = hit.collider.gameObject;
+            CurrentTarget = hit.collider.gameObject.GetComponent<IInteractable>();
+            _focusHighlighter.Highlight(CurrentTarget);
         }
         else
         {
+            _focusHighlighter.Clear();
             CurrentTarget = null;
         }
     }
