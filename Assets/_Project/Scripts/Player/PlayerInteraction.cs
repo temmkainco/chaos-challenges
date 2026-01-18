@@ -5,34 +5,28 @@ using UnityEngine;
 public class PlayerInteraction : NetworkBehaviour
 {
     [Networked] public NetworkObject HeldObject { get; private set; }
+    public GameObject CurrentTarget { get; private set; }
 
     [SerializeField] private float _distance = 3f;
     [SerializeField] private LayerMask _mask;
     [SerializeField] private Transform _eyesPoint;
-    [SerializeField] private string _handBoneName = "Hand.R";
-    [SerializeField] private float _throwForce = 5f;
 
-    [SerializeField] private Transform _handTransform;
     private NetworkButtons _previousButtons;
     private Player _player;
+    private Ray _lookRay;
 
-    public GrabbableObject CurrentTarget { get; private set; }
+    //private FocusContext _focusContext;
+    //private readonly FocusHighlighter _highlighter = new();
 
     public override void Spawned()
     {
         _player = GetComponent<Player>();
 
-        if (Object.HasStateAuthority || Object.HasInputAuthority)
-        {
-            Runner.SetPlayerObject(Object.InputAuthority, Object);
-        }
-
-
-        _handTransform = System.Array.Find(GetComponentsInChildren<Transform>(true),
-                t => t.name == _handBoneName);
+        if (!Object.HasStateAuthority && !Object.HasInputAuthority)
+            return;
+        
+        Runner.SetPlayerObject(Object.InputAuthority, Object);
     }
-
-    public Transform GetHandTransform() => _handTransform;
 
     void Update()
     {
@@ -51,7 +45,7 @@ public class PlayerInteraction : NetworkBehaviour
         Ray ray = new Ray(_eyesPoint.position, _player.Camera.transform.forward);
         if (Physics.Raycast(ray, out var hit, _distance, _mask))
         {
-            CurrentTarget = hit.collider.GetComponentInParent<GrabbableObject>();
+            CurrentTarget = hit.collider.gameObject;
         }
         else
         {
@@ -69,14 +63,12 @@ public class PlayerInteraction : NetworkBehaviour
         {
             if (pressed.WasPressed(_previousButtons, InputButtons.Interact))
             {
-                if (HeldObject == null)
-                {
-                    RPC_RequestGrab(_player.Camera.transform.forward);
+                if (HeldObject != null) {
+                    RPC_RequestCancelInteraction();
+                    return;
                 }
-                else
-                {
-                    RPC_RequestRelease(_player.Camera.transform.forward * _throwForce);
-                }
+
+                RPC_RequestInteraction(_player.Camera.transform.forward);
             }
         }
 
@@ -84,27 +76,40 @@ public class PlayerInteraction : NetworkBehaviour
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestGrab(Vector3 lookDir)
+    private void RPC_RequestInteraction(Vector3 lookDir)
     {
         Ray ray = new Ray(_eyesPoint.position, lookDir);
 
         if (Runner.GetPhysicsScene().Raycast(ray.origin, ray.direction, out var hit, _distance, _mask))
         {
-            var grabbable = hit.collider.GetComponentInParent<GrabbableObject>();
-            if (grabbable != null && grabbable.CanBeGrabbed)
+            var interactable = hit.collider.GetComponentInParent<IInteractable>();
+            if (interactable != null && interactable.CanBeInteractedWith)
             {
-                grabbable.Grab(Object.InputAuthority, Object);
-                HeldObject = grabbable.Object;
+                interactable.Interact(Object.InputAuthority, Object);
+
+                if (!hit.collider.TryGetComponent<ICancellableInteractable>(out var cancellable))
+                    return;
+
+                if (cancellable is NetworkBehaviour networkBehaviour)
+                {
+                    HeldObject = networkBehaviour.Object;
+                }
             }
         }
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestRelease(Vector3 force)
+    private void RPC_RequestCancelInteraction()
     {
-        if (HeldObject == null) return;
-        var grabbable = HeldObject.GetComponent<GrabbableObject>();
-        if (grabbable != null) grabbable.Release(force);
-        HeldObject = null;
+        if (HeldObject == null)
+            return;
+
+        var networkBehaviour = HeldObject.GetComponent<NetworkBehaviour>();
+        if (networkBehaviour is ICancellableInteractable cancellable)
+        {
+            cancellable.CancelInteraction(Object.InputAuthority, Object);
+            HeldObject = null;
+        }
     }
+
 }

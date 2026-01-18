@@ -218,7 +218,7 @@ MonoBehaviour:
   VerticalAxis:
     Value: 17.5
     Center: 17.5
-    Range: {x: -60, y: 60}
+    Range: {x: -75, y: 75}
     Wrap: 0
     Recentering:
       Enabled: 0
@@ -525,9 +525,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   _eyesPoint: {fileID: 3328439859221240228}
-  _handBoneName: Hand.R
-  _throwForce: 5
-  _handTransform: {fileID: 5262407278972814617}
 --- !u!1 &6603823816612214639
 GameObject:
   m_ObjectHideFlags: 0
