@@ -1,14 +1,15 @@
 using ButtonPack;
 using Fusion;
-using UnityEngine;
+using Zenject;
 
-public class LobbyReadyButton : NetworkBehaviour, IInteractable
+public class LobbyReadyButton : NetworkBehaviour, IInteractable, ILocalInteractable
 {
     public Outline Outline { get; private set; }
-
     public bool CanBeInteractedWith => true;
 
     private PressController _pressController;
+
+    [Inject] private LobbyManager _lobbyManager;
 
     private void Awake()
     {
@@ -16,13 +17,16 @@ public class LobbyReadyButton : NetworkBehaviour, IInteractable
         Outline.enabled = false;
         _pressController = GetComponent<PressController>();
     }
+    public void LocalInteract()
+    {
+        _pressController.Toggle1();
+    }
 
     public void Interact(PlayerRef player, NetworkObject playerObject)
     {
-        _pressController.Toggle1();
-
-        if (!Object.HasStateAuthority) 
+        if (!Object.HasStateAuthority)
             return;
-        Debug.Log($"Player {player} pressed the ready button.");
+
+        _lobbyManager.ToggleReady(player);
     }
 }

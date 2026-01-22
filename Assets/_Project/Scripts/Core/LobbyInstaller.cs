@@ -8,6 +8,7 @@ public class LobbyInstaller : MonoInstaller, IInitializable
     {
         Container.BindInterfacesTo<LobbyInstaller>().FromInstance(this).AsSingle();
         Container.Bind<LobbyPlayerSpawner>().FromComponentInHierarchy().AsSingle();
+        Container.Bind<LobbyManager>().FromComponentInHierarchy().AsSingle();
     }
 
     public void Initialize()
