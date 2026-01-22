@@ -6,7 +6,7 @@ using Zenject;
 public class LobbyPlayersDisplay : NetworkBehaviour
 {
     [SerializeField] private Transform _playersDisplayItemsParent;
-    [Inject] private NetworkPlayerSpawner _spawner;
+    [Inject] private LobbyPlayerSpawner _spawner;
 
     private LobbyPlayerDisplayItem[] _items;
     private readonly List<Player> _currentPlayers = new();

@@ -4,7 +4,7 @@ using Zenject;
 
 public class LobbyPlayerRespawnZone : MonoBehaviour
 {
-    [Inject] private NetworkPlayerSpawner _spawner;
+    [Inject] private LobbyPlayerSpawner _spawner;
 
     private void OnTriggerEnter(Collider other)
     {
