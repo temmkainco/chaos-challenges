@@ -2854,7 +2854,9 @@ MonoBehaviour:
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: adce6520beabaaa41a97be82eccf178c, type: 2}
   m_sharedMaterial: {fileID: 9144043666885718807, guid: adce6520beabaaa41a97be82eccf178c, type: 2}
-  m_fontSharedMaterials: []
+  m_fontSharedMaterials:
+  - {fileID: 9144043666885718807, guid: adce6520beabaaa41a97be82eccf178c, type: 2}
+  - {fileID: 0}
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
