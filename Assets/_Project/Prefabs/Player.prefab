@@ -450,7 +450,7 @@ MonoBehaviour:
   _Nickname: 
   <Camera>k__BackingField: {fileID: 8188439976133406392}
   <Interaction>k__BackingField: {fileID: 8604574209955165599}
-  _input: {fileID: 1350921103817962917}
+  <Input>k__BackingField: {fileID: 1350921103817962917}
 --- !u!114 &1350921103817962917
 MonoBehaviour:
   m_ObjectHideFlags: 0

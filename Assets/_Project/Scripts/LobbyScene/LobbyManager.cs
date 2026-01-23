@@ -11,8 +11,13 @@ public class LobbyManager : NetworkBehaviour
     public event Action AllPlayersReadyEvent;
     public event Action<PlayerRef, bool> PlayerReadyChangedEvent;
 
-    [Inject] private LobbyPlayerSpawner _spawner;
+    [Inject(Id = "NetworkGameManager")] 
+    private NetworkPrefabRef _networkGameManagerPrefab;
 
+    [Inject] private LobbyPlayerSpawner _spawner;
+    [Inject] private MinigameSceneDatabaseSO _minigameSceneDatabase;
+
+    private NetworkGameManager _networkGameManager;
     public override void Spawned()
     {
         if (!HasStateAuthority)
@@ -37,10 +42,11 @@ public class LobbyManager : NetworkBehaviour
             return;
 
         bool newValue = !ReadyStates[player];
+
         ReadyStates.Set(player, newValue);
         RPC_NotifyPlayerReadyChanged(player, newValue);
-        Debug.Log($"LobbyManager: {player} ready = {newValue}");
         PlayerReadyChangedEvent?.Invoke(player, newValue);
+
         CheckAllReady();
     }
 
@@ -66,7 +72,7 @@ public class LobbyManager : NetworkBehaviour
 
     private void CheckAllReady()
     {
-        if (ReadyStates.Count <= 1)
+        if (ReadyStates.Count == 0)
             return;
 
         foreach (var kvp in ReadyStates)
@@ -75,13 +81,38 @@ public class LobbyManager : NetworkBehaviour
                 return;
         }
 
-        Debug.Log("ALL PLAYERS READY");
         AllPlayersReadyEvent?.Invoke();
+
+        SpawnNetworkGameManager();
+        StartNetworkGame();
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_NotifyPlayerReadyChanged(PlayerRef player, bool ready)
     {
         PlayerReadyChangedEvent?.Invoke(player, ready);
+    }
+
+    private void SpawnNetworkGameManager()
+    {
+        if(_networkGameManager != null)
+            return;
+
+        var gameFlowControllerObject = Runner.Spawn(
+            _networkGameManagerPrefab,
+            Vector3.zero,
+            Quaternion.identity
+        );
+
+        _networkGameManager = gameFlowControllerObject.GetComponent<NetworkGameManager>();
+        _networkGameManager.Initialize(_minigameSceneDatabase);
+    }
+
+    private void StartNetworkGame()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        _networkGameManager.StartMatch();
     }
 }

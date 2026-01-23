@@ -23,8 +23,6 @@ namespace Core
         {
             Container.BindInterfacesTo<Bootstrapper>().FromComponentInHierarchy().AsSingle();
 
-            Container.Bind<GameSettings>().AsSingle();
-
             if (SteamManager.Initialized && UseSteam)
             {
                 Container.Bind<IPlatformService>().To<SteamPlatformService>().AsSingle();

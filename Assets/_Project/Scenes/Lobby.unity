@@ -3103,6 +3103,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59a3019077bf7084e8e3feef0e07a6a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LobbyInstaller
+  <NetworkGameManagerPrefab>k__BackingField:
+    RawGuidValue: f010f66dcb498a846ab7dd7056ec5caa
+  <MinigameSceneDatabase>k__BackingField: {fileID: 11400000, guid: 7ef6a09fbe27ffe47852463681837c26, type: 2}
 --- !u!114 &959864566
 MonoBehaviour:
   m_ObjectHideFlags: 0

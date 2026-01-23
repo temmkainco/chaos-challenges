@@ -4,16 +4,40 @@ using System;
 using UnityEngine;
 using Zenject;
 
-public abstract class BaseNetworkPlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlayerLeft
+public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 {
     public event Action OnPlayersChangedEvent;
 
     [SerializeField] protected NetworkPrefabRef _playerPrefab;
     [SerializeField] protected Transform[] _spawnPoints;
+
     [Inject] protected DiContainer _container;
 
     [Networked, Capacity(6)]
     public NetworkDictionary<PlayerRef, Player> Players => default;
+
+    public override void Spawned()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        RespawnAllActivePlayers();
+    }
+
+    private void RespawnAllActivePlayers()
+    {
+        foreach (var playerRef in Runner.ActivePlayers)
+        {
+            if (!Players.ContainsKey(playerRef))
+            {
+                if (Runner.GetPlayerObject(playerRef) == null)
+                {
+                    Debug.Log($"Respawning player {playerRef} in new scene");
+                    PlayerJoined(playerRef);
+                }
+            }
+        }
+    }
 
     public void RequestSpawn(Player player)
     {
@@ -25,12 +49,18 @@ public abstract class BaseNetworkPlayerSpawner : NetworkBehaviour, IPlayerJoined
     {
         if (!HasStateAuthority) return;
 
+        if (Players.ContainsKey(player))
+        {
+            Debug.LogWarning($"Player {player} already spawned, skipping");
+            return;
+        }
+
+        Debug.Log($"Spawning player {player}");
+
         Vector3 spawnPosition = GetSpawnPosition();
         NetworkObject playerObject = Runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
         var playerBehaviour = playerObject.GetComponent<Player>();
-
         _container.InjectGameObject(playerBehaviour.gameObject);
-
         Players.Add(player, playerBehaviour);
         Runner.SetPlayerObject(player, playerObject);
         RPC_UpdateList();
@@ -42,11 +72,13 @@ public abstract class BaseNetworkPlayerSpawner : NetworkBehaviour, IPlayerJoined
 
         if (Players.TryGet(player, out Player playerBehaviour))
         {
+            Debug.Log($"Despawning player {player}");
             Players.Remove(player);
             Runner.Despawn(playerBehaviour.Object);
             RPC_UpdateList();
         }
     }
+
     protected virtual void RespawnPlayer(Player player)
     {
         Vector3 spawnPosition = GetSpawnPosition();
@@ -58,6 +90,7 @@ public abstract class BaseNetworkPlayerSpawner : NetworkBehaviour, IPlayerJoined
             controller.Velocity = Vector3.zero;
         }
     }
+
     protected Vector3 GetSpawnPosition()
     {
         if (_spawnPoints.Length == 0) return Vector3.zero;

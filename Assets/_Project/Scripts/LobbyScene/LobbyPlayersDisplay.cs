@@ -12,7 +12,7 @@ public class LobbyPlayersDisplay : NetworkBehaviour
     private LobbyPlayerDisplayItem[] _items;
     private readonly List<Player> _currentPlayers = new();
 
-    private const string DEFAULT_NAME = "Some Dude";
+    private const string DEFAULT_NAME = "Waiting for";
     private const string READY_TEXT = "READY";
     private const string NOT_READY_TEXT = "NOT READY";
     [SerializeField] private Color _readyTextColor = Color.green;
@@ -21,11 +21,15 @@ public class LobbyPlayersDisplay : NetworkBehaviour
     private void Awake()
     {
         _items = _playersDisplayItemsParent.GetComponentsInChildren<LobbyPlayerDisplayItem>(true);
+    }
+
+    private void OnEnable()
+    {
         _spawner.OnPlayersChangedEvent += On_PlayersChanged;
         _manager.PlayerReadyChangedEvent += On_PlayerReadyChanged;
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         _spawner.OnPlayersChangedEvent -= On_PlayersChanged;
         _manager.PlayerReadyChangedEvent -= On_PlayerReadyChanged;
@@ -49,15 +53,27 @@ public class LobbyPlayersDisplay : NetworkBehaviour
     {
         for (int i = 0; i < _currentPlayers.Count && i < _items.Length; i++)
         {
-            Debug.Log($"Checking player at index {i}: {_currentPlayers[i].Object.InputAuthority} against {playerRef}");
-            if (_currentPlayers[i].Object.InputAuthority == playerRef)
+            var item = _items[i];
+            if (item == null || item.PlayerReady_TMP == null)
+                continue;
+
+            var player = _currentPlayers[i];
+            if (player == null)
+                continue;
+
+            var playerObject = player.Object;
+            if (playerObject == null)
+                continue;
+
+            if (playerObject.InputAuthority == playerRef)
             {
-                _items[i].PlayerReady_TMP.text = isReady ? READY_TEXT : NOT_READY_TEXT;
-                _items[i].PlayerReady_TMP.color = isReady ? _readyTextColor : _notReadyTextColor;
+                item.PlayerReady_TMP.text = isReady ? READY_TEXT : NOT_READY_TEXT;
+                item.PlayerReady_TMP.color = isReady ? _readyTextColor : _notReadyTextColor;
                 break;
             }
         }
     }
+
 
     private void Refresh()
     {

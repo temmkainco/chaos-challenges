@@ -11,6 +11,7 @@ public class MainMenuView : MonoBehaviour
     [SerializeField] private Button _hostButton;
     [SerializeField] private Button _joinRandomButton;
     [SerializeField] private Button _joinByCodeButton;
+    [SerializeField] private Button _exitButton;
 
     [SerializeField] private PanelBase _joinLobbyByCodePanel;
     [SerializeField] private PanelBase _hostLobbyPanel;
@@ -33,6 +34,7 @@ public class MainMenuView : MonoBehaviour
         _joinRandomButton.onClick.AddListener(OnJoinRandomButtonClicked);
         _hostButton.onClick.AddListener(_hostLobbyPanel.Open);
         _joinByCodeButton.onClick.AddListener(_joinLobbyByCodePanel.Open);
+        _exitButton.onClick.AddListener(_controller.OnExitButtonClicked);
 
         _platformService.Init();
         _playerNameInput.interactable = _platformService is LocalPlatformService;
@@ -80,5 +82,6 @@ public class MainMenuView : MonoBehaviour
         _hostButton.onClick.RemoveListener(_hostLobbyPanel.Open);
         _joinRandomButton.onClick.RemoveListener(OnJoinRandomButtonClicked);
         _joinByCodeButton.onClick.RemoveListener(_joinLobbyByCodePanel.Open);
+        _exitButton.onClick.RemoveListener(_controller.OnExitButtonClicked);
     }
 }

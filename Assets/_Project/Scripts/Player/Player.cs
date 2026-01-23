@@ -11,8 +11,7 @@ public class Player : NetworkBehaviour, ISpawned
     [Networked, OnChangedRender(nameof(OnNicknameChanged))] public string Nickname { get; private set; }
     [field: SerializeField] public CinemachineCamera Camera { get; private set; }
     [field: SerializeField] public PlayerInteraction Interaction { get; private set; }
-
-    [SerializeField] private PlayerInput _input;
+    [field: SerializeField] public PlayerInput Input { get; private set; }
 
     private IPlatformService _platformService;
 
