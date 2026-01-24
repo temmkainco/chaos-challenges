@@ -1,7 +1,7 @@
 using UnityEngine;
 using Zenject;
 
-public class DoorKeySceneInstaller : MonoInstaller
+public class SampleRaceSceneInstaller : MonoInstaller
 {
     [field: SerializeField] public MinigameController GameController { get; private set; }
     public override void InstallBindings()

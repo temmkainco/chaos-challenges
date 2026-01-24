@@ -32,7 +32,6 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
             {
                 if (Runner.GetPlayerObject(playerRef) == null)
                 {
-                    Debug.Log($"Respawning player {playerRef} in new scene");
                     PlayerJoined(playerRef);
                 }
             }
@@ -91,7 +90,7 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         }
     }
 
-    protected Vector3 GetSpawnPosition()
+    protected virtual Vector3 GetSpawnPosition()
     {
         if (_spawnPoints.Length == 0) return Vector3.zero;
         return _spawnPoints[DeterministicRandom.Next(0, _spawnPoints.Length)].position;

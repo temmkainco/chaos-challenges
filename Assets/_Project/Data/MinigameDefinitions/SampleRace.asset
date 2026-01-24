@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
-  m_Name: KeyDoor
+  m_Name: SampleRace
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
-  <Id>k__BackingField: key_door
+  <Id>k__BackingField: sample_race
   <SceneBuildIndex>k__BackingField: 3
   <GameType>k__BackingField: 3
   <GameDuration>k__BackingField: 180
-  <StartDelay>k__BackingField: 3
+  <StartDelay>k__BackingField: 5
   <DisplayName>k__BackingField: Key Without a Lock

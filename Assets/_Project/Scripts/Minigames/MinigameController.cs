@@ -1,6 +1,7 @@
 using Fusion;
 using System;
 using UnityEngine;
+using Zenject;
 
 public class MinigameController : NetworkBehaviour
 {
@@ -13,6 +14,7 @@ public class MinigameController : NetworkBehaviour
     protected NetworkGameManager GameManager;
 
     [SerializeField] protected MinigameDefinitionSO _minigameDefinition;
+    [Inject] private BasePlayerSpawner _basePlayerSpawner;
 
     public event Action OnMinigameStart;
     public event Action OnMinigameEnd;
@@ -29,13 +31,23 @@ public class MinigameController : NetworkBehaviour
         }
     }
 
+    protected void SetPlayersInput(bool value)
+    {
+        foreach (var playerEntry in _basePlayerSpawner.Players)
+        {
+            playerEntry.Value.Input.SetPlayerControlsActive(value);
+        }
+    }
+
     private void StartCountdown()
     {
         CountdownTimer = TickTimer.CreateFromSeconds(Runner, _minigameDefinition.StartDelay);
         LastCountdownSecond = Mathf.CeilToInt(_minigameDefinition.StartDelay);
         IsCountingDown = true;
         RPC_CountdownStarted();
+        RPC_UpdateCountdown((int)_minigameDefinition.StartDelay);
     }
+
     public override void FixedUpdateNetwork()
     {
         if (!HasStateAuthority)
@@ -71,6 +83,7 @@ public class MinigameController : NetworkBehaviour
         GameTimer = TickTimer.CreateFromSeconds(Runner, _minigameDefinition.GameDuration);
 
         RPC_OnGameStart();
+        SetPlayersInput(true);
         OnMinigameStart?.Invoke();
 
         Debug.Log($"Minigame {_minigameDefinition.Id} started! Duration: {_minigameDefinition.GameDuration}s");
@@ -81,7 +94,6 @@ public class MinigameController : NetworkBehaviour
     private void RPC_CountdownStarted()
     {
         OnCountdownStarted?.Invoke();
-        RPC_UpdateCountdown((int)_minigameDefinition.StartDelay);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

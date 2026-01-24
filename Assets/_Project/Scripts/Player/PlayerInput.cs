@@ -25,6 +25,17 @@ public class PlayerInput : NetworkBehaviour
         }
     }
 
+    public void SetPlayerControlsActive(bool value)
+    {
+        if (value)
+        {
+            Controls.Player.Enable();
+            return;
+        }
+
+        Controls.Player.Disable();
+    }
+
     private void Update()
     {
         if (Controls == null)
