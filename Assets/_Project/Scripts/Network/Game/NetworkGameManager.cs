@@ -14,6 +14,7 @@ public class NetworkGameManager : NetworkBehaviour
 
     public override void Spawned()
     {
+        DontDestroyOnLoad(Object);
         if (HasStateAuthority)
         {
             CurrentMinigameIndex = 0;
