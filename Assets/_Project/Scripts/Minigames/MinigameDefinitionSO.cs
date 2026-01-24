@@ -19,6 +19,8 @@ public class MinigameDefinitionSO : ScriptableObject
 
     [Header("Rules")]
     [field: SerializeField] public MinigameType GameType { get; private set; }
+    [field: SerializeField] public float GameDuration { get; private set; }
+    [field: SerializeField] public float StartDelay { get; private set; }
 
     [Header("Presentation")]
     [field: SerializeField] public string DisplayName { get; private set; }

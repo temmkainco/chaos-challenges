@@ -15,4 +15,6 @@ MonoBehaviour:
   <Id>k__BackingField: key_door
   <SceneBuildIndex>k__BackingField: 3
   <GameType>k__BackingField: 3
+  <GameDuration>k__BackingField: 180
+  <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Key Without a Lock
