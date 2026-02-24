@@ -67,11 +67,21 @@ public class PlayerInteraction : NetworkBehaviour
                     return;
                 }
 
+                TryLocalInteraction();
+
                 RPC_RequestInteraction(_player.Camera.transform.forward);
             }
         }
 
         _previousButtons = input.Buttons;
+    }
+
+    private void TryLocalInteraction()
+    {
+        if (CurrentTarget == null || !CurrentTarget.CanBeInteractedWith || CurrentTarget is not ILocalInteractable localInteractable)
+            return;
+
+        localInteractable.LocalInteract();
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]

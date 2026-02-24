@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Networking;
 using Platform;
+using UnityEngine;
 using Zenject;
 
 public class MainMenuController
@@ -32,5 +33,11 @@ public class MainMenuController
 
         bool ok = await _networkRunner.JoinByCodeAsync(code);
         return ok;
+    }
+
+    public void OnExitButtonClicked()
+    {
+        _networkRunner.Shutdown();
+        Application.Quit();
     }
 }

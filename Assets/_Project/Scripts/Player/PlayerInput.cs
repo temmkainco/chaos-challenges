@@ -1,6 +1,5 @@
 using Fusion;
 using UnityEngine;
-using UnityEngine.SocialPlatforms;
 
 public class PlayerInput : NetworkBehaviour
 {
@@ -11,48 +10,57 @@ public class PlayerInput : NetworkBehaviour
     public bool IsJumpPressed { get; private set; }
     public bool IsInteractPressed { get; private set; }
 
-    public PlayerInputActions _controls;
+    public PlayerInputActions Controls;
     private Camera _camera;
      
     public override void Spawned()
     {
         if (Object.HasInputAuthority)
         {
-            _controls = new PlayerInputActions();
+            Controls = new PlayerInputActions();
             Local = this;
 
-            _controls.Enable();
+            Controls.Enable();
             _camera = Camera.main;
         }
     }
 
+    public void SetPlayerControlsActive(bool value)
+    {
+        if (value)
+        {
+            Controls.Player.Enable();
+            return;
+        }
+
+        Controls.Player.Disable();
+    }
+
     private void Update()
     {
-        if (_controls == null)
+        if (Controls == null)
             return;
 
-        Move = _controls.Player.Move.ReadValue<Vector2>();
-        IsJumpPressed = _controls.Player.Jump.IsPressed();
-        IsInteractPressed = _controls.Player.Interact.IsPressed();
+        Move = Controls.Player.Move.ReadValue<Vector2>();
+        IsJumpPressed = Controls.Player.Jump.IsPressed();
+        IsInteractPressed = Controls.Player.Interact.IsPressed();
 
         Quaternion cameraRotation = _camera.transform.rotation;
         CameraRotation = Quaternion.Euler(0, cameraRotation.eulerAngles.y, 0);
     }
 
-    public override void Despawned(NetworkRunner runner, bool hasState)
-    {
-        if (Local != this)
-            return;
-
-        Local = null;
-        _controls.Disable();    
-    }
-
     private void OnDestroy()
     {
-        if (Local != this)
-            return;
+        if (Local == this)
+        {
+            Local = null;
+        }
 
-        Local = null; 
+        if (Controls != null)
+        {
+            Controls.Disable();
+            Controls.Dispose();
+            Controls = null;
+        }
     }
 }

@@ -10,7 +10,6 @@ namespace Core
 {
     public class Bootstrapper : MonoBehaviour, IInitializable
     {
-        [Inject] private GameSettings _gameSettings;
         [Inject] private IPlatformService _platformService;
         [Inject] private INetworkRunner _networkRunner;
 
