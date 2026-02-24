@@ -3,17 +3,21 @@ using System;
 using UnityEngine;
 using Zenject;
 
+//This class exists on the minigame scene and is responsible for managing the minigame flow (countdown, start, end) and syncing it across the network.
+//It also provides events for the minigame UI to react to changes in the game state.
+
 public class MinigameController : NetworkBehaviour
 {
     [Networked] public TickTimer CountdownTimer { get; private set; }
     [Networked] private int LastCountdownSecond { get; set; }
     [Networked] private bool IsCountingDown { get; set; }
-    [Networked] public TickTimer GameTimer { get; protected set; }
     [Networked] public bool IsGameActive { get; protected set; }
 
     protected NetworkGameManager GameManager;
 
     [SerializeField] protected MinigameDefinitionSO _minigameDefinition;
+    [SerializeField] protected bool _hasCountdown = true;
+
     [Inject] private BasePlayerSpawner _basePlayerSpawner;
 
     public event Action OnMinigameStart;
@@ -24,18 +28,69 @@ public class MinigameController : NetworkBehaviour
     public override void Spawned()
     {
         GameManager = FindFirstObjectByType<NetworkGameManager>();
+        if (Object.HasInputAuthority)
+        {
+            RPC_PlayerReady();
+        }
+    }
 
-        if (HasStateAuthority)
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_PlayerReady()
+    {
+        GameManager.RegisterPlayerReady();
+    }
+
+    public void InitializeMinigame()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        SetPlayersInput(false);
+
+        if (_hasCountdown)
         {
             StartCountdown();
+            return;
         }
+        StartGame();
+    }
+
+    protected virtual void StartGame()
+    {
+        IsGameActive = true;
+
+        RPC_OnGameStart();
+        SetPlayersInput(true);
+
+        Debug.Log($"Minigame {_minigameDefinition.Id} started!");
+    }
+
+    protected virtual void EndGame()
+    {
+        IsGameActive = false;
+
+        RPC_OnGameEnd();
+        SetPlayersInput(false);
+
+        Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        UpdateGameStartCountdown();
     }
 
     protected void SetPlayersInput(bool value)
     {
         foreach (var playerEntry in _basePlayerSpawner.Players)
         {
-            playerEntry.Value.Input.SetPlayerControlsActive(value);
+            if (playerEntry.Value)
+            {
+                playerEntry.Value.Input.SetPlayerControlsActive(value);
+            }
         }
     }
 
@@ -48,11 +103,8 @@ public class MinigameController : NetworkBehaviour
         RPC_UpdateCountdown((int)_minigameDefinition.StartDelay);
     }
 
-    public override void FixedUpdateNetwork()
+    private void UpdateGameStartCountdown()
     {
-        if (!HasStateAuthority)
-            return;
-
         if (IsCountingDown)
         {
             float remaining = CountdownTimer.RemainingTime(Runner) ?? 0;
@@ -75,20 +127,6 @@ public class MinigameController : NetworkBehaviour
             }
         }
     }
-
-
-    protected virtual void StartGame()
-    {
-        IsGameActive = true;
-        GameTimer = TickTimer.CreateFromSeconds(Runner, _minigameDefinition.GameDuration);
-
-        RPC_OnGameStart();
-        SetPlayersInput(true);
-        OnMinigameStart?.Invoke();
-
-        Debug.Log($"Minigame {_minigameDefinition.Id} started! Duration: {_minigameDefinition.GameDuration}s");
-    }
-
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_CountdownStarted()

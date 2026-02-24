@@ -3,7 +3,7 @@ using Fusion;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SampleRacePlayerSpawner : BasePlayerSpawner
+public class MinesPlayerSpawner : BasePlayerSpawner
 {
     private readonly List<int> _freeSpawnIndices = new();
     private readonly Dictionary<PlayerRef, int> _assignedSpawns = new();

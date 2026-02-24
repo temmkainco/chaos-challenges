@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
-  m_Name: SampleRace
+  m_Name: MinesGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
-  <Id>k__BackingField: sample_race
+  <Id>k__BackingField: mines_game
   <SceneBuildIndex>k__BackingField: 3
-  <GameType>k__BackingField: 3
-  <GameDuration>k__BackingField: 180
-  <StartDelay>k__BackingField: 5
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: -1
+  <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Key Without a Lock

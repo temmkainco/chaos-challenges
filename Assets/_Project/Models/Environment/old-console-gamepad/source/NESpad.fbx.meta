@@ -1,12 +1,5 @@
 fileFormatVersion: 2
-guid: aabbd3eec302219439c223e6d4420ccf
-AssetOrigin:
-  serializedVersion: 1
-  productId: 329379
-  packageName: Low Poly Buttons, Levers, Values, Regulators, Switches + Scripts
-  packageVersion: 1.0
-  assetPath: Assets/Low Poly Buttons, Levers, Values, Regulators, Switches/Model/Button/props.fbx_b15/props.fbx_b15.fbx
-  uploadId: 784082
+guid: 7738e566e4a635e44becfe798d3a914f
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
@@ -36,66 +29,8 @@ ModelImporter:
     animationWrapMode: 0
     extraExposedTransformPaths: []
     extraUserProperties: []
-    clipAnimations:
-    - serializedVersion: 16
-      name: Plane.017Action
-      takeName: Plane.017Action
-      internalID: 6972759949324673630
-      firstFrame: 0
-      lastFrame: 7
-      wrapMode: 0
-      orientationOffsetY: 0
-      level: 0
-      cycleOffset: 0
-      loop: 0
-      hasAdditiveReferencePose: 0
-      loopTime: 0
-      loopBlend: 0
-      loopBlendOrientation: 0
-      loopBlendPositionY: 0
-      loopBlendPositionXZ: 0
-      keepOriginalOrientation: 0
-      keepOriginalPositionY: 1
-      keepOriginalPositionXZ: 0
-      heightFromFeet: 0
-      mirror: 0
-      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
-      curves: []
-      events: []
-      transformMask: []
-      maskType: 3
-      maskSource: {instanceID: 0}
-      additiveReferencePoseFrame: 0
-    - serializedVersion: 16
-      name: Plane.017Action (1)
-      takeName: Plane.017Action
-      internalID: -7849919268390730536
-      firstFrame: 7
-      lastFrame: 14
-      wrapMode: 0
-      orientationOffsetY: 0
-      level: 0
-      cycleOffset: 0
-      loop: 0
-      hasAdditiveReferencePose: 0
-      loopTime: 0
-      loopBlend: 0
-      loopBlendOrientation: 0
-      loopBlendPositionY: 0
-      loopBlendPositionXZ: 0
-      keepOriginalOrientation: 0
-      keepOriginalPositionY: 1
-      keepOriginalPositionXZ: 0
-      heightFromFeet: 0
-      mirror: 0
-      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
-      curves: []
-      events: []
-      transformMask: []
-      maskType: 3
-      maskSource: {instanceID: 0}
-      additiveReferencePoseFrame: 0
-    isReadable: 1
+    clipAnimations: []
+    isReadable: 0
   meshes:
     lODScreenPercentages: []
     globalScale: 1
