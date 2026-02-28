@@ -12,6 +12,7 @@ public class MinigameController : NetworkBehaviour
     [Networked] private int LastCountdownSecond { get; set; }
     [Networked] private bool IsCountingDown { get; set; }
     [Networked] public bool IsGameActive { get; protected set; }
+    [Networked] private int ScoresReceived { get; set; }
 
     protected NetworkGameManager GameManager;
 
@@ -25,14 +26,33 @@ public class MinigameController : NetworkBehaviour
     public event Action OnCountdownStarted;
     public event Action<int> OnCountdownTick;
 
+    private int _localScore;
+
     public override void Spawned()
     {
         GameManager = FindFirstObjectByType<NetworkGameManager>();
+        _localScore = 0;
         if (Object.HasInputAuthority)
         {
             RPC_PlayerReady();
         }
     }
+
+    public void AddLocalScore(int points)
+    {
+        _localScore += points;
+        Debug.Log($"[Local] Score this game: {_localScore}");
+    }
+
+    /// <summary>
+    /// Used when the host dictates the final score (e.g. elimination ranking).
+    /// Replaces any accumulated local score.
+    /// </summary>
+    public void SetLocalScore(int score)
+    {
+        _localScore = score;
+    }
+
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_PlayerReady()
@@ -65,14 +85,44 @@ public class MinigameController : NetworkBehaviour
         Debug.Log($"Minigame {_minigameDefinition.Id} started!");
     }
 
+
     protected virtual void EndGame()
     {
         IsGameActive = false;
-
         RPC_OnGameEnd();
         SetPlayersInput(false);
-
         Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
+
+        // Every client reports its local score to the host
+        if (Object.HasInputAuthority)
+            RPC_SubmitScore(Runner.LocalPlayer, _localScore);
+    }
+
+    /// <summary>Each client calls this once when the minigame ends.</summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_SubmitScore(PlayerRef player, int score)
+    {
+        int slot = GameManager.GetSlotForPlayer(player);
+        if (slot < 0)
+        {
+            Debug.LogWarning($"Unknown player {player} tried to submit score.");
+            return;
+        }
+
+        ScoreBuffer.Record(Object.Id, slot, score);
+        ScoresReceived++;
+
+        Debug.Log($"[Host] Received score {score} from slot {slot} " +
+                  $"({ScoresReceived}/{GameManager.ExpectedPlayerCount})");
+
+        if (ScoresReceived >= GameManager.ExpectedPlayerCount)
+            FinalizeScores();
+    }
+    private void FinalizeScores()
+    {
+        int[] scores = ScoreBuffer.FlushAndGet(Object.Id, GameManager.ExpectedPlayerCount);
+        GameManager.SubmitMinigameScores(scores);
+        OnMinigameEnd?.Invoke(); 
     }
 
     public override void FixedUpdateNetwork()
