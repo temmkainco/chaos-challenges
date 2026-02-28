@@ -52,7 +52,7 @@ public class MinesPlayerSpawner : BasePlayerSpawner
 
         NetworkObject playerObject = Runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
         var playerBehaviour = playerObject.GetComponent<Player>();
-        playerBehaviour.Input.Controls.Disable();
+        playerBehaviour?.Input.Controls.Disable();
         _container.InjectGameObject(playerBehaviour.gameObject);
 
         Players.Add(player, playerBehaviour);
