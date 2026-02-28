@@ -15,21 +15,37 @@ public class NetworkGameManager : NetworkBehaviour
 
     private PlayerRef[] _playerSlots = new PlayerRef[6];
 
-    private MinigameSceneDatabaseSO _database;
+    [Inject] private MinigameSceneDatabaseSO _database;
     private const int LOBBY_SCENE_BUILD_INDEX = 2;
+    private const int INTERMISSION_SCENE_BUILD_INDEX = 4;
 
-    public void Initialize(MinigameSceneDatabaseSO database)
+    public MinigameDefinitionSO GetDefinitionByIndex(int index)
     {
-        _database = database;
+        return _database?.GetByIndex(index);
     }
 
     public override void Spawned()
     {
         DontDestroyOnLoad(Object);
+
+        var context = FindFirstObjectByType<SceneContext>();
+        context.Container.Inject(this);
+
         if (HasStateAuthority)
         {
             CurrentMinigameIndex = 0;
         }
+    }
+
+    public MinigameDefinitionSO GetCurrentMinigameDefinition()
+    {
+        return _database.GetByIndex(CurrentMinigameIndex);
+    }
+    public void ProceedFromIntermission()
+    {
+        if (!HasStateAuthority) return;
+        PlayersReady = 0;
+        LoadMinigameScene(CurrentMinigameIndex); // ← was LoadMinigame, infinite loop
     }
 
     public void RegisterPlayerReady()
@@ -128,10 +144,22 @@ public class NetworkGameManager : NetworkBehaviour
         var def = _database.GetByIndex(index);
         if (def == null) return;
 
-        await Runner.LoadScene(SceneRef.FromIndex(def.SceneBuildIndex));
+        // 2. Load intermission scene (curtain is closed so load is invisible)
+        await Runner.LoadScene(SceneRef.FromIndex(INTERMISSION_SCENE_BUILD_INDEX));
 
         if (HasStateAuthority)
-            StartCoroutine(WaitForMinigameAndStart());
+            StartCoroutine(WaitForIntermission());
+    }
+
+    private IEnumerator WaitForIntermission()
+    {
+        MinigameIntermissionController controller = null;
+        while (controller == null)
+        {
+            controller = FindFirstObjectByType<MinigameIntermissionController>();
+            yield return null;
+        }
+        // Intermission drives itself from here — no further action needed
     }
 
     private IEnumerator WaitForMinigameAndStart()
@@ -145,5 +173,15 @@ public class NetworkGameManager : NetworkBehaviour
 
         controller.InitializeMinigame();
         controller.OnMinigameEnd += FinishMinigame;
+    }
+    private async void LoadMinigameScene(int index)
+    {
+        var def = _database.GetByIndex(index);
+        if (def == null) return;
+
+        await Runner.LoadScene(SceneRef.FromIndex(def.SceneBuildIndex));
+
+        if (HasStateAuthority)
+            StartCoroutine(WaitForMinigameAndStart());
     }
 }

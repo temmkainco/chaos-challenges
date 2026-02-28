@@ -25,4 +25,7 @@ public class MinigameDefinitionSO : ScriptableObject
 
     [Header("Presentation")]
     [field: SerializeField] public string DisplayName { get; private set; }
+    [field: SerializeField] public string Description { get; private set; }
+    [field: SerializeField] public Sprite PreviewImage { get; private set; }
+    [field: SerializeField] public string[] Rules { get; private set; }
 }

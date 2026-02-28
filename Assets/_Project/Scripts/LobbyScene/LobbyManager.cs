@@ -23,6 +23,7 @@ public class LobbyManager : NetworkBehaviour
 
     [Inject] private LobbyPlayerSpawner _spawner;
     [Inject] private MinigameSceneDatabaseSO _minigameSceneDatabase;
+    [Inject] private DiContainer _container;
 
     private NetworkGameManager _networkGameManager;
     private const float COUNTDOWN_DURATION = 10f;
@@ -191,7 +192,7 @@ public class LobbyManager : NetworkBehaviour
         );
 
         _networkGameManager = gameFlowControllerObject.GetComponent<NetworkGameManager>();
-        _networkGameManager.Initialize(_minigameSceneDatabase);
+        _container.InjectGameObject(_networkGameManager.gameObject); // ? replaces Initialize
     }
 
     private void StartNetworkGame()
