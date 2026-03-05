@@ -1,7 +1,9 @@
 using Fusion;
-using Zenject;
-using UnityEngine;
 using System;
+using System.Collections;
+using Unity.Cinemachine;
+using UnityEngine;
+using Zenject;
 
 public class LobbyManager : NetworkBehaviour
 {
@@ -28,6 +30,8 @@ public class LobbyManager : NetworkBehaviour
     private NetworkGameManager _networkGameManager;
     private const float COUNTDOWN_DURATION = 10f;
 
+    [SerializeField] private CinemachineCamera _matchStartCamera;
+    [SerializeField] private float _cameraBlendDuration = 1.5f;
     public override void Spawned()
     {
         if (!HasStateAuthority)
@@ -201,10 +205,23 @@ public class LobbyManager : NetworkBehaviour
             return;
 
         foreach (var readyState in ReadyStates)
-        {
             ReadyStates.Set(readyState.Key, false);
-        }
 
-        _networkGameManager.StartMatch();
+        RPC_PlayMatchStartCamera();
     }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_PlayMatchStartCamera()
+    {
+        StartCoroutine(MatchStartSequence());
+    }
+    private IEnumerator MatchStartSequence()
+    {
+        _matchStartCamera.Priority = 20;
+
+        yield return new WaitForSeconds(_cameraBlendDuration);
+
+        if (HasStateAuthority)
+            _networkGameManager.StartMatch();
+    }
+
 }

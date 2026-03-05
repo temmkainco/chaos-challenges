@@ -1,4 +1,3 @@
-// MinesMinigameController.cs
 using Fusion;
 using UnityEngine;
 using Zenject;
@@ -45,8 +44,9 @@ public class MinesMinigameController : TurnBasedMinigameController
 
     protected override void EndGame()
     {
-        base.EndGame();
         PlayerRef winner = _alivePlayers.Count > 0 ? _alivePlayers[0] : PlayerRef.None;
         Debug.Log($"Game Over! Winner: {winner}");
+
+        base.EndGame(); 
     }
 }

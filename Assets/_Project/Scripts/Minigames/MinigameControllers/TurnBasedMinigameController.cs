@@ -1,4 +1,3 @@
-// TurnBasedMinigameController.cs
 using Core;
 using Fusion;
 using System.Collections.Generic;
@@ -11,9 +10,9 @@ public abstract class TurnBasedMinigameController : MinigameController
 
     protected List<PlayerRef> _alivePlayers = new();
 
-    // Host-only: tracks elimination order. First eliminated = index 0.
     private readonly List<PlayerRef> _eliminationOrder = new();
-
+    private int[] _lastMinigameScores;
+    private bool _wasLastMinigame;
     protected override void StartGame()
     {
         base.StartGame();
@@ -42,14 +41,13 @@ public abstract class TurnBasedMinigameController : MinigameController
         if (!HasStateAuthority) return;
 
         _alivePlayers.Remove(player);
-        _eliminationOrder.Add(player); // earliest eliminated goes first in the list
+        _eliminationOrder.Add(player);
 
         Debug.Log($"[Elimination] {player} eliminated. " +
                   $"Remaining: {_alivePlayers.Count}");
 
         if (_alivePlayers.Count <= 1)
         {
-            // Last survivor wins — add them at the end of the order
             if (_alivePlayers.Count == 1)
                 _eliminationOrder.Add(_alivePlayers[0]);
 
@@ -61,21 +59,13 @@ public abstract class TurnBasedMinigameController : MinigameController
         AdvanceTurn();
     }
 
-    /// <summary>
-    /// Converts elimination order into scores and pushes them to each client.
-    /// First eliminated → lowest score, last standing → highest score.
-    /// 
-    /// Example with 4 players, base score 100, step 100:
-    ///   Rank 1 (1st eliminated) → 100
-    ///   Rank 2                  → 200
-    ///   Rank 3                  → 300
-    ///   Rank 4 (winner)         → 400
-    /// </summary>
     private void AssignEliminationScores()
     {
-        int totalPlayers = _eliminationOrder.Count;
+        int totalPlayers = GameManager.ExpectedPlayerCount;
         const int baseScore = 100;
         const int step = 100;
+
+        _lastMinigameScores = new int[totalPlayers];
 
         Debug.Log($"=== {_minigameDefinition.Id} Elimination Results ===");
 
@@ -85,22 +75,44 @@ public abstract class TurnBasedMinigameController : MinigameController
             int score = baseScore + rank * step;
             int slot = GameManager.GetSlotForPlayer(player);
 
-            Debug.Log($"  #{rank + 1} (place {totalPlayers - rank}) — {player} → {score} pts (slot {slot})");
+            Debug.Log($"  #{rank + 1} — {player} → {score} pts (slot {slot})");
 
-            // Host writes directly — no client round-trip needed
             if (slot >= 0)
+            {
                 GameManager.AddToGlobalScore(slot, score);
+                _lastMinigameScores[slot] = score;
+            }
         }
     }
+
     protected override void EndGame()
     {
-        // Scores already written to GlobalScores by AssignEliminationScores()
-        // So we skip the local score submission flow entirely
         IsGameActive = false;
-        RPC_OnGameEnd();
         SetPlayersInput(false);
         Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
-        // DO NOT call base.EndGame() — that would trigger RPC_SubmitScore with _localScore = 0
+
+        if (HasStateAuthority)
+        {
+            if (_leaderboard == null)
+                _leaderboard = FindFirstObjectByType<LeaderboardController>();
+
+            if (_leaderboard == null)
+            {
+                Debug.LogError("LeaderboardController not found! Skipping leaderboard.");
+                RPC_OnGameEnd();
+                return;
+            }
+
+            _wasLastMinigame = GameManager.IsLastMinigame();
+            _leaderboard.OnLeaderboardHidden += OnLeaderboardDone;
+            _leaderboard.ShowLeaderboard(_lastMinigameScores, _wasLastMinigame);
+        }
+    }
+    private void OnLeaderboardDone()
+    {
+        _leaderboard.OnLeaderboardHidden -= OnLeaderboardDone;
+        if (HasStateAuthority)
+            RPC_OnGameEnd();
     }
 
     protected void AdvanceTurn()

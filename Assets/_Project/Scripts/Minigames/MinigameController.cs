@@ -3,9 +3,6 @@ using System;
 using UnityEngine;
 using Zenject;
 
-//This class exists on the minigame scene and is responsible for managing the minigame flow (countdown, start, end) and syncing it across the network.
-//It also provides events for the minigame UI to react to changes in the game state.
-
 public class MinigameController : NetworkBehaviour
 {
     [Networked] public TickTimer CountdownTimer { get; private set; }
@@ -13,8 +10,10 @@ public class MinigameController : NetworkBehaviour
     [Networked] private bool IsCountingDown { get; set; }
     [Networked] public bool IsGameActive { get; protected set; }
     [Networked] private int ScoresReceived { get; set; }
+    
 
     protected NetworkGameManager GameManager;
+    protected LeaderboardController _leaderboard;
 
     [SerializeField] protected MinigameDefinitionSO _minigameDefinition;
     [SerializeField] protected bool _hasCountdown = true;
@@ -31,11 +30,14 @@ public class MinigameController : NetworkBehaviour
     public override void Spawned()
     {
         GameManager = FindFirstObjectByType<NetworkGameManager>();
+        _leaderboard = FindFirstObjectByType<LeaderboardController>();
+
+        if (_leaderboard == null)
+            Debug.LogWarning("LeaderboardController not found at Spawned — will retry in EndGame.");
+
         _localScore = 0;
         if (Object.HasInputAuthority)
-        {
             RPC_PlayerReady();
-        }
     }
 
     public void AddLocalScore(int points)
@@ -44,15 +46,10 @@ public class MinigameController : NetworkBehaviour
         Debug.Log($"[Local] Score this game: {_localScore}");
     }
 
-    /// <summary>
-    /// Used when the host dictates the final score (e.g. elimination ranking).
-    /// Replaces any accumulated local score.
-    /// </summary>
     public void SetLocalScore(int score)
     {
         _localScore = score;
     }
-
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_PlayerReady()
@@ -74,7 +71,6 @@ public class MinigameController : NetworkBehaviour
         }
         StartGame();
     }
-
     protected virtual void StartGame()
     {
         IsGameActive = true;
@@ -85,20 +81,17 @@ public class MinigameController : NetworkBehaviour
         Debug.Log($"Minigame {_minigameDefinition.Id} started!");
     }
 
-
     protected virtual void EndGame()
     {
         IsGameActive = false;
-        RPC_OnGameEnd();
+        //RPC_OnGameEnd();
         SetPlayersInput(false);
         Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
 
-        // Every client reports its local score to the host
         if (Object.HasInputAuthority)
             RPC_SubmitScore(Runner.LocalPlayer, _localScore);
     }
 
-    /// <summary>Each client calls this once when the minigame ends.</summary>
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_SubmitScore(PlayerRef player, int score)
     {
@@ -122,7 +115,15 @@ public class MinigameController : NetworkBehaviour
     {
         int[] scores = ScoreBuffer.FlushAndGet(Object.Id, GameManager.ExpectedPlayerCount);
         GameManager.SubmitMinigameScores(scores);
-        OnMinigameEnd?.Invoke(); 
+
+        _leaderboard.OnLeaderboardHidden += OnLeaderboardDone;
+        _leaderboard.ShowLeaderboard(scores);
+
+    }
+    private void OnLeaderboardDone()
+    {
+        _leaderboard.OnLeaderboardHidden -= OnLeaderboardDone;
+        RPC_OnGameEnd();
     }
 
     public override void FixedUpdateNetwork()

@@ -1,6 +1,7 @@
 using Fusion;
 using Platform;
 using System;
+using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
 using Zenject;
@@ -25,16 +26,29 @@ public class Player : NetworkBehaviour, ISpawned
     {
         if (Object.HasInputAuthority)
         {
-            Camera.gameObject.SetActive(true);
             _platformService = ProjectContext.Instance.Container.Resolve<IPlatformService>();
             InitializePlayer();
         }
+    }
+
+    public void SetCameraActive()
+    {
+        if (Object.HasInputAuthority)
+            StartCoroutine(EnableCameraNextFrame());
+    }
+
+    private IEnumerator EnableCameraNextFrame()
+    {
+        yield return null; 
+        Camera.gameObject.SetActive(true);
+        Camera.Priority = 10;
     }
 
     public void InitializePlayer()
     {
         string playerNickname = _platformService.GetPlayerName();
         RPC_SetNickname(playerNickname);
+        SetCameraActive();
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]

@@ -13,6 +13,9 @@ public class NetworkGameManager : NetworkBehaviour
     [Networked, Capacity(6)]
     public NetworkArray<int> GlobalScores { get; }
 
+    [Networked, Capacity(6)]
+    public NetworkArray<NetworkString<_32>> PlayerNames { get; }
+
     private PlayerRef[] _playerSlots = new PlayerRef[6];
 
     [Inject] private MinigameSceneDatabaseSO _database;
@@ -36,7 +39,41 @@ public class NetworkGameManager : NetworkBehaviour
             CurrentMinigameIndex = 0;
         }
     }
+    private void RegisterPlayerNames()
+    {
+        int slot = 0;
+        foreach (var player in Runner.ActivePlayers)
+        {
+            string name = $"Player {player.PlayerId}"; 
 
+            var networkObject = Runner.GetPlayerObject(player);
+            if (networkObject != null)
+            {
+                var playerComponent = networkObject.GetComponent<Player>();
+                if (playerComponent != null && !string.IsNullOrEmpty(playerComponent.Nickname))
+                    name = playerComponent.Nickname;
+            }
+
+            PlayerNames.Set(slot, name);
+            slot++;
+        }
+    }
+    public bool IsLastMinigame()
+    {
+        return CurrentMinigameIndex >= _database.Count - 1;
+    }
+    public string GetPlayerName(int slot)
+    {
+        if (slot < 0 || slot >= ExpectedPlayers) return "";
+        string name = PlayerNames[slot].ToString();
+        return string.IsNullOrEmpty(name) ? $"Player {slot + 1}" : name;
+    }
+
+    public int GetTotalScore(int slot)
+    {
+        if (slot < 0 || slot >= ExpectedPlayers) return 0;
+        return GlobalScores[slot];
+    }
     public MinigameDefinitionSO GetCurrentMinigameDefinition()
     {
         return _database.GetByIndex(CurrentMinigameIndex);
@@ -73,7 +110,7 @@ public class NetworkGameManager : NetworkBehaviour
 
         ExpectedPlayers = Runner.ActivePlayers.Count();
         PlayersReady = 0;
-
+        RegisterPlayerNames();
         LoadMinigame(CurrentMinigameIndex);
     }
     /// <summary>Called by clients for non-elimination minigames.</summary>
@@ -105,12 +142,18 @@ public class NetworkGameManager : NetworkBehaviour
         CurrentMinigameIndex++;
         if (CurrentMinigameIndex >= _database.Count)
         {
-            FinishMatch();
+            StartCoroutine(DelayedFinishMatch());
             return;
         }
 
         PlayersReady = 0;
         LoadMinigame(CurrentMinigameIndex);
+    }
+
+    private IEnumerator DelayedFinishMatch()
+    {
+        yield return new WaitForSeconds(1f);
+        FinishMatch();
     }
 
     private async void FinishMatch()
@@ -127,10 +170,10 @@ public class NetworkGameManager : NetworkBehaviour
         for (int rank = 0; rank < ranked.Count; rank++)
             Debug.Log($"  #{rank + 1} Player slot {ranked[rank].slot} — {ranked[rank].score} pts");
 
-        await System.Threading.Tasks.Task.Delay(3000);
         SceneRef lobbyScene = SceneRef.FromIndex(LOBBY_SCENE_BUILD_INDEX);
         await Runner.LoadScene(lobbyScene);
     }
+
     public int GetSlotForPlayer(PlayerRef player)
     {
         for (int i = 0; i < _playerSlots.Length; i++)

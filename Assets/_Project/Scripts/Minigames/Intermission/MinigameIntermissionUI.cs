@@ -1,6 +1,8 @@
+using DG.Tweening;
 using System.Collections;
 using System.Linq;
 using TMPro;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,8 +13,15 @@ public class MinigameIntermissionUI : MonoBehaviour
     [SerializeField] private TMP_Text _readyCountText;
     [SerializeField] private Image _previewImage;
     [SerializeField] private Button _readyButton;
+    [SerializeField] private CanvasGroup _descriptionCanvasGroup;
+    [SerializeField] private CinemachineCamera _focusedCinemachine;
+
+    [Header("Animation Settings")]
+    [SerializeField] private float _fadeInDuration = 0.5f;
+    [SerializeField] private float _cameraBlendDuration = 0.5f;
 
     private MinigameIntermissionController _controller;
+
 
     private void Start()
     {
@@ -20,24 +29,27 @@ public class MinigameIntermissionUI : MonoBehaviour
 
         _controller.OnDefinitionLoaded += PopulateUI;
         _controller.OnReadyCountUpdated += UpdateReadyCount;
-        _controller.OnAllReady += ShowAllReady;
-
+        _descriptionCanvasGroup.alpha = 0f;
         _readyButton.onClick.AddListener(OnReadyClicked);
+
+        Cursor.visible = true;
 
         StartCoroutine(InitializeWhenReady());
     }
 
     private IEnumerator InitializeWhenReady()
     {
-        // Wait until ExpectedPlayerCount is replicated
         yield return new WaitUntil(() => _controller.TotalPlayers > 0);
 
         UpdateReadyCount(0, _controller.TotalPlayers);
 
         var def = _controller.CurrentDefinition;
         if (def != null)
+        {
             PopulateUI(def);
+        }
     }
+
 
     private void PopulateUI(MinigameDefinitionSO def)
     {
@@ -48,10 +60,23 @@ public class MinigameIntermissionUI : MonoBehaviour
             _previewImage.sprite = def.PreviewImage;
 
 
+        PlayIntroAnimations();
+    }
 
-        //_rulesText.text = def.Rules != null
-        //    ? string.Join("\n• ", def.Rules.Prepend("• "))
-        //    : string.Empty;
+    private void PlayIntroAnimations()
+    {
+        _descriptionCanvasGroup
+            .DOFade(1f, _fadeInDuration)
+            .SetEase(Ease.InOutSine);
+
+        DOTween
+            .To(
+                () => _focusedCinemachine.Priority,
+                x => _focusedCinemachine.Priority = x,
+                10,
+                _cameraBlendDuration
+            )
+            .SetEase(Ease.InOutSine);
     }
 
     private void UpdateReadyCount(int ready, int total)
@@ -66,15 +91,10 @@ public class MinigameIntermissionUI : MonoBehaviour
         _controller.LocalPlayerReady();
     }
 
-    private void ShowAllReady()
-    {
-    }
-
     private void OnDestroy()
     {
         if (_controller == null) return;
         _controller.OnDefinitionLoaded -= PopulateUI;
         _controller.OnReadyCountUpdated -= UpdateReadyCount;
-        _controller.OnAllReady -= ShowAllReady;
     }
 }

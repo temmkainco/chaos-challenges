@@ -19,6 +19,14 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 0
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Mines & Mines
-  <Description>k__BackingField: EXPLODE!
-  <PreviewImage>k__BackingField: {fileID: 151996144, guid: 5d4e0df3f19e23f448fbd6a5059c5e9f, type: 3}
+  <Description>k__BackingField: <line-height=70%> <align="center"><size=140%><b>HOW
+    TO PLAY</b></size></align><br> <b>1. The Field:</b> Players stand on a grid of
+    numbered <color=#00FFFF>Mines Plates</color>.  <br><b>2. The Turn:</b> Players
+    take turns one by one. On your turn, you must choose and activate a single plate.
+    <br><br><b>3. The Outcome:</b> <br>If the plate is <b><color=#00FF00>Safe</color></b>,
+    you stay in the game and the next player takes their turn.       <br><br>If the
+    plate is a <b><color=#FF0000>Mine</color></b>, you are eliminated from the round. 
+    <br><br><b>4. Winning:</b> The game continues until only one player is left.
+    The <b><color=#FFFF00>Last One Standing</color></b> wins the match. </line-height>
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 760f87eb36a7ec8449ca140488c89bf5, type: 3}
   <Rules>k__BackingField: []

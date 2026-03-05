@@ -1,6 +1,6 @@
-// MinigameIntermissionController.cs
 using Fusion;
-using System.Linq;
+using System.Collections;
+using Unity.Cinemachine;
 using UnityEngine;
 
 public class MinigameIntermissionController : NetworkBehaviour
@@ -12,16 +12,18 @@ public class MinigameIntermissionController : NetworkBehaviour
     private NetworkString<_128> MinigameId { get; set; }
 
     [Networked, OnChangedRender(nameof(OnDefinitionReceived))]
-    private int MinigameIndex { get; set; } // ← int index instead of string i
+    private int MinigameIndex { get; set; }
 
     private NetworkGameManager _gameManager;
     private bool _localReady;
 
     public event System.Action<MinigameDefinitionSO> OnDefinitionLoaded;
-    public event System.Action<int, int> OnReadyCountUpdated; // ready, total
+    public event System.Action<int, int> OnReadyCountUpdated;
     public event System.Action OnAllReady;
     public int TotalPlayers => _gameManager != null ? _gameManager.ExpectedPlayerCount : 0;
 
+    [SerializeField] private CinemachineCamera _matchStartCamera;
+    [SerializeField] private float _cameraBlendDuration = 1.5f;
     public MinigameDefinitionSO CurrentDefinition
     {
         get
@@ -40,16 +42,9 @@ public class MinigameIntermissionController : NetworkBehaviour
             MinigameIndex = _gameManager.CurrentMinigameIndex;
         else
             OnDefinitionReceived();
-
-        // Tell the transition controller this client is ready
-        // Transition opens only when ALL clients report in
-
     }
-
-    // Called on all clients when MinigameId is set by host
     private void OnDefinitionReceived()
     {
-        // Ask GameManager to load by index — works on all clients
         var def = _gameManager.GetDefinitionByIndex(MinigameIndex);
         if (def != null)
             OnDefinitionLoaded?.Invoke(def);
@@ -57,13 +52,11 @@ public class MinigameIntermissionController : NetworkBehaviour
             Debug.LogWarning($"[Intermission] No definition found for index {MinigameIndex}");
 
     }
-
     private void OnReadyCountChanged()
     {
         int total = _gameManager.ExpectedPlayerCount;
         OnReadyCountUpdated?.Invoke(ReadyCount, total);
     }
-
     public void LocalPlayerReady()
     {
         if (_localReady) return;
@@ -81,8 +74,8 @@ public class MinigameIntermissionController : NetworkBehaviour
 
         if (ReadyCount >= total)
         {
+            Cursor.visible = false;
             RPC_AllReady();
-            _gameManager.ProceedFromIntermission();
         }
     }
 
@@ -90,5 +83,16 @@ public class MinigameIntermissionController : NetworkBehaviour
     private void RPC_AllReady()
     {
         OnAllReady?.Invoke();
+        StartCoroutine(MatchStartSequence());
+    }
+
+    private IEnumerator MatchStartSequence()
+    {
+        _matchStartCamera.Priority = 20;
+
+        yield return new WaitForSeconds(_cameraBlendDuration);
+
+        if (HasStateAuthority)
+            _gameManager.ProceedFromIntermission();
     }
 }
