@@ -20,6 +20,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/MinigameIntermissionScene.unity
     guid: fef7725a1278bf040b9afd24dbe6dc1e
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/RacingMinigame.unity
+    guid: 1af33a1357d3d2b41821726ea5e12e44
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

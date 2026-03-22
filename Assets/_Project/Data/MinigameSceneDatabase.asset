@@ -13,6 +13,5 @@ MonoBehaviour:
   m_Name: MinigameSceneDatabase
   m_EditorClassIdentifier: Assembly-CSharp::MinigameSceneDatabaseSO
   <Minigames>k__BackingField:
-  - {fileID: 11400000, guid: d701c60a94211e84db245011db98ef7a, type: 2}
-  - {fileID: 11400000, guid: d701c60a94211e84db245011db98ef7a, type: 2}
+  - {fileID: 11400000, guid: 7b68896fe4713fb458a29fb6b17814c8, type: 2}
   - {fileID: 11400000, guid: d701c60a94211e84db245011db98ef7a, type: 2}

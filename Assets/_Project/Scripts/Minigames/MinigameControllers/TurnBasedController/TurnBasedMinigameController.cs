@@ -7,7 +7,7 @@ using UnityEngine;
 
 public abstract class TurnBasedMinigameController : MinigameController
 {
-    public event Action<PlayerRef> OnTurnChanged;
+    public event Action<PlayerRef, bool> OnTurnChanged;
     [Networked] public PlayerRef CurrentTurn { get; set; }
 
     protected List<PlayerRef> _alivePlayers = new();
@@ -115,7 +115,7 @@ public abstract class TurnBasedMinigameController : MinigameController
         CurrentTurn = _alivePlayers[index];
         Debug.Log($"First turn: {CurrentTurn}");
 
-        RPC_OnTurnChanged(CurrentTurn);
+        RPC_OnTurnChanged(CurrentTurn, true);
     }
 
     protected void AdvanceTurn()
@@ -126,12 +126,12 @@ public abstract class TurnBasedMinigameController : MinigameController
         index = (index + 1) % _alivePlayers.Count;
         CurrentTurn = _alivePlayers[index];
 
-        RPC_OnTurnChanged(CurrentTurn);
+        RPC_OnTurnChanged(CurrentTurn, false);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_OnTurnChanged(PlayerRef player)
+    private void RPC_OnTurnChanged(PlayerRef player, bool isFirst)
     {
-        OnTurnChanged?.Invoke(player);
+        OnTurnChanged?.Invoke(player, isFirst);
     }
 }

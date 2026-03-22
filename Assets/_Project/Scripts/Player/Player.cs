@@ -55,6 +55,7 @@ public class Player : NetworkBehaviour, ISpawned
     private void RPC_SetNickname(string nickname)
     {
         Nickname = nickname;
+        OnNicknameUpdated?.Invoke(Nickname); 
     }
     private void OnNicknameChanged()
     {
