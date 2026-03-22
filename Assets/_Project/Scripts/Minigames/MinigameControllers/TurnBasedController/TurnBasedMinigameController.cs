@@ -1,11 +1,13 @@
 using Core;
 using Fusion;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public abstract class TurnBasedMinigameController : MinigameController
 {
+    public event Action<PlayerRef> OnTurnChanged;
     [Networked] public PlayerRef CurrentTurn { get; set; }
 
     protected List<PlayerRef> _alivePlayers = new();
@@ -27,13 +29,6 @@ public abstract class TurnBasedMinigameController : MinigameController
     protected virtual void InitializeAlivePlayers()
     {
         _alivePlayers = Runner.ActivePlayers.ToList();
-    }
-
-    protected virtual void PickFirstTurn()
-    {
-        int index = DeterministicRandom.Next(0, _alivePlayers.Count);
-        CurrentTurn = _alivePlayers[index];
-        Debug.Log($"First turn: {CurrentTurn}");
     }
 
     protected void EliminatePlayer(PlayerRef player)
@@ -114,6 +109,14 @@ public abstract class TurnBasedMinigameController : MinigameController
         if (HasStateAuthority)
             RPC_OnGameEnd();
     }
+    protected virtual void PickFirstTurn()
+    {
+        int index = DeterministicRandom.Next(0, _alivePlayers.Count);
+        CurrentTurn = _alivePlayers[index];
+        Debug.Log($"First turn: {CurrentTurn}");
+
+        RPC_OnTurnChanged(CurrentTurn);
+    }
 
     protected void AdvanceTurn()
     {
@@ -122,5 +125,13 @@ public abstract class TurnBasedMinigameController : MinigameController
         int index = _alivePlayers.IndexOf(CurrentTurn);
         index = (index + 1) % _alivePlayers.Count;
         CurrentTurn = _alivePlayers[index];
+
+        RPC_OnTurnChanged(CurrentTurn);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_OnTurnChanged(PlayerRef player)
+    {
+        OnTurnChanged?.Invoke(player);
     }
 }
