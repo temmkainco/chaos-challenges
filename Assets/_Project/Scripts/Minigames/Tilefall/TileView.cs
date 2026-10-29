@@ -85,6 +85,7 @@ public class TileView : MonoBehaviour
 
     private void Collapse()
     {
+        Sfx.Play(Sound.Crack, 0.6f, 0.15f);
         _collapsed = true;
         _collider.enabled = false;
         _visual.DOKill();

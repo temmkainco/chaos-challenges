@@ -74,6 +74,7 @@ public class LeaderboardUI : MonoBehaviour
         _spawnedEntries.Clear();
 
         _isFinal = isFinal;
+        Sfx.Play(isFinal ? Sound.Fanfare : Sound.RoundOver, 1f, 0f);
 
         if (_titleText != null)
             _titleText.text = _isFinal ? "Final Results!" : "Round Over! Results stay secret...";

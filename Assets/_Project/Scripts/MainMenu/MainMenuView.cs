@@ -12,9 +12,13 @@ public class MainMenuView : MonoBehaviour
     [SerializeField] private Button _joinRandomButton;
     [SerializeField] private Button _joinByCodeButton;
     [SerializeField] private Button _exitButton;
+    [SerializeField] private Button _customizeButton;
+    [SerializeField] private Button _settingsButton;
 
     [SerializeField] private PanelBase _joinLobbyByCodePanel;
     [SerializeField] private PanelBase _hostLobbyPanel;
+    [SerializeField] private PanelBase _customizePanel;
+    [SerializeField] private PanelBase _settingsPanel;
 
     [Inject] private LoadingPanel _loadingPanel;
     [Inject] private Networking.INetworkRunner _networkRunner;
@@ -36,6 +40,10 @@ public class MainMenuView : MonoBehaviour
         _hostButton.onClick.AddListener(_hostLobbyPanel.Open);
         _joinByCodeButton.onClick.AddListener(_joinLobbyByCodePanel.Open);
         _exitButton.onClick.AddListener(_controller.OnExitButtonClicked);
+        if (_customizeButton != null && _customizePanel != null)
+            _customizeButton.onClick.AddListener(_customizePanel.Open);
+        if (_settingsButton != null && _settingsPanel != null)
+            _settingsButton.onClick.AddListener(_settingsPanel.Open);
 
         _platformService.Init();
         _playerNameInput.interactable = _platformService is LocalPlatformService;
@@ -106,5 +114,9 @@ public class MainMenuView : MonoBehaviour
         _joinRandomButton.onClick.RemoveListener(OnJoinRandomButtonClicked);
         _joinByCodeButton.onClick.RemoveListener(_joinLobbyByCodePanel.Open);
         _exitButton.onClick.RemoveListener(_controller.OnExitButtonClicked);
+        if (_customizeButton != null && _customizePanel != null)
+            _customizeButton.onClick.RemoveListener(_customizePanel.Open);
+        if (_settingsButton != null && _settingsPanel != null)
+            _settingsButton.onClick.RemoveListener(_settingsPanel.Open);
     }
 }

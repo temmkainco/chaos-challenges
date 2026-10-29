@@ -2,4 +2,5 @@
 public class MinigamePlayerSpawner : BasePlayerSpawner
 {
     protected override bool LockControlsOnSpawn => true;
+    protected override bool SpreadSpawns => true;
 }

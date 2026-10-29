@@ -42,9 +42,18 @@ public class PlayerInput : NetworkBehaviour
         if (Controls == null)
             return;
 
-        Move = Controls.Player.Move.ReadValue<Vector2>();
-        IsJumpPressed = Controls.Player.Jump.IsPressed();
-        IsInteractPressed = Controls.Player.Interact.IsPressed();
+        if (PauseMenu.IsOpen)
+        {
+            Move = Vector2.zero;
+            IsJumpPressed = false;
+            IsInteractPressed = false;
+        }
+        else
+        {
+            Move = Controls.Player.Move.ReadValue<Vector2>();
+            IsJumpPressed = Controls.Player.Jump.IsPressed();
+            IsInteractPressed = Controls.Player.Interact.IsPressed();
+        }
 
         if (_camera == null)
             _camera = Camera.main;

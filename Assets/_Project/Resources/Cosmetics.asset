@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41e34c16d6b5cca478c2576215414855, type: 3}
+  m_Name: Cosmetics
+  m_EditorClassIdentifier: Assembly-CSharp::CosmeticsCatalog
+  <Colors>k__BackingField:
+  - Name: White
+    Color: {r: 0.96, g: 0.96, b: 0.96, a: 1}
+  - Name: Cream
+    Color: {r: 1, g: 0.9, b: 0.72, a: 1}
+  - Name: Sunny
+    Color: {r: 1, g: 0.84, b: 0.22, a: 1}
+  - Name: Orange
+    Color: {r: 1, g: 0.58, b: 0.2, a: 1}
+  - Name: Tomato
+    Color: {r: 0.95, g: 0.28, b: 0.24, a: 1}
+  - Name: Bubblegum
+    Color: {r: 1, g: 0.5, b: 0.72, a: 1}
+  - Name: Grape
+    Color: {r: 0.6, g: 0.36, b: 0.88, a: 1}
+  - Name: Ocean
+    Color: {r: 0.24, g: 0.52, b: 0.95, a: 1}
+  - Name: Sky
+    Color: {r: 0.5, g: 0.84, b: 1, a: 1}
+  - Name: Mint
+    Color: {r: 0.45, g: 0.92, b: 0.72, a: 1}
+  - Name: Lime
+    Color: {r: 0.6, g: 0.9, b: 0.28, a: 1}
+  - Name: Forest
+    Color: {r: 0.2, g: 0.6, b: 0.32, a: 1}
+  - Name: Cocoa
+    Color: {r: 0.52, g: 0.33, b: 0.22, a: 1}
+  - Name: Charcoal
+    Color: {r: 0.28, g: 0.28, b: 0.33, a: 1}
+  <Hats>k__BackingField:
+  - Name: None
+    Prefab: {fileID: 0}
+    LocalPosition: {x: 0, y: 0, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - Name: Top Hat
+    Prefab: {fileID: 3952692635883924369, guid: 679aa667854bc994ba1f0d7669e8427a, type: 3}
+    LocalPosition: {x: -0.00000932934, y: 0.004246168, z: -0.00015724951}
+    LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
+    Scale: 0.019577809
+  - Name: Crown
+    Prefab: {fileID: 3781446964664321474, guid: 9b615b4df41053a42a407d386b2241b4, type: 3}
+    LocalPosition: {x: -0.000010978309, y: 0.0036651264, z: -0.00020607989}
+    LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
+    Scale: 0.017050529
+  - Name: Headphones
+    Prefab: {fileID: 6425698344607842257, guid: caa9fa9b44b152e4dbb67b7978597ef5, type: 3}
+    LocalPosition: {x: 0.000015876587, y: -0.0032502678, z: -0.000076026714}
+    LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
+    Scale: 0.027595995
+  - Name: Cooking Pot
+    Prefab: {fileID: 2104011583568910299, guid: 75ba208b04d53e5469a6429a3b2fa813, type: 3}
+    LocalPosition: {x: 0.000000002634519, y: 0.006552725, z: -0.00039696845}
+    LocalEuler: {x: 358.0484, y: 0.0000068833465, z: 180}
+    Scale: 0.018116426
+  <DefaultBody>k__BackingField: 7
+  <DefaultHands>k__BackingField: 2
+  <DefaultHead>k__BackingField: 0

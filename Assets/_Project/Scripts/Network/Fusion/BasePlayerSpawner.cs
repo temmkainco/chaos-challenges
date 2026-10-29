@@ -24,6 +24,9 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
     /// <summary>Minigames keep players frozen until the round starts.</summary>
     protected virtual bool LockControlsOnSpawn => false;
 
+    /// <summary>Spread match contestants evenly over the spawn points.</summary>
+    protected virtual bool SpreadSpawns => false;
+
     private readonly Dictionary<PlayerRef, int> _assignedSpawns = new();
 
     public override void Spawned()
@@ -120,10 +123,17 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
 
     private int PickSpawnIndex(PlayerRef player)
     {
+        // During a match, spread the contestants evenly over the points (2 players on a ring of 6 face each other,
+        // 3 players in Tilefall get every other lane) instead of filling neighbouring points.
         var gameManager = NetworkGameManager.Instance;
         int slot = gameManager != null ? gameManager.GetRosterSlot(player) : -1;
-        if (slot >= 0 && slot < _spawnPoints.Length && !_assignedSpawns.ContainsValue(slot))
-            return slot;
+        int contestants = gameManager != null ? gameManager.RosterCount : 0;
+        if (slot >= 0 && contestants > 0)
+        {
+            int spread = SpreadSpawns ? slot * _spawnPoints.Length / Mathf.Max(contestants, 1) : slot;
+            if (spread < _spawnPoints.Length && !_assignedSpawns.ContainsValue(spread))
+                return spread;
+        }
 
         for (int i = 0; i < _spawnPoints.Length; i++)
         {

@@ -1,6 +1,5 @@
 using Networking;
 using Platform;
-using UnityEditor;
 using UnityEngine;
 using Zenject;
 
@@ -15,6 +14,7 @@ namespace Core
         [Header("UI Prefabs")]
         [field: SerializeField] public LoadingPanel LoadingPanelPrefab { get; private set; }
         [field: SerializeField] public MessagePanel MessagePanelPrefab { get; private set; }
+        [field: SerializeField] public PauseMenu PauseMenuPrefab { get; private set; }
 
         [Header("NetworkRunner Prefab")]
         [field: SerializeField] public FusionNetworkRunner NetworkRunnerPrefab { get; private set; }
@@ -57,6 +57,14 @@ namespace Core
             {
                 Container.Bind<MessagePanel>()
                     .FromComponentInNewPrefab(MessagePanelPrefab)
+                    .AsSingle()
+                    .NonLazy();
+            }
+
+            if (PauseMenuPrefab != null)
+            {
+                Container.Bind<PauseMenu>()
+                    .FromComponentInNewPrefab(PauseMenuPrefab)
                     .AsSingle()
                     .NonLazy();
             }

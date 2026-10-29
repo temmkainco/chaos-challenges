@@ -18,6 +18,8 @@ namespace Core
         public async void Initialize()
         {
             SetTargetFrameRateToMonitorHz();
+            GameSettings.Apply();
+            Sfx.Initialize();
             _platformService.Init();
             await _networkRunner.InitAsync();
             await SceneManager.LoadSceneAsync(GameScenes.MainMenu, LoadSceneMode.Single);

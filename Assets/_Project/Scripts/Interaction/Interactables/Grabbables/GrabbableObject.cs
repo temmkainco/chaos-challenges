@@ -43,6 +43,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
 
     private void OnGrabbedChanged()
     {
+        Sfx.Play(Sound.Pop, 0.7f, 0.1f);
         ApplyHeldState();
     }
 

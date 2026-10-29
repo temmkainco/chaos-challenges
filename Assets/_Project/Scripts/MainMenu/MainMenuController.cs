@@ -17,9 +17,11 @@ public class MainMenuController
     /// <summary>User-facing reason of the last failed host or join.</summary>
     public string LastError => _networkRunner.LastError;
 
-    public async UniTask<string> OnHostLobbyButtonClicked(bool isPublic)
+    public async UniTask<string> OnHostLobbyButtonClicked(bool isPublic, int maxPlayers)
     {
-        string code = await _networkRunner.CreateLobbyAsync(SessionSettings.Default(isPublic));
+        var settings = SessionSettings.Default(isPublic);
+        settings.MaxPlayers = Mathf.Clamp(maxPlayers, SessionSettings.MIN_PLAYERS, SessionSettings.MAX_PLAYERS);
+        string code = await _networkRunner.CreateLobbyAsync(settings);
         return code;
     }
 

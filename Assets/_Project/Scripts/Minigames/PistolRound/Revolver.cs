@@ -1,6 +1,5 @@
 using DG.Tweening;
 using Fusion;
-using TMPro;
 using UnityEngine;
 
 /// <summary>
@@ -61,6 +60,7 @@ public class Revolver : MonoBehaviour
 
     public void PlayShot(PlayerRef target, bool live)
     {
+        Sfx.Play(live ? Sound.Bang : Sound.Blank);
         _model.DOKill(true);
         _model.DOPunchRotation(new Vector3(-35f, 0f, 0f), 0.35f, 6, 0.6f);
         if (_drum != null)
@@ -70,32 +70,6 @@ public class Revolver : MonoBehaviour
             LowPolyExplosion.Play(_muzzle.position, 0.6f, _effectMaterial);
 
         if (_spawner.Players.TryGet(target, out var targetPlayer) && targetPlayer != null)
-            Popup(targetPlayer.transform.position + Vector3.up * 3f, live ? "BANG!" : "click...", live ? new Color(1f, 0.3f, 0.2f) : Color.white, live ? 9f : 6f);
-    }
-
-    private static void Popup(Vector3 position, string text, Color color, float size)
-    {
-        var go = new GameObject("ShotPopup");
-        go.transform.position = position;
-        var tmp = go.AddComponent<TextMeshPro>();
-        tmp.text = text;
-        tmp.fontSize = size;
-        tmp.fontStyle = FontStyles.Bold;
-        tmp.color = color;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.outlineWidth = 0.2f;
-        tmp.outlineColor = Color.black;
-
-        var camera = Camera.main;
-        if (camera != null) go.transform.rotation = Quaternion.LookRotation(go.transform.position - camera.transform.position);
-
-        go.transform.localScale = Vector3.zero;
-        DOTween.Sequence()
-            .Append(go.transform.DOScale(1f, 0.2f).SetEase(Ease.OutBack))
-            .Join(go.transform.DOMoveY(position.y + 1.2f, 1.2f))
-            .AppendInterval(0.4f)
-            .Append(go.transform.DOScale(0f, 0.2f))
-            .OnComplete(() => Destroy(go))
-            .SetLink(go);
+            WorldPopup.Show(targetPlayer.transform.position + Vector3.up * 3f, live ? "BANG!" : "click...", live ? new Color(1f, 0.3f, 0.2f) : Color.white, live ? 9f : 6f);
     }
 }

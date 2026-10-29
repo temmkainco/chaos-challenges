@@ -31,6 +31,7 @@ public class Countdown : MonoBehaviour
 
     protected virtual void UpdateCountdown(int seconds)
     {
+        Sfx.Play(Sound.Tick, 0.8f, 0f);
         _countdownText.text = seconds.ToString();
 
         _countdownText.transform.localScale = Vector3.one;

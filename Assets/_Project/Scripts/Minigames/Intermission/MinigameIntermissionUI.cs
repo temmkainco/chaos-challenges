@@ -57,7 +57,10 @@ public class MinigameIntermissionUI : MonoBehaviour
     private void PopulateUI(MinigameDefinitionSO def)
     {
         _nameText.text = def.DisplayName;
-        _descriptionText.text = def.Description;
+        var text = def.Description;
+        if (def.Rules != null && def.Rules.Length > 0)
+            text += "\n\n<size=85%>" + string.Join("\n", System.Array.ConvertAll(def.Rules, r => "<color=#FFD54A>-</color> " + r)) + "</size>";
+        _descriptionText.text = text;
 
         if (def.PreviewImage != null)
             _previewImage.sprite = def.PreviewImage;

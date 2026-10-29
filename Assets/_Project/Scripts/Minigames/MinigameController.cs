@@ -31,6 +31,7 @@ public class MinigameController : NetworkBehaviour
     public static MinigameController Current { get; private set; }
 
     public bool IsGameActive => Phase == MinigamePhase.Playing;
+    public MinigameDefinitionSO Definition => _minigameDefinition;
     public bool IsTimeLimited => _minigameDefinition.IsTimeLimited && _minigameDefinition.GameDuration > 0f;
     public float TimeRemaining => PhaseTimer.RemainingTime(Runner) ?? 0f;
 

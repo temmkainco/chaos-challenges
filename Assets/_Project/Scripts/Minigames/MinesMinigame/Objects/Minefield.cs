@@ -132,6 +132,7 @@ public class Minefield : NetworkBehaviour
 
             _shown[i] = state;
             _plates[i].ShowState(state, animate: true);
+            Sfx.Play(state == PlateState.Mine ? Sound.Boom : Sound.Safe);
             if (state == PlateState.Mine && _effectMaterial != null)
                 LowPolyExplosion.Play(_plates[i].transform.position + Vector3.up * 0.6f, 2.2f, _effectMaterial);
         }

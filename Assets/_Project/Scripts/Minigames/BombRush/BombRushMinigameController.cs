@@ -14,6 +14,7 @@ public class BombRushMinigameController : MinigameController
     [SerializeField] private NetworkPrefabRef _bombPrefab;
     [SerializeField, Tooltip("Seconds between bombs with 2 players; more players get them faster")] private float _spawnInterval = 3f;
     [SerializeField] private int _maxBombsPerPlayer = 2;
+    [SerializeField, Tooltip("Last seconds of the round with double bomb rate")] private float _suddenDeathSeconds = 40f;
 
     [Header("Blast")]
     [SerializeField] private float _blastRadius = 5f;
@@ -40,8 +41,13 @@ public class BombRushMinigameController : MinigameController
 
     public ConveyorBelt GetBelt(int index) => index >= 0 && index < _belts.Length ? _belts[index] : null;
 
-    public override string GetStatusText() =>
-        AliveCount == 1 ? "1 contestant left" : $"{AliveCount} contestants left";
+    private bool SuddenDeath => IsTimeLimited && IsGameActive && TimeRemaining <= _suddenDeathSeconds;
+
+    public override string GetStatusText()
+    {
+        string alive = AliveCount == 1 ? "1 contestant left" : $"{AliveCount} contestants left";
+        return SuddenDeath ? $"<color=#FF6A50>SUDDEN DEATH!</color> {alive}" : alive;
+    }
 
     protected override void StartGame()
     {
@@ -64,10 +70,10 @@ public class BombRushMinigameController : MinigameController
         if (!SpawnTimer.Expired(Runner))
             return;
 
-        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count);
+        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f);
         SpawnTimer = TickTimer.CreateFromSeconds(Runner, interval);
 
-        if (FindObjectsByType<Bomb>(FindObjectsSortMode.None).Length >= _alive.Count * _maxBombsPerPlayer)
+        if (FindObjectsByType<Bomb>(FindObjectsSortMode.None).Length >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath ? 2 : 1))
             return;
 
         int belt = _nextBelt++ % _belts.Length;
@@ -166,6 +172,7 @@ public class BombRushMinigameController : MinigameController
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_Explosion(Vector3 position)
     {
+        Sfx.Play(Sound.Boom);
         if (_effectMaterial != null)
             LowPolyExplosion.Play(position, 3f, _effectMaterial);
     }

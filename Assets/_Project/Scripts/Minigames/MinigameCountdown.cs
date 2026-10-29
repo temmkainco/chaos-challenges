@@ -11,6 +11,7 @@ public class MinigameCountdown : Countdown
         _minigameController.OnCountdownStarted += ShowCountdown;
         _minigameController.OnCountdownTick += UpdateCountdown;
         _minigameController.OnMinigameStart += HideCountdown;
+        _minigameController.OnMinigameStart += PlayGo;
         _minigameController.OnTimeLimitTick += OnTimeLimitTick;
         _minigameController.OnMinigameEnd += HideCountdown;
     }
@@ -23,9 +24,12 @@ public class MinigameCountdown : Countdown
         _minigameController.OnCountdownStarted -= ShowCountdown;
         _minigameController.OnCountdownTick -= UpdateCountdown;
         _minigameController.OnMinigameStart -= HideCountdown;
+        _minigameController.OnMinigameStart -= PlayGo;
         _minigameController.OnTimeLimitTick -= OnTimeLimitTick;
         _minigameController.OnMinigameEnd -= HideCountdown;
     }
+
+    private static void PlayGo() => Sfx.Play(Sound.Go, 1f, 0f);
 
     private void OnTimeLimitTick(int seconds)
     {

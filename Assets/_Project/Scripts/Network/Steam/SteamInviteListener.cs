@@ -12,6 +12,9 @@ using Zenject;
 /// </summary>
 public class SteamInviteListener : MonoBehaviour
 {
+    /// <summary>The Steam overlay is open; the cursor must stay free.</summary>
+    public static bool OverlayActive { get; private set; }
+
     private FusionNetworkRunner _networkRunner;
     private LoadingPanel _loadingPanel;
     private MessagePanel _messagePanel;
@@ -95,6 +98,7 @@ public class SteamInviteListener : MonoBehaviour
     /// <summary>The overlay needs a free cursor; gameplay hides and locks it.</summary>
     private void OnOverlayActivated(GameOverlayActivated_t data)
     {
+        OverlayActive = data.m_bActive != 0;
         if (data.m_bActive != 0)
         {
             _cursorWasVisible = Cursor.visible;
