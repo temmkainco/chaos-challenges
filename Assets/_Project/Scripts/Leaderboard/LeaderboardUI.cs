@@ -21,6 +21,8 @@ public class LeaderboardUI : MonoBehaviour
     [SerializeField] private float _fadeInDuration = 0.4f;
     [SerializeField] private float _fadeOutDuration = 0.4f;
     [SerializeField] private float _entryStaggerDelay = 0.1f;
+    [SerializeField, Tooltip("Final reveal: delay between places, revealed from last to first")]
+    private float _finalRevealStagger = 1.2f;
 
     private LeaderboardController _controller;
     private float _timer;
@@ -59,29 +61,33 @@ public class LeaderboardUI : MonoBehaviour
     {
         if (!_isCounting) return;
 
-        _timer -= Time.deltaTime;
+        _timer = Mathf.Max(0f, _timer - Time.deltaTime);
         _countdownText.text = _isFinal
             ? $"Return to lobby in {Mathf.CeilToInt(_timer)}..."
-            : $"Next in {Mathf.CeilToInt(_timer)}...";
+            : $"Next round in {Mathf.CeilToInt(_timer)}...";
     }
 
-    private void Show(List<LeaderboardEntry> entries)
+    private void Show(List<LeaderboardEntry> entries, bool isFinal)
     {
         foreach (var e in _spawnedEntries)
             Destroy(e.gameObject);
         _spawnedEntries.Clear();
 
-        _isFinal = entries.Any(e => e.IsOverallWinner);
+        _isFinal = isFinal;
 
         if (_titleText != null)
-            _titleText.text = _isFinal ? "Final Results!" : "Round Results";
+            _titleText.text = _isFinal ? "Final Results!" : "Round Over! Results stay secret...";
 
+        int shownCount = entries.Count(e => !e.IsEmpty);
         for (int i = 0; i < entries.Count; i++)
         {
             var ui = Instantiate(_entryPrefab, _entriesContainer);
             ui.Populate(entries[i]);
 
-            float delay = entries[i].IsEmpty ? 0f : i * _entryStaggerDelay;
+            // The final reveal builds suspense: last place appears first, the winner last.
+            float delay = entries[i].IsEmpty ? 0f
+                : _isFinal ? (shownCount - 1 - i) * _finalRevealStagger
+                : i * _entryStaggerDelay;
             ui.AnimateIn(delay);
             _spawnedEntries.Add(ui);
         }
@@ -90,7 +96,7 @@ public class LeaderboardUI : MonoBehaviour
         _canvasGroup.blocksRaycasts = true;
         _canvasGroup.DOFade(1f, _fadeInDuration).SetEase(Ease.OutSine);
 
-        _timer = _isFinal ? 12f : 7f;
+        _timer = _controller.RemainingTime;
         _isCounting = true;
     }
 

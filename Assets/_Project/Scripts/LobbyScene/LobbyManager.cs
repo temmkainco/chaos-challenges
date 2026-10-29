@@ -25,9 +25,7 @@ public class LobbyManager : NetworkBehaviour
 
     [Inject] private LobbyPlayerSpawner _spawner;
     [Inject] private MinigameSceneDatabaseSO _minigameSceneDatabase;
-    [Inject] private DiContainer _container;
 
-    private NetworkGameManager _networkGameManager;
     private const float COUNTDOWN_DURATION = 10f;
 
     [SerializeField] private CinemachineCamera _matchStartCamera;
@@ -37,6 +35,7 @@ public class LobbyManager : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
+        EnsureGameManager();
         ResyncWithPlayers();
         _spawner.OnPlayersChangedEvent += ResyncWithPlayers;
     }
@@ -64,7 +63,6 @@ public class LobbyManager : NetworkBehaviour
             if (CountdownTimer.Expired(Runner))
             {
                 IsCountingDown = false;
-                SpawnNetworkGameManager();
                 StartNetworkGame();
             }
         }
@@ -184,19 +182,13 @@ public class LobbyManager : NetworkBehaviour
         Debug.Log($"Starting in {seconds}...");
     }
 
-    private void SpawnNetworkGameManager()
+    /// <summary>One game manager per session: reuse the one that survived the last match.</summary>
+    private void EnsureGameManager()
     {
-        if (_networkGameManager != null)
+        if (NetworkGameManager.Instance != null)
             return;
 
-        var gameFlowControllerObject = Runner.Spawn(
-            _networkGameManagerPrefab,
-            Vector3.zero,
-            Quaternion.identity
-        );
-
-        _networkGameManager = gameFlowControllerObject.GetComponent<NetworkGameManager>();
-        _container.InjectGameObject(_networkGameManager.gameObject); // ? replaces Initialize
+        Runner.Spawn(_networkGameManagerPrefab, Vector3.zero, Quaternion.identity);
     }
 
     private void StartNetworkGame()
@@ -221,7 +213,7 @@ public class LobbyManager : NetworkBehaviour
         yield return new WaitForSeconds(_cameraBlendDuration);
 
         if (HasStateAuthority)
-            _networkGameManager.StartMatch();
+            NetworkGameManager.Instance.StartMatch();
     }
 
 }

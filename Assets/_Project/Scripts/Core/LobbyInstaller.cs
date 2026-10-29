@@ -12,7 +12,7 @@ public class LobbyInstaller : MonoInstaller, IInitializable
     public override void InstallBindings()
     {
         Container.BindInterfacesTo<LobbyInstaller>().FromInstance(this).AsSingle();
-        Container.Bind<LobbyPlayerSpawner>().FromComponentInHierarchy().AsSingle();
+        Container.Bind(typeof(LobbyPlayerSpawner), typeof(BasePlayerSpawner)).To<LobbyPlayerSpawner>().FromComponentInHierarchy().AsSingle();
         Container.Bind<LobbyManager>().FromComponentInHierarchy().AsSingle();
         Container.Bind<NetworkPrefabRef>().WithId("NetworkGameManager").FromInstance(NetworkGameManagerPrefab).AsSingle();
         Container.Bind<MinigameSceneDatabaseSO>().FromInstance(MinigameSceneDatabase).AsSingle();

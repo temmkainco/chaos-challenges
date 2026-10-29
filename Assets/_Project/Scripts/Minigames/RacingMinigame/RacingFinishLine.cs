@@ -19,6 +19,6 @@ public class FinishLine : NetworkBehaviour
         if (_finishedPlayers.Contains(playerRef)) return;
 
         _finishedPlayers.Add(playerRef);
-        _controller.RPC_PlayerFinished(playerRef);
+        _controller.PlayerFinished(playerRef);
     }
 }

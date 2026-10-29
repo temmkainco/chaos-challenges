@@ -49,7 +49,8 @@ public class MainMenuView : MonoBehaviour
 
     private void OnDisable()
     {
-        _networkRunner.Disconnected -= OnDisconnected;
+        if (_networkRunner != null)
+            _networkRunner.Disconnected -= OnDisconnected;
     }
 
     private void OnDisconnected(string reason) => ShowDisconnectReason();

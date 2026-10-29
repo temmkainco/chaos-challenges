@@ -6,8 +6,9 @@ using Zenject;
 public class LobbyPlayersDisplay : NetworkBehaviour
 {
     [SerializeField] private Transform _playersDisplayItemsParent;
-    [Inject] private LobbyPlayerSpawner _spawner;
-    [Inject] private LobbyManager _manager;
+    // Also used outside the lobby (e.g. the TV in the Mines scene), where there are no ready states.
+    [Inject] private BasePlayerSpawner _spawner;
+    [InjectOptional] private LobbyManager _manager;
 
     private LobbyPlayerDisplayItem[] _items;
     private readonly List<Player> _currentPlayers = new();
@@ -26,13 +27,16 @@ public class LobbyPlayersDisplay : NetworkBehaviour
     private void OnEnable()
     {
         _spawner.OnPlayersChangedEvent += On_PlayersChanged;
-        _manager.PlayerReadyChangedEvent += On_PlayerReadyChanged;
+        if (_manager != null)
+            _manager.PlayerReadyChangedEvent += On_PlayerReadyChanged;
     }
 
     private void OnDisable()
     {
-        _spawner.OnPlayersChangedEvent -= On_PlayersChanged;
-        _manager.PlayerReadyChangedEvent -= On_PlayerReadyChanged;
+        if (_spawner != null)
+            _spawner.OnPlayersChangedEvent -= On_PlayersChanged;
+        if (_manager != null)
+            _manager.PlayerReadyChangedEvent -= On_PlayerReadyChanged;
     }
 
     private void On_PlayersChanged()

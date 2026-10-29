@@ -17,8 +17,8 @@ public class MinigameCountdown : Countdown
         if (_minigameController == null)
             return;
 
-        _minigameController.OnCountdownStarted += ShowCountdown;
-        _minigameController.OnCountdownTick += UpdateCountdown;
+        _minigameController.OnCountdownStarted -= ShowCountdown;
+        _minigameController.OnCountdownTick -= UpdateCountdown;
         _minigameController.OnMinigameStart -= HideCountdown;
     }
 }

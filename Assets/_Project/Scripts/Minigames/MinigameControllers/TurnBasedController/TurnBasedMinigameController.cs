@@ -13,8 +13,7 @@ public abstract class TurnBasedMinigameController : MinigameController
     protected List<PlayerRef> _alivePlayers = new();
 
     private readonly List<PlayerRef> _eliminationOrder = new();
-    private int[] _lastMinigameScores;
-    private bool _wasLastMinigame;
+
     protected override void StartGame()
     {
         base.StartGame();
@@ -28,14 +27,24 @@ public abstract class TurnBasedMinigameController : MinigameController
 
     protected virtual void InitializeAlivePlayers()
     {
-        _alivePlayers = Runner.ActivePlayers.ToList();
+        _alivePlayers = Runner.ActivePlayers.Where(GameManager.IsConnectedPlayer).ToList();
+    }
+
+    public override void HandlePlayerLeft(PlayerRef player)
+    {
+        if (IsGameActive)
+            EliminatePlayer(player);
     }
 
     protected void EliminatePlayer(PlayerRef player)
     {
         if (!HasStateAuthority) return;
 
-        _alivePlayers.Remove(player);
+        int index = _alivePlayers.IndexOf(player);
+        if (index < 0) return;
+
+        bool wasTheirTurn = CurrentTurn == player;
+        _alivePlayers.RemoveAt(index);
         _eliminationOrder.Add(player);
 
         Debug.Log($"[Elimination] {player} eliminated. " +
@@ -46,76 +55,27 @@ public abstract class TurnBasedMinigameController : MinigameController
             if (_alivePlayers.Count == 1)
                 _eliminationOrder.Add(_alivePlayers[0]);
 
-            AssignEliminationScores();
             EndGame();
             return;
         }
 
-        AdvanceTurn();
+        // The next player in order now sits at the eliminated player's index.
+        if (wasTheirTurn)
+            SetTurn(_alivePlayers[index % _alivePlayers.Count], false);
     }
 
-    private void AssignEliminationScores()
+    /// <summary>Ends the round; the last player standing places first.</summary>
+    protected virtual void EndGame()
     {
-        int totalPlayers = GameManager.ExpectedPlayerCount;
-        const int baseScore = 100;
-        const int step = 100;
-
-        _lastMinigameScores = new int[totalPlayers];
-
-        Debug.Log($"=== {_minigameDefinition.Id} Elimination Results ===");
-
-        for (int rank = 0; rank < _eliminationOrder.Count; rank++)
-        {
-            PlayerRef player = _eliminationOrder[rank];
-            int score = baseScore + rank * step;
-            int slot = GameManager.GetSlotForPlayer(player);
-
-            Debug.Log($"  #{rank + 1} — {player} → {score} pts (slot {slot})");
-
-            if (slot >= 0)
-            {
-                GameManager.AddToGlobalScore(slot, score);
-                _lastMinigameScores[slot] = score;
-            }
-        }
+        var placements = Enumerable.Reverse(_eliminationOrder).ToList();
+        FinishRound(placements);
     }
 
-    protected override void EndGame()
-    {
-        IsGameActive = false;
-        SetPlayersInput(false);
-        Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
-
-        if (HasStateAuthority)
-        {
-            if (_leaderboard == null)
-                _leaderboard = FindFirstObjectByType<LeaderboardController>();
-
-            if (_leaderboard == null)
-            {
-                Debug.LogError("LeaderboardController not found! Skipping leaderboard.");
-                RPC_OnGameEnd();
-                return;
-            }
-
-            _wasLastMinigame = GameManager.IsLastMinigame();
-            _leaderboard.OnLeaderboardHidden += OnLeaderboardDone;
-            _leaderboard.ShowLeaderboard(_lastMinigameScores, _wasLastMinigame);
-        }
-    }
-    private void OnLeaderboardDone()
-    {
-        _leaderboard.OnLeaderboardHidden -= OnLeaderboardDone;
-        if (HasStateAuthority)
-            RPC_OnGameEnd();
-    }
     protected virtual void PickFirstTurn()
     {
         int index = DeterministicRandom.Next(0, _alivePlayers.Count);
-        CurrentTurn = _alivePlayers[index];
-        Debug.Log($"First turn: {CurrentTurn}");
-
-        RPC_OnTurnChanged(CurrentTurn, true);
+        Debug.Log($"First turn: {_alivePlayers[index]}");
+        SetTurn(_alivePlayers[index], true);
     }
 
     protected void AdvanceTurn()
@@ -123,10 +83,13 @@ public abstract class TurnBasedMinigameController : MinigameController
         if (_alivePlayers.Count == 0) return;
 
         int index = _alivePlayers.IndexOf(CurrentTurn);
-        index = (index + 1) % _alivePlayers.Count;
-        CurrentTurn = _alivePlayers[index];
+        SetTurn(_alivePlayers[(index + 1) % _alivePlayers.Count], false);
+    }
 
-        RPC_OnTurnChanged(CurrentTurn, false);
+    private void SetTurn(PlayerRef player, bool isFirst)
+    {
+        CurrentTurn = player;
+        RPC_OnTurnChanged(player, isFirst);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

@@ -1,13 +1,16 @@
 using Fusion;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class RacingMinigameController : MinigameController
 {
     [Networked] private int PlayersFinished { get; set; }
 
-    private int[] _finishScores;
-    private int _expectedPlayers;
+    private readonly List<PlayerRef> _finishOrder = new();
+
+    public event Action<PlayerRef, int> OnPlayerFinished;
 
     protected override void StartGame()
     {
@@ -15,59 +18,43 @@ public class RacingMinigameController : MinigameController
         if (!HasStateAuthority) return;
 
         PlayersFinished = 0;
-        _expectedPlayers = GameManager.ExpectedPlayerCount;
-        _finishScores = new int[_expectedPlayers];
+        _finishOrder.Clear();
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void RPC_PlayerFinished(PlayerRef player)
+    /// <summary>Host only (the finish line is checked on the host).</summary>
+    public void PlayerFinished(PlayerRef player)
     {
-        if (!IsGameActive) return;
+        if (!HasStateAuthority || !IsGameActive || _finishOrder.Contains(player))
+            return;
 
-        int slot = GameManager.GetSlotForPlayer(player);
-        if (slot < 0) return;
-
-        int score = Mathf.Max(100, 400 - PlayersFinished * 100);
-        _finishScores[slot] = score;
-        GameManager.AddToGlobalScore(slot, score);
-
-        PlayersFinished++;
-        Debug.Log("Players Finished" + PlayersFinished);
+        _finishOrder.Add(player);
+        PlayersFinished = _finishOrder.Count;
+        Debug.Log($"Player {player} finished #{PlayersFinished}");
         RPC_OnPlayerFinished(player, PlayersFinished);
 
-        if (PlayersFinished >= _expectedPlayers)
-            EndGame();
+        CheckRaceOver();
     }
-    protected override void EndGame()
+
+    public override void HandlePlayerLeft(PlayerRef player)
     {
-        IsGameActive = false;
-        SetPlayersInput(false);
-
-        if (HasStateAuthority)
-        {
-            if (_leaderboard == null)
-                _leaderboard = FindFirstObjectByType<LeaderboardController>();
-
-            bool isLast = GameManager.IsLastMinigame();
-            _leaderboard.OnLeaderboardHidden += OnLeaderboardDone;
-            _leaderboard.ShowLeaderboard(_finishScores, isLast);
-        }
+        CheckRaceOver();
     }
 
-    private void OnLeaderboardDone()
+    private void CheckRaceOver()
     {
-        _leaderboard.OnLeaderboardHidden -= OnLeaderboardDone;
-        if (HasStateAuthority)
-            RPC_OnGameEnd();
-    }
+        if (!IsGameActive)
+            return;
 
+        bool anyoneStillRacing = Runner.ActivePlayers
+            .Any(p => GameManager.IsConnectedPlayer(p) && !_finishOrder.Contains(p));
+
+        if (!anyoneStillRacing)
+            FinishRound(_finishOrder);
+    }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_OnPlayerFinished(PlayerRef player, int position)
     {
         OnPlayerFinished?.Invoke(player, position);
     }
-
-    public event Action OnRaceStart;
-    public event Action<PlayerRef, int> OnPlayerFinished;
 }

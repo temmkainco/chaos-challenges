@@ -48,7 +48,7 @@ public class RacingPlayerSpawner : BasePlayerSpawner
 
         NetworkObject playerObject = Runner.Spawn(_playerPrefab, _spawnPoints[spawnIndex].position, Quaternion.identity, player);
         var playerBehaviour = playerObject.GetComponent<Player>();
-        playerBehaviour?.Input.Controls.Disable();
+        playerBehaviour.ControlsLocked = true;
         _container.InjectGameObject(playerBehaviour.gameObject);
 
         Players.Add(player, playerBehaviour);

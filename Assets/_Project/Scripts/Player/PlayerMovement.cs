@@ -12,10 +12,12 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private float _rotationSpeed = 10f;
 
     private NetworkCharacterController _characterController;
+    private Player _player;
 
     private void Awake()
     {
         _characterController = GetComponent<NetworkCharacterController>();
+        _player = GetComponent<Player>();
     }
 
     public override void FixedUpdateNetwork()
@@ -26,6 +28,13 @@ public class PlayerMovement : NetworkBehaviour
                 CurrentVelocity = Vector3.zero;
 
             return;
+        }
+
+        // Still run the controller so gravity applies, just without player intent.
+        if (_player.ControlsLocked)
+        {
+            data.Direction = Vector3.zero;
+            data.Buttons = default;
         }
 
         Vector3 inputDirection = new Vector3(data.Direction.x, 0f, data.Direction.z);

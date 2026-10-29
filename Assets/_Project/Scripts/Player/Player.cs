@@ -10,6 +10,8 @@ public class Player : NetworkBehaviour, ISpawned
 {
     public event Action<string> OnNicknameUpdated;
     [Networked, OnChangedRender(nameof(OnNicknameChanged))] public string Nickname { get; private set; }
+    /// <summary>Set by the host (e.g. during a minigame countdown); movement and interaction ignore input while true.</summary>
+    [Networked] public NetworkBool ControlsLocked { get; set; }
     [field: SerializeField] public CinemachineCamera Camera { get; private set; }
     [field: SerializeField] public PlayerInteraction Interaction { get; private set; }
     [field: SerializeField] public PlayerInput Input { get; private set; }

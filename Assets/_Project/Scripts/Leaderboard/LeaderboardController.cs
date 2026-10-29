@@ -4,165 +4,82 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+/// <summary>
+/// Turns match phase changes into leaderboard data for <see cref="LeaderboardUI"/>.
+/// Round results stay hidden (names only); totals are shown only in the final reveal.
+/// Reads the networked roster, so every peer builds the same entries without extra RPCs.
+/// </summary>
 public class LeaderboardController : NetworkBehaviour
 {
-    [Networked] private float LeaderboardTimer { get; set; }
-    [Networked] private bool IsShowingLeaderboard { get; set; }
-
-    [SerializeField] private float _displayDuration = 7f;
-    [SerializeField] private float _finalDisplayDuration = 12f;
     [SerializeField] private int _maxSlots = 6;
 
-    public event Action<List<LeaderboardEntry>> OnLeaderboardShown;
+    /// <summary>Entries ordered for display, and whether this is the final reveal.</summary>
+    public event Action<List<LeaderboardEntry>, bool> OnLeaderboardShown;
     public event Action OnLeaderboardHidden;
 
-    private List<LeaderboardEntry> _cachedEntries;
-    private bool _isCurrentlyShowing;
-    private bool _dataReceived;
     private NetworkGameManager _gameManager;
-    private bool _cachedIsFinal;
+
+    public float RemainingTime => _gameManager != null ? _gameManager.PhaseTimeRemaining : 0f;
+
     public override void Spawned()
     {
-        _gameManager = FindFirstObjectByType<NetworkGameManager>();
+        _gameManager = NetworkGameManager.Instance;
+        if (_gameManager != null)
+            _gameManager.PhaseChanged += OnPhaseChanged;
     }
-    public override void Render()
-    {
-        if (IsShowingLeaderboard && _dataReceived && !_isCurrentlyShowing)
-        {
-            if (OnLeaderboardShown == null) return;
 
-            _isCurrentlyShowing = true;
-            OnLeaderboardShown.Invoke(_cachedEntries);
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        if (_gameManager != null)
+            _gameManager.PhaseChanged -= OnPhaseChanged;
+    }
+
+    private void OnPhaseChanged(MatchPhase phase)
+    {
+        switch (phase)
+        {
+            case MatchPhase.RoundOver:
+                OnLeaderboardShown?.Invoke(BuildEntries(isFinal: false), false);
+                break;
+            case MatchPhase.FinalReveal:
+                OnLeaderboardShown?.Invoke(BuildEntries(isFinal: true), true);
+                break;
+            default:
+                OnLeaderboardHidden?.Invoke();
+                break;
         }
     }
 
-    public void RequestCurrentState(Action<List<LeaderboardEntry>> onShown)
+    private List<LeaderboardEntry> BuildEntries(bool isFinal)
     {
-        if (_isCurrentlyShowing && _cachedEntries != null)
-            onShown?.Invoke(_cachedEntries);
-    }
+        var roster = _gameManager.Players.ToList();
+        List<LeaderboardEntry> entries;
 
-    public void ShowLeaderboard(int[] minigameScores, bool isLastMinigame = false)
-    {
-        if (!HasStateAuthority) return;
-
-        var entries = BuildEntries(minigameScores, isLastMinigame);
-
-        IsShowingLeaderboard = true;
-        LeaderboardTimer = isLastMinigame ? _finalDisplayDuration : _displayDuration;
-
-        RPC_ShowLeaderboard(
-            entries.Select(e => e.PlayerName).ToArray(),
-            entries.Select(e => e.MinigameScore).ToArray(),
-            entries.Select(e => e.TotalScore).ToArray(),
-            entries.Select(e => e.Rank).ToArray(),
-            entries.Select(e => e.IsEmpty).ToArray(),
-            entries.Select(e => e.IsMinigameWinner).ToArray(),
-            entries.Select(e => e.IsOverallWinner).ToArray(),
-            isLastMinigame
-        );
-    }
-
-    private List<LeaderboardEntry> BuildEntries(int[] minigameScores, bool isLastMinigame)
-    {
-        int playerCount = minigameScores.Length;
-
-        int minigameWinnerSlot = Array.IndexOf(minigameScores, minigameScores.Max());
-
-        int overallWinnerSlot = -1;
-        if (isLastMinigame)
+        if (isFinal)
         {
-            int highestTotal = -1;
-            for (int i = 0; i < playerCount; i++)
-            {
-                int total = _gameManager.GetTotalScore(i);
-                if (total > highestTotal)
+            int topScore = roster.Count > 0 ? roster.Max(r => r.Score) : 0;
+            entries = roster
+                .OrderByDescending(r => r.Score)
+                .Select((r, i) => new LeaderboardEntry
                 {
-                    highestTotal = total;
-                    overallWinnerSlot = i;
-                }
-            }
+                    PlayerName = r.Name.ToString(),
+                    MinigameScore = r.LastRoundPoints,
+                    TotalScore = r.Score,
+                    Rank = i + 1,
+                    IsOverallWinner = r.Score == topScore,
+                })
+                .ToList();
         }
-
-        var entries = new List<LeaderboardEntry>();
-        for (int i = 0; i < playerCount; i++)
+        else
         {
-            entries.Add(new LeaderboardEntry
-            {
-                PlayerName = _gameManager.GetPlayerName(i),
-                MinigameScore = minigameScores[i],
-                TotalScore = _gameManager.GetTotalScore(i),
-                IsEmpty = false,
-                IsMinigameWinner = i == minigameWinnerSlot,
-                IsOverallWinner = i == overallWinnerSlot,
-            });
+            entries = roster
+                .Select(r => new LeaderboardEntry { PlayerName = r.Name.ToString(), HideScores = true })
+                .ToList();
         }
 
-        var ranked = entries.OrderByDescending(e => e.TotalScore).ToList();
-        for (int i = 0; i < ranked.Count; i++)
-            ranked[i].Rank = i + 1;
+        while (entries.Count < _maxSlots)
+            entries.Add(new LeaderboardEntry { IsEmpty = true, PlayerName = "" });
 
-        while (ranked.Count < _maxSlots)
-        {
-            ranked.Add(new LeaderboardEntry
-            {
-                IsEmpty = true,
-                PlayerName = "",
-                MinigameScore = 0,
-                TotalScore = 0,
-                Rank = 0,
-            });
-        }
-
-        return ranked;
-    }
-
-    public override void FixedUpdateNetwork()
-    {
-        if (!HasStateAuthority || !IsShowingLeaderboard) return;
-
-        LeaderboardTimer -= Runner.DeltaTime;
-
-        if (LeaderboardTimer <= 0f)
-        {
-            IsShowingLeaderboard = false;
-            RPC_HideLeaderboard();
-        }
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowLeaderboard(
-        string[] names, int[] minigameScores, int[] totalScores, int[] ranks,
-        bool[] isEmpty, bool[] isMinigameWinner, bool[] isOverallWinner,
-        bool isLastMinigame)
-    {
-        _cachedIsFinal = isLastMinigame;
-        _cachedEntries = new List<LeaderboardEntry>();
-        for (int i = 0; i < names.Length; i++)
-        {
-            _cachedEntries.Add(new LeaderboardEntry
-            {
-                PlayerName = names[i],
-                MinigameScore = minigameScores[i],
-                TotalScore = totalScores[i],
-                Rank = ranks[i],
-                IsEmpty = isEmpty[i],
-                IsMinigameWinner = isMinigameWinner[i],
-                IsOverallWinner = isOverallWinner[i],
-            });
-        }
-
-        _dataReceived = true;
-        _isCurrentlyShowing = false;
-    }
-
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_HideLeaderboard()
-    {
-        _dataReceived = false;
-        _isCurrentlyShowing = false;
-        _cachedEntries = null;
-        OnLeaderboardHidden?.Invoke();
+        return entries;
     }
 }

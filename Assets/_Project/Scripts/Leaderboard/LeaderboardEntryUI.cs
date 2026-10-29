@@ -27,6 +27,19 @@ public class LeaderboardEntryUI : MonoBehaviour
 
         _contentRoot.SetActive(true);
 
+        if (entry.HideScores)
+        {
+            _rankText.text = "?";
+            _nameText.text = entry.PlayerName;
+            _minigameScoreText.text = "";
+            _totalScoreText.text = "??? pts";
+            _nameText.color = _normalColor;
+            _rankText.color = _normalColor;
+            if (_badgeText != null)
+                _badgeText.gameObject.SetActive(false);
+            return;
+        }
+
         _rankText.text = $"#{entry.Rank}";
         _nameText.text = entry.PlayerName;
         _minigameScoreText.text = $"+{entry.MinigameScore}";

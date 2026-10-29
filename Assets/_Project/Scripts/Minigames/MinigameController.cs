@@ -1,5 +1,6 @@
 using Fusion;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
@@ -9,11 +10,8 @@ public class MinigameController : NetworkBehaviour
     [Networked] private int LastCountdownSecond { get; set; }
     [Networked] private bool IsCountingDown { get; set; }
     [Networked] public bool IsGameActive { get; protected set; }
-    [Networked] private int ScoresReceived { get; set; }
-    
 
-    protected NetworkGameManager GameManager;
-    protected LeaderboardController _leaderboard;
+    protected NetworkGameManager GameManager => NetworkGameManager.Instance;
 
     [SerializeField] protected MinigameDefinitionSO _minigameDefinition;
     [SerializeField] protected bool _hasCountdown = true;
@@ -25,38 +23,7 @@ public class MinigameController : NetworkBehaviour
     public event Action OnCountdownStarted;
     public event Action<int> OnCountdownTick;
 
-    private int _localScore;
-
-    public override void Spawned()
-    {
-        GameManager = FindFirstObjectByType<NetworkGameManager>();
-        _leaderboard = FindFirstObjectByType<LeaderboardController>();
-
-        if (_leaderboard == null)
-            Debug.LogWarning("LeaderboardController not found at Spawned — will retry in EndGame.");
-
-        _localScore = 0;
-        if (Object.HasInputAuthority)
-            RPC_PlayerReady();
-    }
-
-    public void AddLocalScore(int points)
-    {
-        _localScore += points;
-        Debug.Log($"[Local] Score this game: {_localScore}");
-    }
-
-    public void SetLocalScore(int score)
-    {
-        _localScore = score;
-    }
-
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_PlayerReady()
-    {
-        GameManager.RegisterPlayerReady();
-    }
-
+    /// <summary>Called by <see cref="NetworkGameManager"/> on the host once every player has loaded the scene.</summary>
     public void InitializeMinigame()
     {
         if (!HasStateAuthority)
@@ -71,6 +38,10 @@ public class MinigameController : NetworkBehaviour
         }
         StartGame();
     }
+
+    /// <summary>Host only. A player disconnected during this round.</summary>
+    public virtual void HandlePlayerLeft(PlayerRef player) { }
+
     protected virtual void StartGame()
     {
         IsGameActive = true;
@@ -81,49 +52,18 @@ public class MinigameController : NetworkBehaviour
         Debug.Log($"Minigame {_minigameDefinition.Id} started!");
     }
 
-    protected virtual void EndGame()
+    /// <summary>Host only. Ends the round; <paramref name="placements"/> is ordered best first.</summary>
+    protected void FinishRound(IReadOnlyList<PlayerRef> placements)
     {
+        if (!HasStateAuthority || !IsGameActive)
+            return;
+
         IsGameActive = false;
-        //RPC_OnGameEnd();
         SetPlayersInput(false);
         Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
 
-        if (Object.HasInputAuthority)
-            RPC_SubmitScore(Runner.LocalPlayer, _localScore);
-    }
-
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_SubmitScore(PlayerRef player, int score)
-    {
-        int slot = GameManager.GetSlotForPlayer(player);
-        if (slot < 0)
-        {
-            Debug.LogWarning($"Unknown player {player} tried to submit score.");
-            return;
-        }
-
-        ScoreBuffer.Record(Object.Id, slot, score);
-        ScoresReceived++;
-
-        Debug.Log($"[Host] Received score {score} from slot {slot} " +
-                  $"({ScoresReceived}/{GameManager.ExpectedPlayerCount})");
-
-        if (ScoresReceived >= GameManager.ExpectedPlayerCount)
-            FinalizeScores();
-    }
-    private void FinalizeScores()
-    {
-        int[] scores = ScoreBuffer.FlushAndGet(Object.Id, GameManager.ExpectedPlayerCount);
-        GameManager.SubmitMinigameScores(scores);
-
-        _leaderboard.OnLeaderboardHidden += OnLeaderboardDone;
-        _leaderboard.ShowLeaderboard(scores);
-
-    }
-    private void OnLeaderboardDone()
-    {
-        _leaderboard.OnLeaderboardHidden -= OnLeaderboardDone;
         RPC_OnGameEnd();
+        GameManager.SubmitRoundResult(placements);
     }
 
     public override void FixedUpdateNetwork()
@@ -139,9 +79,7 @@ public class MinigameController : NetworkBehaviour
         foreach (var playerEntry in _basePlayerSpawner.Players)
         {
             if (playerEntry.Value)
-            {
-                playerEntry.Value.Input.SetPlayerControlsActive(value);
-            }
+                playerEntry.Value.ControlsLocked = !value;
         }
     }
 

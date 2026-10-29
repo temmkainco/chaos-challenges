@@ -10,4 +10,6 @@ public class LeaderboardEntry
     public bool IsEmpty;
     public bool IsMinigameWinner;
     public bool IsOverallWinner;
+    /// <summary>Round results are secret until the final reveal.</summary>
+    public bool HideScores;
 }

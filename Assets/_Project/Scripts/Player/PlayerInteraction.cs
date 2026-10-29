@@ -55,6 +55,8 @@ public class PlayerInteraction : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         if (!GetInput(out NetworkInputData input)) return;
+        if (_player.ControlsLocked)
+            input.Buttons = default;
 
         var pressed = input.Buttons.GetPressed(_previousButtons);
 

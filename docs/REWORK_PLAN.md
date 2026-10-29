@@ -19,11 +19,16 @@ Working plan for reworking the existing game and building the GDD minigames
 |---|---|
 | 0 | Done — Unity 6000.4.5f1, Multiplayer Play Mode 2.0.2, Pipeline package (CLI Editor control) |
 | 1 | Done — verified with Multiplayer Play Mode: host, leave, re-host, private join by code, client leave/rejoin, host leaving sends client to menu with a reason |
-| 2 | Next |
+| 2 | Done — verified with 2 players: two full matches back to back (random round order, hidden round results, final reveal, return to lobby, rematch with reset scores and a single game manager) |
+| 3 | Next |
 
 Notes:
 - Fusion 2.0.8 editor needed a patch for Unity 6000.4 (`Assets/Photon/Fusion/Editor/Fusion.Unity.Editor.cs`, marked `[chaos-challenges patch]`). Updating the Fusion SDK overwrites it; a newer SDK likely has its own fix.
 - Sessions use `Assets/_Project/Prefabs/SessionRunner.prefab` (runner + scene manager + physics), instantiated per session by `FusionNetworkRunner`.
+- Match flow lives in `NetworkGameManager` (phase, roster, round order, placement scoring, scene-load handshake). Minigames call `FinishRound(placements)` (best first) and may override `HandlePlayerLeft`. Input is gated by the networked `Player.ControlsLocked`.
+- Some Phase 3 items were pulled into Phase 2 because a 2-player match could not run without them: networked input lock (fixes the host crash when spawning client players), leaver handling in Mines/Racing, and the `LobbyPlayersDisplay` TV in the Mines scene.
+- Still open for Phase 3: time limits (`GameDuration`/`IsTimeLimited` unused), one generic spawner, interaction via the input struct, host-authoritative grab/throw, an intermission ready timeout, Mines tile fixes.
+- Testing with the CLI: helper scripts live in `Library/claude-test/` (not versioned). Never recompile while Play mode is running; it breaks Zenject and Steam until the Editor restarts.
 - Max players / public list are supported by the service, but the host menu UI only has the public toggle; disconnect reasons are only logged (no message panel yet).
 
 ## Phase 0 — Setup and baseline
