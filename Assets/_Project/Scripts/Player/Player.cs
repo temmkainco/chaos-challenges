@@ -12,6 +12,8 @@ public class Player : NetworkBehaviour, ISpawned
     [Networked, OnChangedRender(nameof(OnNicknameChanged))] public string Nickname { get; private set; }
     /// <summary>Set by the host (e.g. during a minigame countdown); movement and interaction ignore input while true.</summary>
     [Networked] public NetworkBool ControlsLocked { get; set; }
+    /// <summary>Set by the host; the player cannot walk or jump but can still look around and interact (e.g. Pistol Round).</summary>
+    [Networked] public NetworkBool MovementLocked { get; set; }
     [field: SerializeField] public CinemachineCamera Camera { get; private set; }
     [field: SerializeField] public PlayerInteraction Interaction { get; private set; }
     [field: SerializeField] public PlayerInput Input { get; private set; }

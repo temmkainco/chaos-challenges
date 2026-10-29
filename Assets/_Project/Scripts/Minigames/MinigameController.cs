@@ -27,6 +27,9 @@ public class MinigameController : NetworkBehaviour
     [Networked, OnChangedRender(nameof(OnPhaseChanged))] public MinigamePhase Phase { get; private set; }
     [Networked] public TickTimer PhaseTimer { get; private set; }
 
+    /// <summary>The minigame of the loaded scene, on every peer.</summary>
+    public static MinigameController Current { get; private set; }
+
     public bool IsGameActive => Phase == MinigamePhase.Playing;
     public bool IsTimeLimited => _minigameDefinition.IsTimeLimited && _minigameDefinition.GameDuration > 0f;
     public float TimeRemaining => PhaseTimer.RemainingTime(Runner) ?? 0f;
@@ -63,8 +66,28 @@ public class MinigameController : NetworkBehaviour
         StartGame();
     }
 
+    public override void Spawned()
+    {
+        Current = this;
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        if (Current == this)
+            Current = null;
+    }
+
     /// <summary>Host only. A player disconnected during this round.</summary>
     public virtual void HandlePlayerLeft(PlayerRef player) { }
+
+    /// <summary>
+    /// Host only. The player pressed the interact button. Return true when the minigame used it
+    /// (e.g. firing the revolver), so the normal interaction does not run.
+    /// </summary>
+    public virtual bool HandlePrimaryAction(Player player) => false;
+
+    /// <summary>Optional status line for the arena display (e.g. mines left, contestants left).</summary>
+    public virtual string GetStatusText() => null;
 
     /// <summary>
     /// A player touched the kill zone (called on every peer; only the host acts). Return true when the minigame

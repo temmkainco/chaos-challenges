@@ -24,6 +24,7 @@ public class MinesMinigameController : TurnBasedMinigameController
 
     public override void Spawned()
     {
+        base.Spawned();
         _minefield.Initialize(this);
     }
 

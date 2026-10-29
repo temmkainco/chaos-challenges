@@ -2,48 +2,56 @@ using Fusion;
 using TMPro;
 using UnityEngine;
 
-/// <summary>Whose turn it is, the turn countdown and the minigame's status line.</summary>
+/// <summary>
+/// Arena display: whose turn it is and the turn countdown (turn-based minigames), plus the minigame's status line.
+/// Reads replicated state every frame, so a late-loading client never misses the first turn.
+/// </summary>
 public class TurnDisplay : MonoBehaviour
 {
     private const int URGENT_SECONDS = 3;
 
     [SerializeField] private BasePlayerSpawner _basePlayerSpawner;
-    [SerializeField] private TurnBasedMinigameController _controller;
+    [SerializeField] private MinigameController _controller;
     [SerializeField] private TMP_Text _text;
 
     private string _lastText;
 
-    // Reads the replicated turn every frame, so a late-loading client never misses the first turn.
     private void Update()
     {
         if (_controller.Object == null || !_controller.Object.IsValid)
             return;
 
-        var currentPlayer = _controller.CurrentTurn;
-        if (!_controller.IsGameActive || currentPlayer == PlayerRef.None)
+        if (!_controller.IsGameActive)
         {
             SetText("");
             return;
         }
 
-        bool isLocal = currentPlayer == _controller.Runner.LocalPlayer;
-        string name = GetNickname(currentPlayer);
-        string text = isLocal ? "<color=#FFD54A>Your turn!</color>" : $"{name}'s turn";
-
-        if (_controller.HasTurnTimer)
-        {
-            int seconds = Mathf.CeilToInt(_controller.TurnTimeRemaining);
-            text += seconds <= URGENT_SECONDS ? $"  <color=#FF5252>{seconds}s</color>" : $"  {seconds}s";
-        }
-
+        string text = _controller is TurnBasedMinigameController turnBased ? TurnLine(turnBased) : null;
         string status = _controller.GetStatusText();
         if (!string.IsNullOrEmpty(status))
-            text += $"\n<size=60%>{status}</size>";
+            text = text == null ? status : $"{text}\n<size=60%>{status}</size>";
 
-        SetText(text);
+        SetText(text ?? "");
     }
 
-    private string GetNickname(PlayerRef player)
+    private string TurnLine(TurnBasedMinigameController controller)
+    {
+        var currentPlayer = controller.CurrentTurn;
+        if (currentPlayer == PlayerRef.None)
+            return null;
+
+        bool isLocal = currentPlayer == controller.Runner.LocalPlayer;
+        string text = isLocal ? "<color=#FFD54A>Your turn!</color>" : $"{GetNickname(currentPlayer)}'s turn";
+        if (controller.HasTurnTimer)
+        {
+            int seconds = Mathf.CeilToInt(controller.TurnTimeRemaining);
+            text += seconds <= URGENT_SECONDS ? $"  <color=#FF5252>{seconds}s</color>" : $"  {seconds}s";
+        }
+        return text;
+    }
+
+    public string GetNickname(PlayerRef player)
     {
         if (_basePlayerSpawner.Object != null && _basePlayerSpawner.Players.TryGet(player, out var playerObject)
             && playerObject != null && !string.IsNullOrEmpty(playerObject.Nickname))

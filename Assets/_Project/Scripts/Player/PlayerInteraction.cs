@@ -84,6 +84,10 @@ public class PlayerInteraction : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
+        var minigame = MinigameController.Current;
+        if (minigame != null && minigame.HandlePrimaryAction(_player))
+            return;
+
         if (HeldObject != null)
             ReleaseHeldObject();
         else

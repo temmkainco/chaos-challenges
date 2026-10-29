@@ -23,5 +23,11 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Minigames/TilefallMinigame.unity
     guid: 1af33a1357d3d2b41821726ea5e12e44
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/BombRushMinigame.unity
+    guid: 4fa2b712b26c7834c9cc5bedaed83bf7
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/PistolRoundMinigame.unity
+    guid: ab91ec226f5b57945871faa3305a1fba
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

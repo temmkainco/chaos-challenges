@@ -22,7 +22,7 @@ Working plan for reworking the existing game and building the GDD minigames
 | 2 | Done — verified with 2 players: two full matches back to back (random round order, hidden round results, final reveal, return to lobby, rematch with reset scores and a single game manager) |
 | 3 | Done — verified with 2 players: two 4-round matches with no freeze, ready timeout with an AFK player, racing time limit (time-up standings), grab/throw seen by the client, join by code also enters the host's Steam lobby, leaving and rejoining through the Steam lobby (invite path) |
 | 4 | Done — Mines and Tilefall rebuilt; verified with 2 players (plates and tiles identical on both, safe/mine presses, turn timer auto-press, elimination, tile collapse → fall → checkpoint respawn, finish trigger, time-up standings by progress) |
-| 5 | Next |
+| 5 | Done — Bomb Rush and Pistol Round added; verified with 2 players in one 4-round match with all four minigames (bombs from conveyors, fuse and contact explosions, grab/throw, knock-off elimination to the spectator bench; turn timer auto-fire, blanks then the live round, knock-off elimination), no errors |
 
 Notes:
 - Fusion 2.0.8 editor needed a patch for Unity 6000.4 (`Assets/Photon/Fusion/Editor/Fusion.Unity.Editor.cs`, marked `[chaos-challenges patch]`). Updating the Fusion SDK overwrites it; a newer SDK likely has its own fix.
@@ -40,6 +40,10 @@ Notes:
 - Mines (`MinesMinigameController`, `Minefield`, `ExplodeButton` on `Prefabs/Minigames/Mines/MinePlate.prefab`): 4×4 to 7×7 field of arcade buttons (grows with players), exact mine count (30 %), mine positions known only to the host, plate states replicated and plates built locally on every peer. A pressed plate cannot be pressed again. 12 s turn timer (`TurnBasedMinigameController`, reusable for Pistol Round) presses a random plate for AFK players. A mine pops up, explodes (`LowPolyExplosion`) and launches the player, who is benched at their spawn point. When only mines are left, a new field is dealt. The arena TV shows the turn, the countdown and the mines left.
 - Tilefall (`TilefallMinigameController`, `TileCourse`, `TileView`; was Racing, scene `TilefallMinigame.unity`): 6 lanes × 18 rows of procedural chamfered tiles (`ProceduralMeshes`) between a start and a finish platform, ~15 % holes, white checkpoint rows every 6 rows. Tiles lose health while players stand on them (1.4 s alone, +75 % speed per extra player), shake and redden, collapse and come back after 4 s. Falling locks you for 1.5 s and puts you on your last checkpoint row. 90 s limit; on time-up the rest rank by the furthest row reached. Finished players may stay on the course to sabotage others.
 - Shared: `MinigameController.HandlePlayerFell` (kill zones ask the minigame first), `PlayerMovement.Launch` (knockback), `BasePlayerSpawner.Teleport`, spawn points now set the player's facing.
+- Bomb Rush (`BombRushMinigameController`, `Bomb` on `Prefabs/Minigames/BombRush/Bomb.prefab`, `ConveyorBelt`; scene `BombRushMinigame.unity`): four conveyors feed bombs into the arena (faster with more players, capped at 2 per player). A bomb lights when it lands or is grabbed (7 s fuse, pulses redder and faster), can be grabbed and thrown with `GrabbableObject`, and a thrown bomb goes off when it reaches another player. Blasts launch everyone within 5 m (the holder takes the full blast). Falling off the stage puts you on the spectator bench; last one standing wins, survivors tie on time-up (120 s).
+- Pistol Round (`PistolRoundMinigameController`, `Revolver`; scene `PistolRoundMinigame.unity`): contestants stand on pedestals (`Player.MovementLocked`: can look and press E, cannot walk). On your turn, aim at a rival (sphere cast along the look direction; a red marker shows your target) and press E. Six chambers, one live round: a blank clicks and the turn passes, the live round knocks the target off their pedestal and out, then the revolver is reloaded. 10 s turn timer fires at a random rival.
+- Shared in Phase 5: `MinigameController.Current`, `HandlePrimaryAction` (minigames can take the E press), `GetStatusText` on every minigame (the arena TV shows it), and a ballistic knockback in `PlayerMovement.Launch` (the character controller's braking used to cancel launches within a few ticks).
+- New network prefabs need Fusion's prefab table refreshed (`NetworkProjectConfig.fusion` reimport) before they can be spawned; Unity does this on the next import, but a prefab created by script in the same session may need a manual reimport.
 - Still open: max players in the host menu UI (the service supports 2–6), a public game browser, Tilefall/Mines sound effects and an announcer line per event, real player characters (the GDD bean).
 
 ## Phase 0 — Setup and baseline
@@ -78,7 +82,7 @@ Rewrite of `NetworkGameManager` / `LobbyManager` flow.
 - **Mines:** exact mine count, a pressed tile cannot be pressed again, turn timer (auto-pick when AFK), leavers handled.
 - **Racing → Tilefall:** tiles crack under players, collapse faster with more players on them, fallen players respawn on a secondary path after a delay.
 
-## Phase 5 — New minigames
+## Phase 5 — New minigames (done)
 - **Bomb Rush:** conveyors deliver bombs, grab and throw them, fuse timer, explosion knocks back / eliminates, last one standing wins.
 - **Pistol Round:** turn-based; the current holder aims at another player and fires. Possible twist to discuss: a revolver chamber with blanks so every shot is a gamble.
 

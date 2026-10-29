@@ -61,9 +61,6 @@ public abstract class TurnBasedMinigameController : MinigameController
     /// <summary>Host only. The current player ran out of time; by default the turn passes on.</summary>
     protected virtual void OnTurnTimedOut() => AdvanceTurn();
 
-    /// <summary>Optional extra HUD line (e.g. mines left).</summary>
-    public virtual string GetStatusText() => null;
-
     protected void EliminatePlayer(PlayerRef player)
     {
         if (!HasStateAuthority) return;
