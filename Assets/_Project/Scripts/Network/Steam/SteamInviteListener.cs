@@ -80,9 +80,14 @@ public class SteamInviteListener : MonoBehaviour
 
     private async UniTask JoinFusionSession(string fusionCode)
     {
-        if (!_networkRunner.IsConnected)
-            await _networkRunner.InitAsync();
-
-        await _networkRunner.JoinByCodeAsync(fusionCode);
+        try
+        {
+            if (!await _networkRunner.JoinByCodeAsync(fusionCode))
+                Debug.LogWarning($"Steam invite: could not join lobby {fusionCode}.");
+        }
+        finally
+        {
+            _loadingPanel.Close();
+        }
     }
 }

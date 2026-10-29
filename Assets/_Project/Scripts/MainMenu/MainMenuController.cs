@@ -16,7 +16,7 @@ public class MainMenuController
 
     public async UniTask<string> OnHostLobbyButtonClicked(bool isPublic)
     {
-        string code = await _networkRunner.CreateLobbyAsync(isPublic);
+        string code = await _networkRunner.CreateLobbyAsync(SessionSettings.Default(isPublic));
         return code;
     }
 

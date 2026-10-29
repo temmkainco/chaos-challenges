@@ -2856,12 +2856,16 @@ namespace Fusion.Editor {
       private int               _rootFolderIndex;
 
       private readonly string[] _rootFolders;
+      // [chaos-challenges patch] kept so the filter can be re-applied per root folder;
+      // HierarchyProperty.CopySearchFilterFrom no longer exists in Unity 6000.4.
+      private readonly string   _searchFilter;
 
       /// <summary>
       /// Creates a new instance.
       /// </summary>
       public AssetEnumerator(string root, string label, Type type) {
         var searchFilter = MakeSearchFilter(label, type);
+        _searchFilter    = searchFilter;
         _rootFolderIndex = 0;
         if (string.IsNullOrEmpty(root)) {
           // search everywhere
@@ -2889,7 +2893,7 @@ namespace Fusion.Editor {
         }
 
         var newHierarchyProperty = new HierarchyProperty(_rootFolders[++_rootFolderIndex]);
-        UnityInternal.HierarchyProperty.CopySearchFilterFrom(newHierarchyProperty, _hierarchyProperty);
+        newHierarchyProperty.SetSearchFilter(_searchFilter, (int)SearchableEditorWindow.SearchMode.All);
         _hierarchyProperty = newHierarchyProperty;
 
         // try again
@@ -7537,13 +7541,9 @@ namespace Fusion.Editor {
       public static readonly GetHelpIconDelegate      GetHelpIcon      = typeof(UnityEditor.EditorGUIUtility).CreateMethodDelegate<GetHelpIconDelegate>(nameof(GetHelpIcon));
     }
 
-    [UnityEditor.InitializeOnLoad]
-    public static class HierarchyProperty {
-      public delegate void CopySearchFilterFromDelegate(UnityEditor.HierarchyProperty to, UnityEditor.HierarchyProperty from);
-      public static CopySearchFilterFromDelegate CopySearchFilterFrom = typeof(UnityEditor.HierarchyProperty).CreateMethodDelegate<CopySearchFilterFromDelegate>(nameof(CopySearchFilterFrom), 
-        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-    }
-    
+    // [chaos-challenges patch] UnityInternal.HierarchyProperty.CopySearchFilterFrom removed:
+    // the method no longer exists in Unity 6000.4 and its static initializer threw on load.
+
     [UnityEditor.InitializeOnLoad]
     public static class ScriptAttributeUtility {
       

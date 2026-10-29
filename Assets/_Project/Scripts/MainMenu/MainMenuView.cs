@@ -18,6 +18,7 @@ public class MainMenuView : MonoBehaviour
 
     [Inject] private LoadingPanel _loadingPanel;
     [Inject] private SteamInviteListener _steamInviteListener;
+    [Inject] private Networking.INetworkRunner _networkRunner;
 
     private MainMenuController _controller;
     private IPlatformService _platformService;
@@ -40,6 +41,27 @@ public class MainMenuView : MonoBehaviour
         _playerNameInput.interactable = _platformService is LocalPlatformService;
         _playerNameInput.text = _platformService.GetPlayerName();
         _playerNameInput.onEndEdit.AddListener(OnPlayerNameInputFieldChanged);
+
+        // The menu can become active before or after the disconnect is reported, so handle both.
+        _networkRunner.Disconnected += OnDisconnected;
+        ShowDisconnectReason();
+    }
+
+    private void OnDisable()
+    {
+        _networkRunner.Disconnected -= OnDisconnected;
+    }
+
+    private void OnDisconnected(string reason) => ShowDisconnectReason();
+
+    private void ShowDisconnectReason()
+    {
+        string disconnectReason = _networkRunner.ConsumeDisconnectReason();
+        if (disconnectReason != null)
+        {
+            Debug.LogWarning($"Returned to menu: {disconnectReason}");
+            //TODO: Show disconnect message panel
+        }
     }
 
     private void OnPlayerNameInputFieldChanged(string newName)

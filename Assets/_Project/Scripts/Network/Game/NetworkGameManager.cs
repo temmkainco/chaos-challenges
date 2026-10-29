@@ -19,8 +19,6 @@ public class NetworkGameManager : NetworkBehaviour
     private PlayerRef[] _playerSlots = new PlayerRef[6];
 
     [Inject] private MinigameSceneDatabaseSO _database;
-    private const int LOBBY_SCENE_BUILD_INDEX = 2;
-    private const int INTERMISSION_SCENE_BUILD_INDEX = 4;
 
     public MinigameDefinitionSO GetDefinitionByIndex(int index)
     {
@@ -170,7 +168,7 @@ public class NetworkGameManager : NetworkBehaviour
         for (int rank = 0; rank < ranked.Count; rank++)
             Debug.Log($"  #{rank + 1} Player slot {ranked[rank].slot} — {ranked[rank].score} pts");
 
-        SceneRef lobbyScene = SceneRef.FromIndex(LOBBY_SCENE_BUILD_INDEX);
+        SceneRef lobbyScene = SceneRef.FromIndex(GameScenes.LobbyBuildIndex);
         await Runner.LoadScene(lobbyScene);
     }
 
@@ -188,7 +186,7 @@ public class NetworkGameManager : NetworkBehaviour
         if (def == null) return;
 
         // 2. Load intermission scene (curtain is closed so load is invisible)
-        await Runner.LoadScene(SceneRef.FromIndex(INTERMISSION_SCENE_BUILD_INDEX));
+        await Runner.LoadScene(SceneRef.FromIndex(GameScenes.IntermissionBuildIndex));
 
         if (HasStateAuthority)
             StartCoroutine(WaitForIntermission());

@@ -62,3 +62,7 @@ UserSettings/
 *.apk
 *.aab
 *.unitypackage
+
+# ============== Local builds and documents =================
+chaos-build/
+*.pdf
