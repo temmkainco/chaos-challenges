@@ -21,6 +21,9 @@ public class MinigameIntermissionUI : MonoBehaviour
     [SerializeField] private float _cameraBlendDuration = 0.5f;
 
     private MinigameIntermissionController _controller;
+    private int _ready;
+    private int _total;
+    private int _shownSeconds = -1;
 
 
     private void Start()
@@ -79,9 +82,31 @@ public class MinigameIntermissionUI : MonoBehaviour
             .SetEase(Ease.InOutSine);
     }
 
+    private void Update()
+    {
+        if (_controller == null || _controller.Object == null || !_controller.Object.IsValid)
+            return;
+
+        int seconds = Mathf.CeilToInt(_controller.ReadyTimeRemaining);
+        if (seconds != _shownSeconds)
+        {
+            _shownSeconds = seconds;
+            RefreshReadyText();
+        }
+    }
+
     private void UpdateReadyCount(int ready, int total)
     {
-        _readyCountText.text = $"{ready} / {total}";
+        _ready = ready;
+        _total = total;
+        RefreshReadyText();
+    }
+
+    private void RefreshReadyText()
+    {
+        _readyCountText.text = _shownSeconds > 0
+            ? $"{_ready} / {_total}\n<size=50%>Starting in {_shownSeconds}s</size>"
+            : $"{_ready} / {_total}";
     }
 
     private void OnReadyClicked()

@@ -11,6 +11,7 @@ public class HostLobbyPanel : PanelBase
     [SerializeField] private Button _hostButton;
     [SerializeField] private Toggle _isPublicToggle;
     [Inject] private LoadingPanel _loadingPanel;
+    [Inject] private MessagePanel _messagePanel;
 
     private MainMenuController _controller;
 
@@ -45,14 +46,14 @@ public class HostLobbyPanel : PanelBase
 
             if (string.IsNullOrEmpty(code))
             {
-                Debug.LogError("Failed to host lobby.");
-                // TODO: Show an error message (e.g., ErrorPanel.Open("Failed to create lobby."))
+                Debug.LogWarning("Failed to host lobby.");
+                _messagePanel.Show(_controller.LastError ?? "Could not create a lobby.");
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"Error hosting lobby: {e.Message}");
-            // TODO: Show a connection error message
+            _messagePanel.Show("Could not create a lobby. Check your connection.");
         }
         finally
         {

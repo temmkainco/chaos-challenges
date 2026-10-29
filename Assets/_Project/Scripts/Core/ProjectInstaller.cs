@@ -14,6 +14,7 @@ namespace Core
 
         [Header("UI Prefabs")]
         [field: SerializeField] public LoadingPanel LoadingPanelPrefab { get; private set; }
+        [field: SerializeField] public MessagePanel MessagePanelPrefab { get; private set; }
 
         [Header("NetworkRunner Prefab")]
         [field: SerializeField] public FusionNetworkRunner NetworkRunnerPrefab { get; private set; }
@@ -48,6 +49,14 @@ namespace Core
             {
                 Container.Bind<LoadingPanel>()
                     .FromComponentInNewPrefab(LoadingPanelPrefab)
+                    .AsSingle()
+                    .NonLazy();
+            }
+
+            if (MessagePanelPrefab != null)
+            {
+                Container.Bind<MessagePanel>()
+                    .FromComponentInNewPrefab(MessagePanelPrefab)
                     .AsSingle()
                     .NonLazy();
             }

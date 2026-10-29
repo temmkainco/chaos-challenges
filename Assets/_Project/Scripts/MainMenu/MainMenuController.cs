@@ -14,6 +14,9 @@ public class MainMenuController
         _networkRunner = networkRunner;
     }
 
+    /// <summary>User-facing reason of the last failed host or join.</summary>
+    public string LastError => _networkRunner.LastError;
+
     public async UniTask<string> OnHostLobbyButtonClicked(bool isPublic)
     {
         string code = await _networkRunner.CreateLobbyAsync(SessionSettings.Default(isPublic));

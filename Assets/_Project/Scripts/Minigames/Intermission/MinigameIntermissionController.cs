@@ -13,6 +13,9 @@ public class MinigameIntermissionController : NetworkBehaviour
     [Networked, OnChangedRender(nameof(OnDefinitionReceived))]
     private int MinigameIndex { get; set; }
 
+    /// <summary>The round starts when this runs out even if not everyone pressed ready (AFK players).</summary>
+    [Networked] public TickTimer ReadyTimer { get; private set; }
+
     private NetworkGameManager _gameManager;
     private bool _localReady;
     private bool _proceeding;
@@ -25,6 +28,9 @@ public class MinigameIntermissionController : NetworkBehaviour
 
     [SerializeField] private CinemachineCamera _matchStartCamera;
     [SerializeField] private float _cameraBlendDuration = 1.5f;
+    [SerializeField] private float _readyTimeout = 30f;
+
+    public float ReadyTimeRemaining => ReadyTimer.RemainingTime(Runner) ?? 0f;
 
     public MinigameDefinitionSO CurrentDefinition => _gameManager?.GetDefinitionByIndex(MinigameIndex);
 
@@ -33,9 +39,21 @@ public class MinigameIntermissionController : NetworkBehaviour
         _gameManager = NetworkGameManager.Instance;
 
         if (HasStateAuthority)
+        {
             MinigameIndex = _gameManager.CurrentMinigameIndex;
+            ReadyTimer = TickTimer.CreateFromSeconds(Runner, _readyTimeout);
+        }
         else
             OnDefinitionReceived();
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority || _proceeding || !ReadyTimer.Expired(Runner))
+            return;
+
+        Debug.Log($"[Intermission] Ready timeout: starting with {ReadyCount}/{TotalPlayers} ready");
+        Proceed();
     }
 
     private void OnDefinitionReceived()
@@ -81,10 +99,14 @@ public class MinigameIntermissionController : NetworkBehaviour
         Debug.Log($"[Intermission] Ready: {ReadyCount}/{TotalPlayers}");
 
         if (!_proceeding && TotalPlayers > 0 && ReadyCount >= TotalPlayers)
-        {
-            _proceeding = true;
-            RPC_AllReady();
-        }
+            Proceed();
+    }
+
+    private void Proceed()
+    {
+        _proceeding = true;
+        ReadyTimer = TickTimer.None;
+        RPC_AllReady();
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

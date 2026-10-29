@@ -3904,7 +3904,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RacingMinigameController
   _IsGameActive: 0
-  _minigameDefinition: {fileID: 11400000, guid: d701c60a94211e84db245011db98ef7a, type: 2}
+  _minigameDefinition: {fileID: 11400000, guid: 7b68896fe4713fb458a29fb6b17814c8, type: 2}
   _hasCountdown: 1
 --- !u!1 &2007313043
 GameObject:
@@ -4132,7 +4132,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2107063369}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5f45b4cfd4515a4f80a12b1d77c0918, type: 3}
+  m_Script: {fileID: 11500000, guid: 8fc1acb950caa8f4088bcc51fb5d53b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RacingPlayerSpawner
   _playerPrefab:

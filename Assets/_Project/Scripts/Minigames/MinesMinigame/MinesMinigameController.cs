@@ -17,10 +17,10 @@ public class MinesMinigameController : TurnBasedMinigameController
         _minefield.Generate(_alivePlayers.Count);
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    public void RPC_ResolveTile(int x, int y)
+    /// <summary>Host only; called by the pressed <see cref="ExplodeButton"/> from the host-side interaction.</summary>
+    public void ResolveTile(int x, int y)
     {
-        if (!IsGameActive) return;
+        if (!HasStateAuthority || !IsGameActive) return;
 
         RPC_PressButton(x, y);
 

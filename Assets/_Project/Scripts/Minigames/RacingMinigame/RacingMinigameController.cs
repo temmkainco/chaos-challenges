@@ -45,11 +45,18 @@ public class RacingMinigameController : MinigameController
         if (!IsGameActive)
             return;
 
-        bool anyoneStillRacing = Runner.ActivePlayers
-            .Any(p => GameManager.IsConnectedPlayer(p) && !_finishOrder.Contains(p));
-
-        if (!anyoneStillRacing)
+        if (!ConnectedPlayers().Any(p => !_finishOrder.Contains(p)))
             FinishRound(_finishOrder);
+    }
+
+    /// <summary>Finishers keep their order; everyone still racing ties for the places after them.</summary>
+    protected override IReadOnlyList<IReadOnlyList<PlayerRef>> GetTimeUpStandings()
+    {
+        var standings = _finishOrder.Select(p => (IReadOnlyList<PlayerRef>)new[] { p }).ToList();
+        var stillRacing = ConnectedPlayers().Where(p => !_finishOrder.Contains(p)).ToList();
+        if (stillRacing.Count > 0)
+            standings.Add(stillRacing);
+        return standings;
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

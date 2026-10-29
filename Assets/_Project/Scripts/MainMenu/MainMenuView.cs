@@ -19,6 +19,7 @@ public class MainMenuView : MonoBehaviour
     [Inject] private LoadingPanel _loadingPanel;
     [Inject] private SteamInviteListener _steamInviteListener;
     [Inject] private Networking.INetworkRunner _networkRunner;
+    [Inject] private MessagePanel _messagePanel;
 
     private MainMenuController _controller;
     private IPlatformService _platformService;
@@ -61,7 +62,7 @@ public class MainMenuView : MonoBehaviour
         if (disconnectReason != null)
         {
             Debug.LogWarning($"Returned to menu: {disconnectReason}");
-            //TODO: Show disconnect message panel
+            _messagePanel.Show(disconnectReason);
         }
     }
 
@@ -83,14 +84,14 @@ public class MainMenuView : MonoBehaviour
 
             if (!success)
             {
-                Debug.LogError("Failed to join random lobby.");
-                //TODO: Show not joined message
+                Debug.LogWarning("Failed to join random lobby.");
+                _messagePanel.Show(_controller.LastError ?? "Could not find a game to join.");
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"Error joining random lobby: {e.Message}");
-            //TODO: Show error message
+            _messagePanel.Show("Could not join a game. Check your connection.");
         }
         finally
         {

@@ -7,6 +7,7 @@ public class PlayerInput : NetworkBehaviour
     public NetworkButtons Buttons { get; private set; }
     public Vector2 Move { get; private set; }
     public Quaternion CameraRotation { get; private set; }
+    public Vector3 LookDirection { get; private set; }
     public bool IsJumpPressed { get; private set; }
     public bool IsInteractPressed { get; private set; }
 
@@ -45,8 +46,14 @@ public class PlayerInput : NetworkBehaviour
         IsJumpPressed = Controls.Player.Jump.IsPressed();
         IsInteractPressed = Controls.Player.Interact.IsPressed();
 
+        if (_camera == null)
+            _camera = Camera.main;
+        if (_camera == null)
+            return;
+
         Quaternion cameraRotation = _camera.transform.rotation;
         CameraRotation = Quaternion.Euler(0, cameraRotation.eulerAngles.y, 0);
+        LookDirection = _camera.transform.forward;
     }
 
     private void OnDestroy()

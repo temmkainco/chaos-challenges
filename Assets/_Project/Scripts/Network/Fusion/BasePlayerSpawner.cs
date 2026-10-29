@@ -1,9 +1,14 @@
 using Core;
 using Fusion;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Zenject;
 
+/// <summary>
+/// Spawns one player object per connected player and gives each a spawn point of their own.
+/// During a match the point follows the player's roster slot, so everyone starts in the same spot every round.
+/// </summary>
 public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 {
     public event Action OnPlayersChangedEvent;
@@ -16,32 +21,37 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
     [Networked, Capacity(6)]
     public NetworkDictionary<PlayerRef, Player> Players => default;
 
+    /// <summary>Minigames keep players frozen until the round starts.</summary>
+    protected virtual bool LockControlsOnSpawn => false;
+
+    private readonly Dictionary<PlayerRef, int> _assignedSpawns = new();
+
     public override void Spawned()
     {
         if (!HasStateAuthority)
             return;
 
-        RespawnAllActivePlayers();
-    }
+        if (_spawnPoints == null || _spawnPoints.Length == 0)
+            Debug.LogError($"{GetType().Name}: no spawn points assigned; players spawn at the origin.");
 
-    private void RespawnAllActivePlayers()
-    {
         foreach (var playerRef in Runner.ActivePlayers)
         {
-            if (!Players.ContainsKey(playerRef))
-            {
-                if (Runner.GetPlayerObject(playerRef) == null)
-                {
-                    PlayerJoined(playerRef);
-                }
-            }
+            if (!Players.ContainsKey(playerRef) && Runner.GetPlayerObject(playerRef) == null)
+                PlayerJoined(playerRef);
         }
     }
 
+    /// <summary>Host only. Puts the player back on their spawn point (respawn zones).</summary>
     public void RequestSpawn(Player player)
     {
         if (!HasStateAuthority) return;
-        RespawnPlayer(player);
+
+        var spawn = GetSpawnPoint(player.Object.InputAuthority);
+        if (player.TryGetComponent<NetworkCharacterController>(out var controller))
+        {
+            controller.Teleport(spawn.position, Quaternion.identity);
+            controller.Velocity = Vector3.zero;
+        }
     }
 
     public virtual void PlayerJoined(PlayerRef player)
@@ -56,9 +66,10 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
 
         Debug.Log($"Spawning player {player}");
 
-        Vector3 spawnPosition = GetSpawnPosition();
-        NetworkObject playerObject = Runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
+        var spawn = GetSpawnPoint(player);
+        NetworkObject playerObject = Runner.Spawn(_playerPrefab, spawn.position, Quaternion.identity, player);
         var playerBehaviour = playerObject.GetComponent<Player>();
+        playerBehaviour.ControlsLocked = LockControlsOnSpawn;
         _container.InjectGameObject(playerBehaviour.gameObject);
         Players.Add(player, playerBehaviour);
         Runner.SetPlayerObject(player, playerObject);
@@ -69,31 +80,48 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
     {
         if (!HasStateAuthority) return;
 
+        _assignedSpawns.Remove(player);
+
         if (Players.TryGet(player, out Player playerBehaviour))
         {
             Debug.Log($"Despawning player {player}");
             Players.Remove(player);
-            Runner.Despawn(playerBehaviour.Object);
+            if (playerBehaviour != null)
+                Runner.Despawn(playerBehaviour.Object);
             RPC_UpdateList();
         }
     }
 
-    protected virtual void RespawnPlayer(Player player)
+    private (Vector3 position, Quaternion rotation) GetSpawnPoint(PlayerRef player)
     {
-        Vector3 spawnPosition = GetSpawnPosition();
-        Quaternion spawnRotation = Quaternion.identity;
+        if (_spawnPoints == null || _spawnPoints.Length == 0)
+            return (Vector3.zero, Quaternion.identity);
 
-        if (player.TryGetComponent<NetworkCharacterController>(out var controller))
+        if (!_assignedSpawns.TryGetValue(player, out int index))
         {
-            controller.Teleport(spawnPosition, spawnRotation);
-            controller.Velocity = Vector3.zero;
+            index = PickSpawnIndex(player);
+            _assignedSpawns[player] = index;
         }
+
+        var point = _spawnPoints[index];
+        return (point.position, point.rotation);
     }
 
-    protected virtual Vector3 GetSpawnPosition()
+    private int PickSpawnIndex(PlayerRef player)
     {
-        if (_spawnPoints.Length == 0) return Vector3.zero;
-        return _spawnPoints[DeterministicRandom.Next(0, _spawnPoints.Length)].position;
+        var gameManager = NetworkGameManager.Instance;
+        int slot = gameManager != null ? gameManager.GetRosterSlot(player) : -1;
+        if (slot >= 0 && slot < _spawnPoints.Length && !_assignedSpawns.ContainsValue(slot))
+            return slot;
+
+        for (int i = 0; i < _spawnPoints.Length; i++)
+        {
+            if (!_assignedSpawns.ContainsValue(i))
+                return i;
+        }
+
+        // More players than spawn points: share one.
+        return DeterministicRandom.Next(0, _spawnPoints.Length);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

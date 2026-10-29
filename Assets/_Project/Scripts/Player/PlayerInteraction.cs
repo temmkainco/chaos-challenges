@@ -1,17 +1,24 @@
 using Fusion;
-using System.Linq;
 using UnityEngine;
 
+/// <summary>
+/// Interaction runs from the networked input: the host raycasts along the player's
+/// <see cref="NetworkInputData.LookDirection"/> and applies the result, so every client sees the same outcome.
+/// The owning client only adds instant local feedback (<see cref="ILocalInteractable"/>) and the focus highlight.
+/// </summary>
 public class PlayerInteraction : NetworkBehaviour
 {
     [Networked] public NetworkObject HeldObject { get; private set; }
+    /// <summary>Last aim direction from input; throws use it.</summary>
+    [Networked] public Vector3 LookDirection { get; private set; }
+    [Networked] private NetworkButtons PreviousButtons { get; set; }
+
     public IInteractable CurrentTarget { get; private set; }
 
     [SerializeField] private float _distance = 3f;
     [SerializeField] private LayerMask _mask;
     [SerializeField] private Transform _eyesPoint;
 
-    private NetworkButtons _previousButtons;
     private Player _player;
     private FocusHighlighter _focusHighlighter = new();
 
@@ -21,13 +28,13 @@ public class PlayerInteraction : NetworkBehaviour
 
         if (!Object.HasStateAuthority && !Object.HasInputAuthority)
             return;
-        
+
         Runner.SetPlayerObject(Object.InputAuthority, Object);
     }
 
     void Update()
     {
-        if (!Object.HasInputAuthority) return;
+        if (Object == null || !Object.HasInputAuthority) return;
         UpdateLocalTarget();
     }
 
@@ -35,6 +42,7 @@ public class PlayerInteraction : NetworkBehaviour
     {
         if (HeldObject != null)
         {
+            _focusHighlighter.Clear();
             CurrentTarget = null;
             return;
         }
@@ -42,7 +50,7 @@ public class PlayerInteraction : NetworkBehaviour
         Ray ray = new Ray(_eyesPoint.position, _player.Camera.transform.forward);
         if (Physics.Raycast(ray, out var hit, _distance, _mask))
         {
-            CurrentTarget = hit.collider.gameObject.GetComponent<IInteractable>();
+            CurrentTarget = hit.collider.GetComponentInParent<IInteractable>();
             _focusHighlighter.Highlight(CurrentTarget);
         }
         else
@@ -54,28 +62,32 @@ public class PlayerInteraction : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        if (HasStateAuthority)
+            ClearStaleHeldObject();
+
         if (!GetInput(out NetworkInputData input)) return;
         if (_player.ControlsLocked)
             input.Buttons = default;
 
-        var pressed = input.Buttons.GetPressed(_previousButtons);
+        bool interactPressed = input.Buttons.WasPressed(PreviousButtons, InputButtons.Interact);
+        PreviousButtons = input.Buttons;
 
-        if (Object.HasInputAuthority && Runner.IsForward)
-        {
-            if (pressed.WasPressed(_previousButtons, InputButtons.Interact))
-            {
-                if (HeldObject != null) {
-                    RPC_RequestCancelInteraction();
-                    return;
-                }
+        if (input.LookDirection.sqrMagnitude > 0.01f)
+            LookDirection = input.LookDirection.normalized;
 
-                TryLocalInteraction();
+        if (!interactPressed)
+            return;
 
-                RPC_RequestInteraction(_player.Camera.transform.forward);
-            }
-        }
+        if (Object.HasInputAuthority && Runner.IsForward && HeldObject == null)
+            TryLocalInteraction();
 
-        _previousButtons = input.Buttons;
+        if (!HasStateAuthority)
+            return;
+
+        if (HeldObject != null)
+            ReleaseHeldObject();
+        else
+            InteractWithTarget();
     }
 
     private void TryLocalInteraction()
@@ -86,41 +98,38 @@ public class PlayerInteraction : NetworkBehaviour
         localInteractable.LocalInteract();
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestInteraction(Vector3 lookDir)
+    /// <summary>Host only.</summary>
+    private void InteractWithTarget()
     {
-        Ray ray = new Ray(_eyesPoint.position, lookDir);
+        if (!Runner.GetPhysicsScene().Raycast(_eyesPoint.position, LookDirection, out var hit, _distance, _mask))
+            return;
 
-        if (Runner.GetPhysicsScene().Raycast(ray.origin, ray.direction, out var hit, _distance, _mask))
-        {
-            var interactable = hit.collider.GetComponentInParent<IInteractable>();
-            if (interactable != null && interactable.CanBeInteractedWith)
-            {
-                interactable.Interact(Object.InputAuthority, Object);
+        var interactable = hit.collider.GetComponentInParent<IInteractable>();
+        if (interactable == null || !interactable.CanBeInteractedWith)
+            return;
 
-                if (!hit.collider.TryGetComponent<ICancellableInteractable>(out var cancellable))
-                    return;
+        interactable.Interact(Object.InputAuthority, Object);
 
-                if (cancellable is NetworkBehaviour networkBehaviour)
-                {
-                    HeldObject = networkBehaviour.Object;
-                }
-            }
-        }
+        if (interactable is ICancellableInteractable && interactable is NetworkBehaviour networkBehaviour)
+            HeldObject = networkBehaviour.Object;
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestCancelInteraction()
+    /// <summary>Host only.</summary>
+    private void ReleaseHeldObject()
+    {
+        if (HeldObject.TryGetComponent<ICancellableInteractable>(out var cancellable))
+            cancellable.CancelInteraction(Object.InputAuthority, Object);
+
+        HeldObject = null;
+    }
+
+    /// <summary>Host only. The object may have been despawned or dropped without us.</summary>
+    private void ClearStaleHeldObject()
     {
         if (HeldObject == null)
             return;
 
-        var networkBehaviour = HeldObject.GetComponent<NetworkBehaviour>();
-        if (networkBehaviour is ICancellableInteractable cancellable)
-        {
-            cancellable.CancelInteraction(Object.InputAuthority, Object);
+        if (!HeldObject.TryGetComponent<IGrabbable>(out var grabbable) || grabbable.CurrentHolder != Object.InputAuthority)
             HeldObject = null;
-        }
     }
-
 }

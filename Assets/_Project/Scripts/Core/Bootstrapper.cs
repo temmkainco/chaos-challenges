@@ -12,7 +12,7 @@ namespace Core
     {
         [Inject] private IPlatformService _platformService;
         [Inject] private INetworkRunner _networkRunner;
-
+        [InjectOptional] private SteamInviteListener _steamInviteListener;
 
         [Inject]
         public async void Initialize()
@@ -20,12 +20,10 @@ namespace Core
             SetTargetFrameRateToMonitorHz();
             _platformService.Init();
             await _networkRunner.InitAsync();
-            LoadMainMenu();
-        }
+            await SceneManager.LoadSceneAsync(GameScenes.MainMenu, LoadSceneMode.Single);
 
-        private void LoadMainMenu()
-        {
-            SceneManager.LoadSceneAsync("MainMenu", LoadSceneMode.Single);
+            // Started from a Steam invite or "Join Game" while the game was closed.
+            _steamInviteListener?.HandleLaunchArguments();
         }
 
         private void SetTargetFrameRateToMonitorHz()

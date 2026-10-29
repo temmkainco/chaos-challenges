@@ -12,6 +12,7 @@ public class JoinLobbyByCodePanel : PanelBase
     [SerializeField] private Button _joinButton;
     [SerializeField] private Button _closeButton;
     [Inject] private LoadingPanel _loadingPanel;
+    [Inject] private MessagePanel _messagePanel;
 
     private MainMenuController _controller;
 
@@ -84,14 +85,14 @@ public class JoinLobbyByCodePanel : PanelBase
 
             if (!ok)
             {
-                Debug.LogError("Failed to join lobby.");
-                // TODO: Show an error message (e.g., ErrorPanel.Open("Failed to create lobby."))
+                Debug.LogWarning("Failed to join lobby.");
+                _messagePanel.Show(_controller.LastError ?? "Could not join that lobby.");
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"Error joining lobby: {e.Message}");
-            // TODO: Show a connection error message
+            _messagePanel.Show("Could not join that lobby. Check your connection.");
         }
         finally
         {

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Zenject;
 
+/// <summary>Start countdown, and the final seconds of a time-limited round.</summary>
 public class MinigameCountdown : Countdown
 {
     [Inject] private MinigameController _minigameController;
@@ -10,6 +11,8 @@ public class MinigameCountdown : Countdown
         _minigameController.OnCountdownStarted += ShowCountdown;
         _minigameController.OnCountdownTick += UpdateCountdown;
         _minigameController.OnMinigameStart += HideCountdown;
+        _minigameController.OnTimeLimitTick += OnTimeLimitTick;
+        _minigameController.OnMinigameEnd += HideCountdown;
     }
 
     private void OnDisable()
@@ -20,5 +23,15 @@ public class MinigameCountdown : Countdown
         _minigameController.OnCountdownStarted -= ShowCountdown;
         _minigameController.OnCountdownTick -= UpdateCountdown;
         _minigameController.OnMinigameStart -= HideCountdown;
+        _minigameController.OnTimeLimitTick -= OnTimeLimitTick;
+        _minigameController.OnMinigameEnd -= HideCountdown;
+    }
+
+    private void OnTimeLimitTick(int seconds)
+    {
+        if (!_countdownContainer.activeSelf)
+            ShowCountdown();
+
+        UpdateCountdown(seconds);
     }
 }

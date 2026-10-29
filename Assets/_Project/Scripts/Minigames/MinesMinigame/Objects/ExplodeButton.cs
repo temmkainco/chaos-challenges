@@ -26,7 +26,7 @@ public class ExplodeButton : MonoBehaviour, IInteractable
     public void Interact(PlayerRef player, NetworkObject playerObject)
     {
         if (_controller.CurrentTurn != player) return;
-        _controller.RPC_ResolveTile(_x, _y);
+        _controller.ResolveTile(_x, _y);
     }
 
     public void Press()

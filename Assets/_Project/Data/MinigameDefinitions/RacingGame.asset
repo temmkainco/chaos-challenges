@@ -15,8 +15,8 @@ MonoBehaviour:
   <Id>k__BackingField: racing_game
   <SceneBuildIndex>k__BackingField: 5
   <GameType>k__BackingField: 3
-  <GameDuration>k__BackingField: -1
-  <IsTimeLimited>k__BackingField: 0
+  <GameDuration>k__BackingField: 120
+  <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 5
   <DisplayName>k__BackingField: Race of Death
   <Description>k__BackingField: <line-height=70%> <align="center"><size=140%><b>HOW

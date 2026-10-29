@@ -51,7 +51,6 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
 
     [Header("Match")]
     [SerializeField, Tooltip("0 = every minigame once")] private int _roundsPerMatch;
-    [SerializeField] private int _pointsPerPlace = 100;
 
     [Header("Timing")]
     [SerializeField] private float _roundOverDuration = 5f;
@@ -59,7 +58,10 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     [SerializeField] private float _finalRevealPerPlayer = 1.5f;
     [SerializeField] private float _sceneLoadTimeout = 20f;
 
-    [Inject] private MinigameSceneDatabaseSO _database;
+    [Header("Data")]
+    [SerializeField] private MinigameSceneDatabaseSO _database;
+
+    private INetworkRunner _session;
 
     /// <summary>Raised on every peer when <see cref="Phase"/> changes.</summary>
     public event Action<MatchPhase> PhaseChanged;
@@ -102,13 +104,18 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         return slot >= 0 && Roster[slot].Connected;
     }
 
+    /// <summary>The player's fixed slot for this match (0..5), or -1 outside a match. Used for spawn points.</summary>
+    public int GetRosterSlot(PlayerRef player) => GetSlot(player);
+
     public override void Spawned()
     {
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        if (_database == null)
-            FindFirstObjectByType<SceneContext>()?.Container.Inject(this);
+        // Spawned outside any scene's injection (clients can receive it while still in the menu).
+        _session = ProjectContext.Instance.Container.TryResolve<INetworkRunner>();
+
+        UpdateActivity();
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -149,10 +156,10 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     }
 
     /// <summary>
-    /// Ends the current round. <paramref name="placements"/> is ordered best first;
-    /// points go by place, and disconnected players get nothing.
+    /// Ends the current round. <paramref name="standings"/> is ordered best first and players in one group tie.
+    /// Points come from <see cref="PlacementScoring"/>; disconnected players get nothing.
     /// </summary>
-    public void SubmitRoundResult(IReadOnlyList<PlayerRef> placements)
+    public void SubmitRoundResult(IReadOnlyList<IReadOnlyList<PlayerRef>> standings)
     {
         if (!HasStateAuthority || Phase != MatchPhase.Playing)
             return;
@@ -164,19 +171,25 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
             Roster.Set(i, entry);
         }
 
-        int placeCount = placements.Count;
-        for (int place = 0; place < placeCount; place++)
+        int playerCount = standings.Sum(group => group.Count);
+        int place = 0;
+        foreach (var group in standings)
         {
-            int slot = GetSlot(placements[place]);
-            if (slot < 0 || !Roster[slot].Connected)
-                continue;
+            int points = PlacementScoring.PointsForPlace(place, playerCount);
+            foreach (var player in group)
+            {
+                int slot = GetSlot(player);
+                if (slot < 0 || !Roster[slot].Connected)
+                    continue;
 
-            var entry = Roster[slot];
-            entry.LastRoundPoints = (placeCount - place) * _pointsPerPlace;
-            entry.Score += entry.LastRoundPoints;
-            Roster.Set(slot, entry);
+                var entry = Roster[slot];
+                entry.LastRoundPoints = points;
+                entry.Score += points;
+                Roster.Set(slot, entry);
 
-            Debug.Log($"[Match] Round {RoundIndex + 1}: #{place + 1} {entry.Name} +{entry.LastRoundPoints} (total {entry.Score})");
+                Debug.Log($"[Match] Round {RoundIndex + 1}: #{place + 1} {entry.Name} +{points} (total {entry.Score})");
+            }
+            place += group.Count;
         }
 
         if (IsLastRound)
@@ -351,7 +364,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
                 if (controller == null)
                 {
                     Debug.LogError($"[Match] No MinigameController in scene {PendingSceneIndex}; skipping round.");
-                    SubmitRoundResult(Array.Empty<PlayerRef>());
+                    SubmitRoundResult(Array.Empty<IReadOnlyList<PlayerRef>>());
                     return;
                 }
                 controller.InitializeMinigame();
@@ -386,9 +399,12 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
             _loadedPlayers.Add(player);
     }
 
+    /// <summary>Closes the session and its Steam lobby during a match, so joins and invites fail with a clear message.</summary>
     private void SetSessionOpen(bool open)
     {
-        if (Runner.SessionInfo.IsValid)
+        if (_session != null)
+            _session.SetSessionOpen(open);
+        else if (Runner.SessionInfo.IsValid)
             Runner.SessionInfo.IsOpen = open;
     }
 
@@ -402,5 +418,21 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     private void OnPhaseChanged()
     {
         PhaseChanged?.Invoke(Phase);
+        UpdateActivity();
+    }
+
+    /// <summary>Status friends see on Steam.</summary>
+    private void UpdateActivity()
+    {
+        if (_session == null)
+            return;
+
+        string minigame = CurrentMinigame != null ? CurrentMinigame.DisplayName : "a minigame";
+        _session.SetActivity(Phase switch
+        {
+            MatchPhase.Lobby => "In the lobby",
+            MatchPhase.FinalReveal => "Watching the final results",
+            _ => $"Playing {minigame} (round {RoundIndex + 1}/{RoundCount})",
+        });
     }
 }

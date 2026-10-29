@@ -2,8 +2,12 @@ using Fusion;
 using Fusion.Addons.Physics;
 using UnityEngine;
 
+/// <summary>
+/// Host-authoritative grab, carry and throw. The host owns the rigidbody: while held it is kinematic and
+/// follows the holder; on release it is thrown along the holder's look direction. Every peer snaps the
+/// held object to its holder in LateUpdate (after Fusion's interpolation) so it never trails behind a predicted player.
+/// </summary>
 [RequireComponent(typeof(NetworkRigidbody3D))]
-[RequireComponent(typeof(AuthorityHandler))]
 public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInteractable
 {
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
@@ -18,134 +22,109 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Header("Hold Settings")]
     public Vector3 _holdPositionOffset = new Vector3(0, 2, 0);
     [SerializeField] private float _throwForce = 5f;
-
+    [SerializeField, Tooltip("Extra lift so throws arc instead of hitting the ground")] private float _throwLift = 1.5f;
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;
-    private NetworkObject _lastHolder;
 
     private void Awake()
     {
         _nrb = GetComponent<NetworkRigidbody3D>();
         _collider = GetComponent<Collider>();
         Outline = GetComponent<Outline>();
-        Outline.enabled = false;
+        if (Outline != null)
+            Outline.enabled = false;
     }
 
     public override void Spawned()
     {
-        if (_collider != null)
-        {
-            _collider.enabled = false;
-            _collider.enabled = true;
-        }
-
-        Physics.SyncTransforms();
-
-        if (IsGrabbed && HolderObject != null)
-        {
-            _nrb.Rigidbody.isKinematic = true;
-            _nrb.Rigidbody.useGravity = false;
-            _collider.enabled = false;
-            _lastHolder = HolderObject;
-
-            transform.SetParent(HolderObject.transform);
-            transform.localPosition = _holdPositionOffset;
-            transform.localRotation = Quaternion.identity;
-        }
+        ApplyHeldState();
     }
 
-    void OnGrabbedChanged()
+    private void OnGrabbedChanged()
     {
-        if (IsGrabbed && HolderObject != null)
-        {
-            _nrb.Rigidbody.isKinematic = true;
-            _nrb.Rigidbody.useGravity = false;
-            _collider.enabled = false;
-            _lastHolder = HolderObject;
+        ApplyHeldState();
+    }
 
-            transform.SetParent(HolderObject.transform);
-            transform.localPosition = _holdPositionOffset;
-            transform.localRotation = Quaternion.identity;
-        }
-        else if (!IsGrabbed && _lastHolder != null)
-        {
-            _nrb.Rigidbody.isKinematic = false;
-            _nrb.Rigidbody.useGravity = true;
-            _collider.enabled = true;
-            _lastHolder = null;
+    /// <summary>Colliders are local state, so every peer applies them; the host also owns the rigidbody mode.</summary>
+    private void ApplyHeldState()
+    {
+        if (_collider != null)
+            _collider.enabled = !IsGrabbed;
 
-            transform.SetParent(null);
+        if (HasStateAuthority)
+        {
+            _nrb.Rigidbody.isKinematic = IsGrabbed;
+            _nrb.Rigidbody.useGravity = !IsGrabbed;
         }
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (!IsGrabbed || HolderObject == null)
+        if (!HasStateAuthority || !IsGrabbed)
             return;
 
-        _nrb.Rigidbody.position = transform.position;
-        _nrb.Rigidbody.rotation = transform.rotation;
+        // The holder left or was despawned.
+        if (HolderObject == null)
+        {
+            Release(Vector3.zero);
+            return;
+        }
+
+        FollowHolder();
     }
 
-    public override void Render()
+    private void LateUpdate()
     {
-        if (!IsGrabbed || HolderObject == null)
-            return;
-
-        _nrb.Rigidbody.position = transform.position;
-        _nrb.Rigidbody.rotation = transform.rotation;
+        if (Object != null && Object.IsValid && IsGrabbed && HolderObject != null)
+            transform.SetPositionAndRotation(HoldPosition, HolderObject.transform.rotation);
     }
-
 
     public void Interact(PlayerRef player, NetworkObject playerObject)
     {
-        if (!Object.HasStateAuthority) return;
+        if (!HasStateAuthority || IsGrabbed) return;
 
         CurrentHolder = player;
         HolderObject = playerObject;
         IsGrabbed = true;
 
-        _nrb.Rigidbody.isKinematic = true;
-        _nrb.Rigidbody.useGravity = false;
-
-        _collider.enabled = false;
-
-        transform.SetParent(playerObject.transform);
-        transform.localPosition = _holdPositionOffset;
-        transform.localRotation = Quaternion.identity;
-
-        _nrb.Rigidbody.position = transform.position;
-        _nrb.Rigidbody.rotation = transform.rotation;
+        _nrb.Rigidbody.linearVelocity = Vector3.zero;
+        _nrb.Rigidbody.angularVelocity = Vector3.zero;
+        ApplyHeldState();
+        FollowHolder();
     }
 
     public void CancelInteraction(PlayerRef player, NetworkObject playerObject)
     {
-        if (!Object.HasStateAuthority) return;
+        if (!HasStateAuthority || !IsGrabbed || player != CurrentHolder) return;
 
-        _lastHolder = HolderObject;
+        Vector3 look = playerObject.TryGetComponent<PlayerInteraction>(out var interaction) && interaction.LookDirection.sqrMagnitude > 0.01f
+            ? interaction.LookDirection
+            : playerObject.transform.forward;
 
+        Release(look * _throwForce + Vector3.up * _throwLift);
+    }
+
+    private Vector3 HoldPosition => HolderObject.transform.TransformPoint(_holdPositionOffset);
+
+    private void FollowHolder()
+    {
+        Vector3 position = HoldPosition;
+        Quaternion rotation = HolderObject.transform.rotation;
+        transform.SetPositionAndRotation(position, rotation);
+        _nrb.Rigidbody.position = position;
+        _nrb.Rigidbody.rotation = rotation;
+    }
+
+    private void Release(Vector3 impulse)
+    {
         CurrentHolder = PlayerRef.None;
         HolderObject = null;
         IsGrabbed = false;
+        ApplyHeldState();
 
-        _nrb.Rigidbody.isKinematic = false;
-        _nrb.Rigidbody.useGravity = true;
         _nrb.Rigidbody.WakeUp();
-
-        _collider.enabled = true;
-
-        transform.SetParent(null);
-        
-        var playerBehaviour = playerObject.GetComponent<Player>();
-
-        var force = playerBehaviour != null
-            ? playerBehaviour.Camera.transform.forward * _throwForce
-            : Vector3.zero;
-
-        if (force.sqrMagnitude > 0)
-        {
-            _nrb.Rigidbody.AddForce(force, ForceMode.Impulse);
-        }
+        if (impulse.sqrMagnitude > 0f)
+            _nrb.Rigidbody.AddForce(impulse, ForceMode.Impulse);
     }
 }
