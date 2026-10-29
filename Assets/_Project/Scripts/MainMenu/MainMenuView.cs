@@ -17,7 +17,6 @@ public class MainMenuView : MonoBehaviour
     [SerializeField] private PanelBase _hostLobbyPanel;
 
     [Inject] private LoadingPanel _loadingPanel;
-    [Inject] private SteamInviteListener _steamInviteListener;
     [Inject] private Networking.INetworkRunner _networkRunner;
     [Inject] private MessagePanel _messagePanel;
 

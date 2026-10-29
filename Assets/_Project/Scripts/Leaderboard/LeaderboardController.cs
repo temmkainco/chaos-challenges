@@ -58,14 +58,15 @@ public class LeaderboardController : NetworkBehaviour
         if (isFinal)
         {
             int topScore = roster.Count > 0 ? roster.Max(r => r.Score) : 0;
+            // Equal scores share a rank (1, 1, 3...).
             entries = roster
                 .OrderByDescending(r => r.Score)
-                .Select((r, i) => new LeaderboardEntry
+                .Select(r => new LeaderboardEntry
                 {
                     PlayerName = r.Name.ToString(),
                     MinigameScore = r.LastRoundPoints,
                     TotalScore = r.Score,
-                    Rank = i + 1,
+                    Rank = 1 + roster.Count(other => other.Score > r.Score),
                     IsOverallWinner = r.Score == topScore,
                 })
                 .ToList();

@@ -66,6 +66,12 @@ public class MinigameController : NetworkBehaviour
     /// <summary>Host only. A player disconnected during this round.</summary>
     public virtual void HandlePlayerLeft(PlayerRef player) { }
 
+    /// <summary>
+    /// A player touched the kill zone (called on every peer; only the host acts). Return true when the minigame
+    /// handles it, false to send the player back to their spawn point.
+    /// </summary>
+    public virtual bool HandlePlayerFell(Player player) => false;
+
     /// <summary>Host only. Opens the round: players can move. Overrides call the base first.</summary>
     protected virtual void StartGame()
     {

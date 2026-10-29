@@ -12,21 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
   m_Name: MinesGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
-  <Id>k__BackingField: mines_game
+  <Id>k__BackingField: mines
   <SceneBuildIndex>k__BackingField: 3
   <GameType>k__BackingField: 2
-  <GameDuration>k__BackingField: -1
+  <GameDuration>k__BackingField: 0
   <IsTimeLimited>k__BackingField: 0
   <StartDelay>k__BackingField: 3
-  <DisplayName>k__BackingField: Mines & Mines
-  <Description>k__BackingField: <line-height=70%> <align="center"><size=140%><b>HOW
-    TO PLAY</b></size></align><br> <b>1. The Field:</b> Players stand on a grid of
-    numbered <color=#00FFFF>Mines Plates</color>.  <br><b>2. The Turn:</b> Players
-    take turns one by one. On your turn, you must choose and activate a single plate.
-    <br><br><b>3. The Outcome:</b> <br>If the plate is <b><color=#00FF00>Safe</color></b>,
-    you stay in the game and the next player takes their turn.       <br><br>If the
-    plate is a <b><color=#FF0000>Mine</color></b>, you are eliminated from the round. 
-    <br><br><b>4. Winning:</b> The game continues until only one player is left.
-    The <b><color=#FFFF00>Last One Standing</color></b> wins the match. </line-height>
+  <DisplayName>k__BackingField: Mines
+  <Description>k__BackingField: One by one, press a plate on the minefield. Safe
+    plates pass the turn; mines send you flying. Last contestant standing wins!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 760f87eb36a7ec8449ca140488c89bf5, type: 3}
-  <Rules>k__BackingField: []
+  <Rules>k__BackingField:
+  - Look at a plate and press E on your turn
+  - Too slow? The show presses one for you
+  - When only mines are left, a new field is dealt

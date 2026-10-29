@@ -47,12 +47,23 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         if (!HasStateAuthority) return;
 
         var spawn = GetSpawnPoint(player.Object.InputAuthority);
+        Teleport(player, spawn.position, spawn.rotation);
+    }
+
+    /// <summary>Host only.</summary>
+    public void Teleport(Player player, Vector3 position, Quaternion? rotation = null)
+    {
+        if (!HasStateAuthority || player == null) return;
+
         if (player.TryGetComponent<NetworkCharacterController>(out var controller))
         {
-            controller.Teleport(spawn.position, Quaternion.identity);
+            controller.Teleport(position, rotation ?? player.transform.rotation);
             controller.Velocity = Vector3.zero;
         }
     }
+
+    /// <summary>Host only. The player's own spawn point.</summary>
+    public Vector3 GetSpawnPosition(PlayerRef player) => GetSpawnPoint(player).position;
 
     public virtual void PlayerJoined(PlayerRef player)
     {
@@ -67,7 +78,7 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         Debug.Log($"Spawning player {player}");
 
         var spawn = GetSpawnPoint(player);
-        NetworkObject playerObject = Runner.Spawn(_playerPrefab, spawn.position, Quaternion.identity, player);
+        NetworkObject playerObject = Runner.Spawn(_playerPrefab, spawn.position, spawn.rotation, player);
         var playerBehaviour = playerObject.GetComponent<Player>();
         playerBehaviour.ControlsLocked = LockControlsOnSpawn;
         _container.InjectGameObject(playerBehaviour.gameObject);

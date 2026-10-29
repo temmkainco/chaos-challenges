@@ -21,7 +21,8 @@ Working plan for reworking the existing game and building the GDD minigames
 | 1 | Done — verified with Multiplayer Play Mode: host, leave, re-host, private join by code, client leave/rejoin, host leaving sends client to menu with a reason |
 | 2 | Done — verified with 2 players: two full matches back to back (random round order, hidden round results, final reveal, return to lobby, rematch with reset scores and a single game manager) |
 | 3 | Done — verified with 2 players: two 4-round matches with no freeze, ready timeout with an AFK player, racing time limit (time-up standings), grab/throw seen by the client, join by code also enters the host's Steam lobby, leaving and rejoining through the Steam lobby (invite path) |
-| 4 | Next |
+| 4 | Done — Mines and Tilefall rebuilt; verified with 2 players (plates and tiles identical on both, safe/mine presses, turn timer auto-press, elimination, tile collapse → fall → checkpoint respawn, finish trigger, time-up standings by progress) |
+| 5 | Next |
 
 Notes:
 - Fusion 2.0.8 editor needed a patch for Unity 6000.4 (`Assets/Photon/Fusion/Editor/Fusion.Unity.Editor.cs`, marked `[chaos-challenges patch]`). Updating the Fusion SDK overwrites it; a newer SDK likely has its own fix.
@@ -36,7 +37,10 @@ Notes:
 - Errors are shown in `MessagePanel` (`Prefabs/UI/Message_Panel.prefab`, bound in `ProjectContext`): failed host/join, invite failures, and disconnect reasons.
 - Before a Steam release (needs the real App ID): replace `AppId_t.Invalid` in `SteamManager.RestartAppIfNecessary`, remove `steam_appid.txt` (480 = Spacewar test app) from the shipped build, and upload rich presence localization so `steam_display` can replace the plain `status` text in the friends list.
 - Testing with the CLI: helper scripts live in `Library/claude-test/` (not versioned). Never recompile while Play mode is running; it breaks Zenject and Steam until the Editor restarts. Real Steam invites need two Steam accounts on two machines; Multiplayer Play Mode runs both players on one account, so when the client leaves the Steam lobby the shared account leaves it and Steam deletes it (the host's invites then stop working in that test only).
-- Still open: max players in the host menu UI (the service supports 2–6), a public game browser, Mines tile fixes (Phase 4).
+- Mines (`MinesMinigameController`, `Minefield`, `ExplodeButton` on `Prefabs/Minigames/Mines/MinePlate.prefab`): 4×4 to 7×7 field of arcade buttons (grows with players), exact mine count (30 %), mine positions known only to the host, plate states replicated and plates built locally on every peer. A pressed plate cannot be pressed again. 12 s turn timer (`TurnBasedMinigameController`, reusable for Pistol Round) presses a random plate for AFK players. A mine pops up, explodes (`LowPolyExplosion`) and launches the player, who is benched at their spawn point. When only mines are left, a new field is dealt. The arena TV shows the turn, the countdown and the mines left.
+- Tilefall (`TilefallMinigameController`, `TileCourse`, `TileView`; was Racing, scene `TilefallMinigame.unity`): 6 lanes × 18 rows of procedural chamfered tiles (`ProceduralMeshes`) between a start and a finish platform, ~15 % holes, white checkpoint rows every 6 rows. Tiles lose health while players stand on them (1.4 s alone, +75 % speed per extra player), shake and redden, collapse and come back after 4 s. Falling locks you for 1.5 s and puts you on your last checkpoint row. 90 s limit; on time-up the rest rank by the furthest row reached. Finished players may stay on the course to sabotage others.
+- Shared: `MinigameController.HandlePlayerFell` (kill zones ask the minigame first), `PlayerMovement.Launch` (knockback), `BasePlayerSpawner.Teleport`, spawn points now set the player's facing.
+- Still open: max players in the host menu UI (the service supports 2–6), a public game browser, Tilefall/Mines sound effects and an announcer line per event, real player characters (the GDD bean).
 
 ## Phase 0 — Setup and baseline
 - Stop tracking `chaos-build/` and the thesis PDF in git; add both to `.gitignore`.
@@ -70,7 +74,7 @@ Rewrite of `NetworkGameManager` / `LobbyManager` flow.
 - Interaction goes through the networked input struct, processed on the host, instead of RPCs.
 - Host-authoritative grab / carry / throw replaces `AuthorityHandler` (which only works in Shared mode).
 
-## Phase 4 — Port existing minigames
+## Phase 4 — Port existing minigames (done)
 - **Mines:** exact mine count, a pressed tile cannot be pressed again, turn timer (auto-pick when AFK), leavers handled.
 - **Racing → Tilefall:** tiles crack under players, collapse faster with more players on them, fallen players respawn on a secondary path after a delay.
 

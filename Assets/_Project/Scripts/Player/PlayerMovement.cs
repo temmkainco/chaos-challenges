@@ -20,6 +20,14 @@ public class PlayerMovement : NetworkBehaviour
         _player = GetComponent<Player>();
     }
 
+    /// <summary>Host only. Throws the player (explosions, knockback); braking slows them down while they have no input.</summary>
+    public void Launch(Vector3 velocity)
+    {
+        _characterController.Velocity = velocity;
+        _characterController.IsGrounded = false;
+        IsGrounded = false;
+    }
+
     public override void FixedUpdateNetwork()
     {
         if (!GetInput(out NetworkInputData data))
