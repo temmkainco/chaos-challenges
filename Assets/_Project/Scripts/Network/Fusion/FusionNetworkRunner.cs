@@ -187,14 +187,27 @@ namespace Networking
 
         private async UniTask<bool> JoinAsync(string sessionName)
         {
-            var runner = await GetFreshRunnerAsync();
-            var result = await runner.StartGame(new StartGameArgs
+            NetworkRunner runner;
+            StartGameResult result;
+            int attempt = 0;
+            while (true)
             {
-                GameMode = GameMode.Client,
-                SessionName = sessionName,
-                SceneManager = runner.GetComponent<INetworkSceneManager>(),
-                EnableClientSessionCreation = false,
-            });
+                runner = await GetFreshRunnerAsync();
+                result = await runner.StartGame(new StartGameArgs
+                {
+                    GameMode = GameMode.Client,
+                    SessionName = sessionName,
+                    SceneManager = runner.GetComponent<INetworkSceneManager>(),
+                    EnableClientSessionCreation = false,
+                });
+
+                // A brand-new lobby can take a moment to become visible to the matchmaking server,
+                // so a code typed right after the host created it is retried a couple of times.
+                if (result.Ok || sessionName == null || result.ShutdownReason != ShutdownReason.GameNotFound || ++attempt > 2)
+                    break;
+                Debug.Log($"[Session] Lobby '{sessionName}' not found yet, retrying ({attempt}/2)");
+                await UniTask.Delay(1500);
+            }
 
             if (!result.Ok)
             {
@@ -277,6 +290,7 @@ namespace Networking
                 data.LookDirection = localInput.LookDirection;
                 data.Buttons.Set(InputButtons.Jump, localInput.IsJumpPressed);
                 data.Buttons.Set(InputButtons.Interact, localInput.IsInteractPressed);
+                data.Buttons.Set(InputButtons.Throw, localInput.IsThrowPressed);
             }
 
             input.Set(data);

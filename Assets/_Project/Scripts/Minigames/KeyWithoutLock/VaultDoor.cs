@@ -15,6 +15,19 @@ public class VaultDoor : MonoBehaviour
     /// <summary>Where escaped contestants wait (behind the door).</summary>
     public Vector3 EscapePosition => _escapeSpot.position;
 
+    /// <summary>Tints the lock with the colour of the keys that fit, glowing so it reads from across the arena.</summary>
+    public void ShowLockColor(Color color)
+    {
+        var block = new MaterialPropertyBlock();
+        foreach (var r in _lock.GetComponentsInChildren<Renderer>(true))
+        {
+            r.GetPropertyBlock(block);
+            block.SetColor("_BaseColor", color);
+            block.SetColor("_EmissionColor", color * 0.6f);
+            r.SetPropertyBlock(block);
+        }
+    }
+
     public void PlayOpen()
     {
         _hinge.DOKill(true);

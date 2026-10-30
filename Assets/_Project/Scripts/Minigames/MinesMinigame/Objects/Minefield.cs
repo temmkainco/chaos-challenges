@@ -11,7 +11,8 @@ public enum PlateState : byte
 
 /// <summary>
 /// Square field of plates. Plate states are replicated; where the mines are is known only to the host until a
-/// plate is pressed. Every peer builds the plate visuals locally from <see cref="Size"/> and
+/// plate is pressed. A safe plate also reveals how many mines touch it (minesweeper rules), so picking a plate is
+/// deduction rather than a coin flip, and the first press of every field is always safe. Every peer builds the plate visuals locally from <see cref="Size"/> and
 /// <see cref="FieldVersion"/>, and plays the reveal when a plate's state changes.
 /// </summary>
 public class Minefield : NetworkBehaviour
@@ -22,7 +23,7 @@ public class Minefield : NetworkBehaviour
     [SerializeField] private ExplodeButton _buttonPrefab;
     [SerializeField] private float _spacing = 2.2f;
     [SerializeField] private Transform _buttonParent;
-    [SerializeField, Range(0.1f, 0.6f)] private float _mineRatio = 0.3f;
+    [SerializeField, Range(0.1f, 0.6f)] private float _mineRatio = 0.22f;
     [SerializeField, Tooltip("Lit material with _BaseColor, used for the explosion puffs")] private Material _effectMaterial;
 
     [Networked] public int Size { get; private set; }
@@ -31,11 +32,14 @@ public class Minefield : NetworkBehaviour
     /// <summary>Bumped on every new field, so clients rebuild their plates.</summary>
     [Networked] public int FieldVersion { get; private set; }
     [Networked, Capacity(MAX_SIZE * MAX_SIZE)] private NetworkArray<byte> States { get; }
+    /// <summary>Mines touching each revealed safe plate.</summary>
+    [Networked, Capacity(MAX_SIZE * MAX_SIZE)] private NetworkArray<byte> Counts { get; }
 
     public int MinesLeft => MineCount - MinesFound;
     public int PlateCount => Size * Size;
 
     private bool[] _mines = new bool[MAX_SIZE * MAX_SIZE];
+    private bool _anyRevealed;
     private readonly List<ExplodeButton> _plates = new();
     private PlateState[] _shown = new PlateState[MAX_SIZE * MAX_SIZE];
     private int _builtVersion;
@@ -69,7 +73,11 @@ public class Minefield : NetworkBehaviour
             _mines[order[i]] = true;
 
         for (int i = 0; i < States.Length; i++)
+        {
             States.Set(i, (byte)PlateState.Hidden);
+            Counts.Set(i, 0);
+        }
+        _anyRevealed = false;
 
         FieldVersion++;
         Debug.Log($"[Mines] New {Size}x{Size} field with {MineCount} mines");
@@ -81,7 +89,24 @@ public class Minefield : NetworkBehaviour
         if (index < 0 || index >= PlateCount || GetState(index) != PlateState.Hidden)
             return PlateState.Hidden;
 
+        // The first press of a field never explodes: move that mine to a random other hidden plate.
+        if (!_anyRevealed && _mines[index])
+        {
+            var free = new List<int>();
+            for (int i = 0; i < PlateCount; i++)
+                if (i != index && !_mines[i])
+                    free.Add(i);
+            if (free.Count > 0)
+            {
+                _mines[index] = false;
+                _mines[free[Random.Range(0, free.Count)]] = true;
+            }
+        }
+        _anyRevealed = true;
+
         var result = _mines[index] ? PlateState.Mine : PlateState.Safe;
+        if (result == PlateState.Safe)
+            Counts.Set(index, (byte)CountAdjacentMines(index));
         States.Set(index, (byte)result);
         if (result == PlateState.Mine)
             MinesFound++;
@@ -96,6 +121,19 @@ public class Minefield : NetworkBehaviour
         return false;
     }
 
+    private int CountAdjacentMines(int index)
+    {
+        int x = index % Size, y = index / Size, count = 0;
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                int nx = x + dx, ny = y + dy;
+                if ((dx != 0 || dy != 0) && nx >= 0 && ny >= 0 && nx < Size && ny < Size && _mines[ny * Size + nx])
+                    count++;
+            }
+        return count;
+    }
+
     public int PickRandomHiddenPlate()
     {
         var hidden = new List<int>();
@@ -108,6 +146,7 @@ public class Minefield : NetworkBehaviour
     #endregion
 
     public PlateState GetState(int index) => (PlateState)States[index];
+    public int GetCount(int index) => Counts[index];
 
     public Vector3 GetPlatePosition(int index)
     {
@@ -131,7 +170,7 @@ public class Minefield : NetworkBehaviour
                 continue;
 
             _shown[i] = state;
-            _plates[i].ShowState(state, animate: true);
+            _plates[i].ShowState(state, animate: true, GetCount(i));
             Sfx.Play(state == PlateState.Mine ? Sound.Boom : Sound.Safe);
             if (state == PlateState.Mine && _effectMaterial != null)
                 LowPolyExplosion.Play(_plates[i].transform.position + Vector3.up * 0.6f, 2.2f, _effectMaterial);
@@ -151,7 +190,7 @@ public class Minefield : NetworkBehaviour
             var plate = Instantiate(_buttonPrefab, GetPlatePosition(i), _buttonParent.rotation, _buttonParent);
             plate.Initialize(i, _controller);
             _shown[i] = GetState(i);
-            plate.ShowState(_shown[i], animate: false);
+            plate.ShowState(_shown[i], animate: false, GetCount(i));
             plate.PopIn(replacing ? 0.6f + i * 0.02f : i * 0.02f);
             _plates.Add(plate);
         }

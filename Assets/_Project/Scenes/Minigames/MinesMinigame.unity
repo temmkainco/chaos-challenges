@@ -4411,7 +4411,7 @@ MonoBehaviour:
   _buttonPrefab: {fileID: 7340469163254615365, guid: d12442257fb81424fa007ea347e1a7b0, type: 3}
   _spacing: 2.3
   _buttonParent: {fileID: 1684966195}
-  _mineRatio: 0.3
+  _mineRatio: 0.22
   _effectMaterial: {fileID: 2100000, guid: 2d0ce77f4c01b4c4b9f01473511fb993, type: 2}
   _Size: 0
   _MineCount: 0

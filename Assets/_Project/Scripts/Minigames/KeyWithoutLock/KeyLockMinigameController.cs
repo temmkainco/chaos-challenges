@@ -4,9 +4,10 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Key Without Lock: keys lie all over the arena, but only a few fit the vault door, and nobody knows which.
-/// Grab a key (E), carry it to the door and press E there to try it. A dud shatters; a good key lets you
-/// escape (and is used up). Escape order decides the placement; whoever is still inside when the last
+/// Key Without Lock: keys of five colours lie all over the arena. The vault lock glows in one colour and every key of
+/// that colour fits, so it is about spotting the right key, racing to the door and keeping rivals away from it
+/// (throw their keys off!). Grab a key (E), carry it to the door and press E there to try it. A wrong colour
+/// shatters; a good key lets you escape (and is used up). Escape order decides the placement; whoever is still inside when the last
 /// good key is used, or when time runs out, loses.
 /// </summary>
 public class KeyLockMinigameController : MinigameController
@@ -21,13 +22,30 @@ public class KeyLockMinigameController : MinigameController
     [Networked] private int KeysLeft { get; set; }
     [Networked] private int GoodKeysLeft { get; set; }
     [Networked] private int Escaped { get; set; }
+    [Networked, OnChangedRender(nameof(ShowLockColor))] public byte GoodVariant { get; private set; }
 
     private readonly HashSet<NetworkId> _goodKeys = new();
     private readonly List<PlayerRef> _escapeOrder = new();
     private readonly List<Vector3> _spawnSpots = new();
 
-    public override string GetStatusText() =>
-        $"{GoodKeysLeft} good {(GoodKeysLeft == 1 ? "key" : "keys")} hidden among {KeysLeft}";
+    public override string GetStatusText()
+    {
+        var color = VaultKey.Colors[GoodVariant % VaultKey.Colors.Length];
+        string name = $"<color=#{ColorUtility.ToHtmlStringRGB(color * 0.8f)}>{VaultKey.Names[GoodVariant % VaultKey.Names.Length]}</color>";
+        return $"Find a {name} key - {GoodKeysLeft} left";
+    }
+
+    public override void Spawned()
+    {
+        base.Spawned();
+        ShowLockColor();
+    }
+
+    private void ShowLockColor()
+    {
+        if (_door != null)
+            _door.ShowLockColor(VaultKey.Colors[GoodVariant % VaultKey.Colors.Length]);
+    }
 
     protected override void StartGame()
     {
@@ -38,13 +56,16 @@ public class KeyLockMinigameController : MinigameController
         int keyCount = players * _keysPerPlayer + 2;
         int goodCount = Mathf.Max(1, players - 1);
 
+        GoodVariant = (byte)Random.Range(0, VaultKey.Colors.Length);
         var spots = PickSpawnSpots(keyCount);
         var goodIndices = new HashSet<int>(Enumerable.Range(0, keyCount).OrderBy(_ => Random.value).Take(goodCount));
         for (int i = 0; i < keyCount; i++)
         {
             bool good = goodIndices.Contains(i);
+            // Good keys wear the lock's colour; every other key gets one of the other colours.
+            byte variant = good ? GoodVariant : (byte)((GoodVariant + Random.Range(1, VaultKey.Colors.Length)) % VaultKey.Colors.Length);
             var obj = Runner.Spawn(_keyPrefab, spots[i], Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
-                (runner, spawned) => spawned.GetComponent<VaultKey>().Variant = (byte)Random.Range(0, 5));
+                (runner, spawned) => spawned.GetComponent<VaultKey>().Variant = variant);
             if (good) _goodKeys.Add(obj.Id);
         }
 

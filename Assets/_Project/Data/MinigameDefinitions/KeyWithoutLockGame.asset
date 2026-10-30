@@ -19,11 +19,11 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Key Without Lock
-  <Description>k__BackingField: Keys everywhere, one vault door, and only a few keys
-    fit. Grab one, run to the door and try your luck. Escape before the others!
+  <Description>k__BackingField: Keys everywhere and one vault door. Check the lock's
+    colour, grab a matching key and escape before the others!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: e4fecb9172fee5c48bcdedbf6fb21de6, type: 3}
   <Rules>k__BackingField:
-  - E grabs a key, E again throws it
+  - E grabs a key, E drops it; hold left mouse to aim and throw
   - Press E at the vault door while holding a key to try it
-  - Duds shatter; a good key lets you escape
+  - Only keys in the lock's colour fit; others shatter
   - The last contestant locked inside loses

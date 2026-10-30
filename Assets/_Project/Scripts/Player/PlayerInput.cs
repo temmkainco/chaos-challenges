@@ -10,6 +10,7 @@ public class PlayerInput : NetworkBehaviour
     public Vector3 LookDirection { get; private set; }
     public bool IsJumpPressed { get; private set; }
     public bool IsInteractPressed { get; private set; }
+    public bool IsThrowPressed { get; private set; }
 
     public PlayerInputActions Controls;
     private Camera _camera;
@@ -47,12 +48,14 @@ public class PlayerInput : NetworkBehaviour
             Move = Vector2.zero;
             IsJumpPressed = false;
             IsInteractPressed = false;
+            IsThrowPressed = false;
         }
         else
         {
             Move = Controls.Player.Move.ReadValue<Vector2>();
             IsJumpPressed = Controls.Player.Jump.IsPressed();
             IsInteractPressed = Controls.Player.Interact.IsPressed();
+            IsThrowPressed = Controls.Player.Attack.IsPressed();
         }
 
         if (_camera == null)

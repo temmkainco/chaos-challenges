@@ -26,6 +26,9 @@ public class MinigameController : NetworkBehaviour
 
     [Networked, OnChangedRender(nameof(OnPhaseChanged))] public MinigamePhase Phase { get; private set; }
     [Networked] public TickTimer PhaseTimer { get; private set; }
+    /// <summary>The announcer's latest one-liner ("DRAW!"), shown as a big banner; the id bumps on every call.</summary>
+    [Networked] public NetworkString<_32> Announcement { get; private set; }
+    [Networked] public int AnnouncementId { get; private set; }
 
     /// <summary>The minigame of the loaded scene, on every peer.</summary>
     public static MinigameController Current { get; private set; }
@@ -50,6 +53,14 @@ public class MinigameController : NetworkBehaviour
     public event Action<int> OnTimeLimitTick;
 
     private int _lastShownSecond = -1;
+
+    /// <summary>Host only: show a big announcer banner on every screen.</summary>
+    protected void Announce(string text)
+    {
+        if (!HasStateAuthority) return;
+        Announcement = text;
+        AnnouncementId++;
+    }
 
     /// <summary>Called by <see cref="NetworkGameManager"/> on the host once every player has loaded the scene.</summary>
     public void InitializeMinigame()

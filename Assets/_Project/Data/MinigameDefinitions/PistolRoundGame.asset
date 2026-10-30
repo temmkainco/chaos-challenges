@@ -19,11 +19,11 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 0
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Pistol Round
-  <Description>k__BackingField: Six chambers, one live round. On your turn, aim at
-    a rival and pull the trigger. Click... or BANG! Last contestant standing wins!
+  <Description>k__BackingField: A quick-draw standoff. Keep steady, wait for the
+    call, then be the fastest and most accurate gun on the stage!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 511eb1d60c074004283542e88bf4c6a4, type: 3}
   <Rules>k__BackingField:
-  - Look at a rival and press E on your turn
-  - Every blank makes the next pull more dangerous
-  - Too slow? The show pulls the trigger for you
-  - A live round knocks the target off their pedestal
+  - Aim at a rival and press E the moment the show calls DRAW!
+  - Shoot early or miss and your revolver jams until the next draw
+  - First hit knocks the target off their pedestal
+  - Last contestant standing wins

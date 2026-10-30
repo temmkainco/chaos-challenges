@@ -10,7 +10,8 @@ using UnityEngine;
 public class VaultKey : NetworkBehaviour
 {
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
-    private static readonly Color[] Colors =
+    public static readonly string[] Names = { "GOLD", "SILVER", "COPPER", "BLUE", "PINK" };
+    public static readonly Color[] Colors =
     {
         new(1f, 0.82f, 0.25f), new(0.8f, 0.83f, 0.88f), new(0.85f, 0.5f, 0.3f), new(0.45f, 0.75f, 1f), new(0.95f, 0.45f, 0.7f),
     };

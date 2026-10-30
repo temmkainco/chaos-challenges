@@ -3,7 +3,8 @@ using UnityEngine;
 public enum InputButtons
 {
     Jump,
-    Interact
+    Interact,
+    Throw
 }
 public struct NetworkInputData : INetworkInput
 {

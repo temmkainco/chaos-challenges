@@ -3,13 +3,18 @@ using Fusion.Addons.Physics;
 using UnityEngine;
 
 /// <summary>
-/// Host-authoritative grab, carry and throw. The host owns the rigidbody: while held it is kinematic and
-/// follows the holder; on release it is thrown along the holder's look direction. Every peer snaps the
-/// held object to its holder in LateUpdate (after Fusion's interpolation) so it never trails behind a predicted player.
+/// Host-authoritative grab, carry, drop and aimed throw. The host owns the rigidbody: while held it is kinematic and
+/// sits in the holder's right hand; dropping lets it fall, throwing sets its velocity directly (mass independent, so
+/// the local arc preview matches). Every peer snaps the held object to the hand in LateUpdate, after animation.
 /// </summary>
 [RequireComponent(typeof(NetworkRigidbody3D))]
 public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInteractable
 {
+    public const float MIN_THROW_SPEED = 6f;
+    public const float MAX_THROW_SPEED = 19f;
+    /// <summary>Throws leave a little above the camera's aim so a level aim still arcs.</summary>
+    public const float THROW_PITCH_BONUS = 10f;
+
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
     public NetworkBool IsGrabbed { get; private set; }
 
@@ -20,9 +25,8 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Networked] public NetworkObject HolderObject { get; private set; }
 
     [Header("Hold Settings")]
-    public Vector3 _holdPositionOffset = new Vector3(0, 2, 0);
-    [SerializeField] private float _throwForce = 5f;
-    [SerializeField, Tooltip("Extra lift so throws arc instead of hitting the ground")] private float _throwLift = 1.5f;
+    [SerializeField, Tooltip("Offset from the right hand bone, in the holder's space (x right, y up, z forward)")] private Vector3 _handOffset = new Vector3(0.05f, -0.05f, 0.18f);
+    [SerializeField] private Vector3 _handEuler;
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;
@@ -32,8 +36,14 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         _nrb = GetComponent<NetworkRigidbody3D>();
         _collider = GetComponent<Collider>();
         Outline = GetComponent<Outline>();
-        if (Outline != null)
-            Outline.enabled = false;
+        if (Outline == null)
+        {
+            Outline = gameObject.AddComponent<Outline>();
+            Outline.OutlineMode = Outline.Mode.OutlineVisible;
+            Outline.OutlineColor = new Color(1f, 0.85f, 0.25f);
+            Outline.OutlineWidth = 6f;
+        }
+        Outline.enabled = false;
     }
 
     public override void Spawned()
@@ -52,6 +62,8 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     {
         if (_collider != null)
             _collider.enabled = !IsGrabbed;
+        if (IsGrabbed && Outline != null)
+            Outline.enabled = false;
 
         if (HasStateAuthority)
         {
@@ -78,7 +90,10 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     private void LateUpdate()
     {
         if (Object != null && Object.IsValid && IsGrabbed && HolderObject != null)
-            transform.SetPositionAndRotation(HoldPosition, HolderObject.transform.rotation);
+        {
+            GetHoldPose(out var position, out var rotation);
+            transform.SetPositionAndRotation(position, rotation);
+        }
     }
 
     public void Interact(PlayerRef player, NetworkObject playerObject)
@@ -95,29 +110,65 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         FollowHolder();
     }
 
+    /// <summary>Drop at the holder's feet.</summary>
     public void CancelInteraction(PlayerRef player, NetworkObject playerObject)
     {
         if (!HasStateAuthority || !IsGrabbed || player != CurrentHolder) return;
 
-        Vector3 look = playerObject.TryGetComponent<PlayerInteraction>(out var interaction) && interaction.LookDirection.sqrMagnitude > 0.01f
-            ? interaction.LookDirection
-            : playerObject.transform.forward;
-
-        Release(look * _throwForce + Vector3.up * _throwLift);
+        // Put it just in front so it does not land inside the holder's capsule.
+        var front = playerObject.transform.position + playerObject.transform.forward * 0.7f + Vector3.up * 0.9f;
+        transform.position = front;
+        _nrb.Rigidbody.position = front;
+        Release(playerObject.transform.forward * 1.5f);
     }
 
-    private Vector3 HoldPosition => HolderObject.transform.TransformPoint(_holdPositionOffset);
+    /// <summary>Host only: throw along <paramref name="aim"/> with <paramref name="charge"/> in [0, 1].</summary>
+    public void Throw(PlayerRef player, Vector3 aim, float charge)
+    {
+        if (!HasStateAuthority || !IsGrabbed || player != CurrentHolder) return;
+        Release(ThrowVelocity(aim, charge));
+    }
+
+    /// <summary>Shared by the host and the local arc preview.</summary>
+    public static Vector3 ThrowVelocity(Vector3 aim, float charge)
+    {
+        if (aim.sqrMagnitude < 0.0001f)
+            aim = Vector3.forward;
+        aim.Normalize();
+        var flat = new Vector3(aim.x, 0f, aim.z);
+        if (flat.sqrMagnitude < 0.0001f)
+            flat = Vector3.forward;
+        // Raise the aim around the horizontal axis that is perpendicular to it.
+        var axis = Vector3.Cross(Vector3.up, flat.normalized);
+        var dir = Quaternion.AngleAxis(-THROW_PITCH_BONUS, axis) * aim;
+        return dir.normalized * Mathf.Lerp(MIN_THROW_SPEED, MAX_THROW_SPEED, Mathf.Clamp01(charge));
+    }
+
+    /// <summary>Where a throw starts from (the held object's position).</summary>
+    public Vector3 HeldPosition => transform.position;
+
+    private void GetHoldPose(out Vector3 position, out Quaternion rotation)
+    {
+        var hand = PlayerRig.For(HolderObject.gameObject).RightHand;
+        if (hand != null)
+        {
+            position = hand.position + HolderObject.transform.rotation * _handOffset;
+            rotation = HolderObject.transform.rotation * Quaternion.Euler(_handEuler);
+            return;
+        }
+        position = HolderObject.transform.TransformPoint(new Vector3(0.45f, 1.1f, 0.4f));
+        rotation = HolderObject.transform.rotation;
+    }
 
     private void FollowHolder()
     {
-        Vector3 position = HoldPosition;
-        Quaternion rotation = HolderObject.transform.rotation;
+        GetHoldPose(out var position, out var rotation);
         transform.SetPositionAndRotation(position, rotation);
         _nrb.Rigidbody.position = position;
         _nrb.Rigidbody.rotation = rotation;
     }
 
-    private void Release(Vector3 impulse)
+    private void Release(Vector3 velocity)
     {
         CurrentHolder = PlayerRef.None;
         HolderObject = null;
@@ -125,7 +176,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         ApplyHeldState();
 
         _nrb.Rigidbody.WakeUp();
-        if (impulse.sqrMagnitude > 0f)
-            _nrb.Rigidbody.AddForce(impulse, ForceMode.Impulse);
+        _nrb.Rigidbody.linearVelocity = velocity;
+        _nrb.Rigidbody.angularVelocity = velocity.sqrMagnitude > 1f ? Random.insideUnitSphere * 4f : Vector3.zero;
     }
 }

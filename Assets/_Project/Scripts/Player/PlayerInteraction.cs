@@ -2,29 +2,42 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// Interaction runs from the networked input: the host raycasts along the player's
+/// Interaction runs from the networked input: the host picks the target from the player's position and
 /// <see cref="NetworkInputData.LookDirection"/> and applies the result, so every client sees the same outcome.
-/// The owning client only adds instant local feedback (<see cref="ILocalInteractable"/>) and the focus highlight.
+/// E grabs the best target in front of the player (or drops what is held); holding the throw button winds up a throw
+/// aimed with the camera, releasing it throws. The owning client adds the focus outline and instant local feedback.
 /// </summary>
 public class PlayerInteraction : NetworkBehaviour
 {
+    /// <summary>Seconds of wind-up for a full-power throw.</summary>
+    public const float FULL_CHARGE_TIME = 0.9f;
+
     [Networked] public NetworkObject HeldObject { get; private set; }
     /// <summary>Last aim direction from input; throws use it.</summary>
     [Networked] public Vector3 LookDirection { get; private set; }
+    /// <summary>Tick the current wind-up started on, 0 when not charging.</summary>
+    [Networked] public int ChargeStartTick { get; private set; }
     [Networked] private NetworkButtons PreviousButtons { get; set; }
 
     public IInteractable CurrentTarget { get; private set; }
+    public bool IsCharging => ChargeStartTick > 0 && HeldObject != null;
+    public float Charge => IsCharging ? Mathf.Clamp01((Runner.Tick - ChargeStartTick) * Runner.DeltaTime / FULL_CHARGE_TIME) : 0f;
 
     [SerializeField] private float _distance = 3f;
+    [SerializeField, Tooltip("Radius of the grab zone in front of the player")] private float _reach = 1.6f;
     [SerializeField] private LayerMask _mask;
     [SerializeField] private Transform _eyesPoint;
 
     private Player _player;
-    private FocusHighlighter _focusHighlighter = new();
+    private readonly FocusHighlighter _focusHighlighter = new();
+    private readonly Collider[] _overlap = new Collider[16];
 
     public override void Spawned()
     {
         _player = GetComponent<Player>();
+
+        if (Object.HasInputAuthority)
+            gameObject.AddComponent<ThrowPreview>();
 
         if (!Object.HasStateAuthority && !Object.HasInputAuthority)
             return;
@@ -40,24 +53,54 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void UpdateLocalTarget()
     {
-        if (HeldObject != null)
+        if (HeldObject != null || _player.ControlsLocked)
         {
             _focusHighlighter.Clear();
             CurrentTarget = null;
             return;
         }
 
-        Ray ray = new Ray(_eyesPoint.position, _player.Camera.transform.forward);
-        if (Physics.Raycast(ray, out var hit, _distance, _mask))
+        CurrentTarget = FindTarget(Physics.defaultPhysicsScene, _player.Camera.transform.forward);
+        _focusHighlighter.Highlight(CurrentTarget);
+    }
+
+    /// <summary>
+    /// What the player is reaching for: whatever the aim ray hits first, otherwise the interactable in the grab zone
+    /// in front of the player that is closest to the aim. Third-person aiming at small items is fiddly, so the zone
+    /// does most of the work.
+    /// </summary>
+    private IInteractable FindTarget(PhysicsScene physics, Vector3 look)
+    {
+        if (physics.Raycast(_eyesPoint.position, look, out var hit, _distance, _mask))
         {
-            CurrentTarget = hit.collider.GetComponentInParent<IInteractable>();
-            _focusHighlighter.Highlight(CurrentTarget);
+            var direct = hit.collider.GetComponentInParent<IInteractable>();
+            if (direct != null && direct.CanBeInteractedWith)
+                return direct;
         }
-        else
+
+        var flat = new Vector3(look.x, 0f, look.z);
+        flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
+        var center = transform.position + flat * (_reach * 0.8f) + Vector3.up * 0.8f;
+        int count = physics.OverlapSphere(center, _reach, _overlap, _mask, QueryTriggerInteraction.Collide);
+
+        IInteractable best = null;
+        float bestScore = float.MaxValue;
+        for (int i = 0; i < count; i++)
         {
-            _focusHighlighter.Clear();
-            CurrentTarget = null;
+            var interactable = _overlap[i].GetComponentInParent<IInteractable>();
+            if (interactable == null || !interactable.CanBeInteractedWith || interactable is not Component component)
+                continue;
+
+            var to = component.transform.position - transform.position;
+            to.y = 0f;
+            float score = to.magnitude * 0.5f + Vector3.Angle(flat, to) / 45f;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = interactable;
+            }
         }
+        return best;
     }
 
     public override void FixedUpdateNetwork()
@@ -70,13 +113,40 @@ public class PlayerInteraction : NetworkBehaviour
             input.Buttons = default;
 
         bool interactPressed = input.Buttons.WasPressed(PreviousButtons, InputButtons.Interact);
+        bool throwPressed = input.Buttons.WasPressed(PreviousButtons, InputButtons.Throw);
+        bool throwReleased = input.Buttons.WasReleased(PreviousButtons, InputButtons.Throw);
         PreviousButtons = input.Buttons;
 
         if (input.LookDirection.sqrMagnitude > 0.01f)
             LookDirection = input.LookDirection.normalized;
 
+        // Wind-up is predicted on the owner so the arc preview responds instantly.
+        if (HeldObject == null)
+            ChargeStartTick = 0;
+        else if (throwPressed)
+            ChargeStartTick = Runner.Tick;
+
+        if (throwReleased && IsCharging)
+        {
+            float charge = Charge;
+            ChargeStartTick = 0;
+            if (HasStateAuthority && HeldObject.TryGetComponent<GrabbableObject>(out var grabbable))
+            {
+                grabbable.Throw(Object.InputAuthority, LookDirection, charge);
+                HeldObject = null;
+            }
+            return;
+        }
+
         if (!interactPressed)
             return;
+
+        // E while winding up cancels the throw instead of dropping.
+        if (IsCharging)
+        {
+            ChargeStartTick = 0;
+            return;
+        }
 
         if (Object.HasInputAuthority && Runner.IsForward && HeldObject == null)
             TryLocalInteraction();
@@ -105,11 +175,8 @@ public class PlayerInteraction : NetworkBehaviour
     /// <summary>Host only.</summary>
     private void InteractWithTarget()
     {
-        if (!Runner.GetPhysicsScene().Raycast(_eyesPoint.position, LookDirection, out var hit, _distance, _mask))
-            return;
-
-        var interactable = hit.collider.GetComponentInParent<IInteractable>();
-        if (interactable == null || !interactable.CanBeInteractedWith)
+        var interactable = FindTarget(Runner.GetPhysicsScene(), LookDirection);
+        if (interactable == null)
             return;
 
         interactable.Interact(Object.InputAuthority, Object);
