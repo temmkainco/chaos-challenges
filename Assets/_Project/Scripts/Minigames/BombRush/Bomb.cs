@@ -38,6 +38,10 @@ public class Bomb : NetworkBehaviour
     private MaterialPropertyBlock _block;
     private Vector3 _visualScale;
 
+    private const float MIN_FUSE_ON_PICKUP = 3f;
+    /// <summary>Dropped from the sky by Bomb Bonanza rather than riding a conveyor.</summary>
+    [Networked] public NetworkBool FromSky { get; set; }
+
     public float FuseRemaining => Fuse.RemainingTime(Runner) ?? _fuseSeconds;
 
     private void Awake()
@@ -71,6 +75,8 @@ public class Bomb : NetworkBehaviour
 
         if (BeltIndex >= 0)
             RideBelt();
+        else if (FromSky && !Lit && !_grabbable.IsGrabbed)
+            LeaveBelt(Vector3.down * 3f);   // dropped from the sky (Bomb Bonanza): falls lit
 
         if (Lit && Fuse.Expired(Runner))
         {
@@ -90,6 +96,12 @@ public class Bomb : NetworkBehaviour
         bool grabbed = _grabbable.IsGrabbed;
         if (grabbed)
         {
+            if (!_wasGrabbed)
+            {
+                // Picked up: always at least a few seconds to throw it (a bomb lying around used to blow in your hands).
+                if (Lit && (Fuse.RemainingTime(Runner) ?? 0f) < MIN_FUSE_ON_PICKUP)
+                    Fuse = TickTimer.CreateFromSeconds(Runner, MIN_FUSE_ON_PICKUP);
+            }
             _lastHolder = _grabbable.CurrentHolder;
             if (BeltIndex >= 0) LeaveBelt(Vector3.zero);
             Light();

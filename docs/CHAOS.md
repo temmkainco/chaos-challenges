@@ -32,8 +32,8 @@ Console Round only takes chaos the pixel game can feel: SpeedRush, SlowMotion, R
 | Round | Twist | Kind | Effect |
 |---|---|---|---|
 | Tilefall | CROSSWIND | hazard | A gale pushes across the lanes and flips direction every 4 s |
-| Mines | DOUBLE DARE | hazard | Each turn you press two plates |
-| Bomb Rush | BOMB BONANZA | hazard | Bombs come 3x as fast |
+| Mines | DOUBLE DARE | hazard | The next contestant presses two plates |
+| Bomb Rush | BOMB BONANZA | hazard | Bombs rain from the sky all over the arena |
 | Key Hunt | MASTER KEY | buff | A big golden key that opens any door appears; it vanishes when the twist ends |
 | Prize Grab | PRIZE STORM | buff | Golden prizes rain down |
 | Hex Drop | EARTHQUAKE | hazard | Random tiles on every floor crack by themselves |
@@ -43,4 +43,4 @@ Console Round only takes chaos the pixel game can feel: SpeedRush, SlowMotion, R
 | Color Code | MIND GAMES | debuff | The called colour is written in another colour (read the word) |
 | Console Round | MIRROR MODE | debuff | The TV picture flips left to right |
 
-The random director picks the round's twist about a third of the time.
+The random director picks the round's twist about a quarter of the time.

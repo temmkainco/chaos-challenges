@@ -5,13 +5,14 @@ using UnityEngine;
 /// Color Code: a floor of coloured tiles high above the studio. The show calls a colour; when the countdown ends,
 /// every other tile drops away. Find a tile of that colour in time (shoving others off it is allowed). The floor
 /// comes back reshuffled and every call gets faster. Last contestant standing wins; survivors tie at the bell.
+/// Layouts: a square, a cross, four islands (hop the gaps) or a diamond.
 /// Chaos: BLACKOUT makes the colours hard to read, ICE FLOOR makes stopping on a tile tricky; its own twist,
 /// MIND GAMES, writes the called colour in a different colour (go by the word).
 /// </summary>
 public class ColorCodeMinigameController : EliminationMinigameController
 {
     public const int SIZE = 6;
-    private const int TILES = SIZE * SIZE;
+    private const int TILES = 64;
 
     public enum CallStage : byte { Shuffle, Calling, Dropped }
 
@@ -46,14 +47,47 @@ public class ColorCodeMinigameController : EliminationMinigameController
     private Vector3 Top => _centre.position + Vector3.up * _height;
     protected override float OutHeight => Top.y - 3f;
 
-    private Vector3 TilePosition(int i)
+    public override string[] Variants => new[] { "Square", "Cross", "Islands", "Diamond" };
+
+    private readonly System.Collections.Generic.List<Vector3> _positions = new();
+    private int Count => _positions.Count;
+
+    private Vector3 TilePosition(int i) => _positions[i];
+
+    /// <summary>Tile centres for this round's layout (same on every peer).</summary>
+    private void Layout()
     {
-        float offset = (SIZE - 1) * _tile * 0.5f;
-        return Top + new Vector3((i % SIZE) * _tile - offset, 0f, (i / SIZE) * _tile - offset);
+        if (_positions.Count > 0) return;
+        void Grid(int size, System.Func<int, int, bool> solid, float spread = 0f)
+        {
+            float offset = (size - 1) * _tile * 0.5f;
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                    if (solid(x, y) && _positions.Count < TILES)
+                    {
+                        // Islands: push each quarter outwards to leave a hop between them.
+                        float pushX = spread * (x < size / 2 ? -1f : 1f), pushZ = spread * (y < size / 2 ? -1f : 1f);
+                        _positions.Add(Top + new Vector3(x * _tile - offset + pushX, 0f, y * _tile - offset + pushZ));
+                    }
+        }
+        switch (Variant)
+        {
+            case 1: Grid(8, (x, y) => (x >= 2 && x <= 5) || (y >= 2 && y <= 5)); break;
+            case 2: Grid(6, (x, y) => true, 0.8f); break;
+            case 3: Grid(9, (x, y) => Mathf.Abs(x - 4) + Mathf.Abs(y - 4) <= 4); break;
+            default: Grid(SIZE, (x, y) => true); break;
+        }
     }
 
-    protected override Vector3 ArenaSpawn(int slot, int count) =>
-        TilePosition((slot * 7 + 3) % TILES) + Vector3.up * 0.6f;
+    protected override Vector3 ArenaSpawn(int slot, int count)
+    {
+        Layout();
+        return TilePosition((slot * 7 + 3) % Count) + Vector3.up * 0.6f;
+    }
+
+    public override string Callout => IsGameActive && Stage == CallStage.Calling
+        ? $"<color=#{Hex(Ink)}>{Names[Target]}</color>  <size=70%>{Mathf.CeilToInt(StageTimer.RemainingTime(Runner) ?? 0f)}</size>"
+        : null;
 
     public override string GetStatusText()
     {
@@ -66,13 +100,14 @@ public class ColorCodeMinigameController : EliminationMinigameController
     public override void Spawned()
     {
         base.Spawned();
-        _tiles = new Transform[TILES];
-        _colliders = new Collider[TILES];
-        _renderers = new Renderer[TILES];
+        Layout();
+        _tiles = new Transform[Count];
+        _colliders = new Collider[Count];
+        _renderers = new Renderer[Count];
         _block = new MaterialPropertyBlock();
         var root = new GameObject("ColorTiles").transform;
         root.SetParent(transform, false);
-        for (int i = 0; i < TILES; i++)
+        for (int i = 0; i < Count; i++)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Tile " + i;
@@ -104,7 +139,7 @@ public class ColorCodeMinigameController : EliminationMinigameController
 
     private void Shuffle()
     {
-        for (int i = 0; i < TILES; i++)
+        for (int i = 0; i < Count; i++)
             TileColors.Set(i, (byte)Random.Range(0, Colors.Length));
     }
 
@@ -149,7 +184,7 @@ public class ColorCodeMinigameController : EliminationMinigameController
         if (_tiles == null || Object == null || !Object.IsValid) return;
         int version = (int)Stage * 1000 + Target * 100 + Calls;
         bool blackout = ActiveChaos == ChaosModifier.Blackout;
-        for (int i = 0; i < TILES; i++)
+        for (int i = 0; i < Count; i++)
         {
             int color = TileColors[i];
             bool gone = IsGameActive && Stage == CallStage.Dropped && color != Target;

@@ -106,9 +106,9 @@ public class PlayerMovement : NetworkBehaviour
         float gravityScale = chaos == ChaosModifier.LowGravity ? 0.4f : 1f;
         float jumpScale = chaos == ChaosModifier.SuperJump ? 1.9f : chaos == ChaosModifier.LowGravity ? 1.2f : 1f;
         bool ice = chaos == ChaosModifier.IceFloor;
-        // Hot Potato: whoever carries the bomb runs a little faster, so passing it is a chase.
+        // Hot Potato: whoever carries the bomb runs faster, so passing it is a chase.
         if (MinigameController.Current is HotPotatoMinigameController potato && potato.Object != null && potato.Object.IsValid && potato.Holder == Object.InputAuthority)
-            speedScale *= 1.12f;
+            speedScale *= 1.25f;
         if (chaos == ChaosModifier.ReversedControls)
             data.Direction = -data.Direction;
 

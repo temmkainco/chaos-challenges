@@ -155,6 +155,9 @@ public class MinigameController : NetworkBehaviour
     /// <summary>Multiplier on shove knockback (Ring Out makes shoves the main weapon).</summary>
     public virtual float ShoveStrength => 1f;
 
+    /// <summary>Optional big, persistent instruction at the top of the screen while it matters (Color Code's colour).</summary>
+    public virtual string Callout => null;
+
     /// <summary>Optional status line for the arena display (e.g. mines left, contestants left).</summary>
     public virtual string GetStatusText() => null;
 
@@ -174,7 +177,27 @@ public class MinigameController : NetworkBehaviour
     /// </summary>
     public virtual bool HandlePlayerFell(Player player) => false;
 
-    /// <summary>Host only. Opens the round: players can move. Overrides call the base first.</summary>
+    #region Arena layouts
+
+    /// <summary>Layouts this minigame's arena can be built in (names for the rules card); null = just one.</summary>
+    public virtual string[] Variants => null;
+
+    /// <summary>This round's layout, from the host's <see cref="NetworkGameManager.RoundSeed"/> (same on every peer).</summary>
+    public int Variant => VariantOf(Variants?.Length ?? 0);
+
+    /// <summary>This round's layout out of <paramref name="count"/> (for arena parts that are not the controller).</summary>
+    public static int VariantOf(int count)
+    {
+        if (count <= 1) return 0;
+        var gameManager = NetworkGameManager.Instance;
+        int seed = gameManager != null && gameManager.Object != null && gameManager.Object.IsValid ? gameManager.RoundSeed : 0;
+        return (seed & int.MaxValue) % count;
+    }
+
+    public string VariantName => Variants is { Length: > 1 } variants ? variants[Variant] : null;
+
+    #endregion
+
     #region Chaos (buffs, debuffs, hazards for everyone; the future audience vote calls ChaosDirector.Request)
 
     /// <summary>Whether this minigame allows <paramref name="modifier"/> (override to veto ones that break the game).</summary>
@@ -223,6 +246,26 @@ public class MinigameController : NetworkBehaviour
         OnChaosStarted(modifier);
     }
 
+    /// <summary>
+    /// Host only. A knocked-out contestant comes back as a ghost (<see cref="Player.IsSpectator"/>): free to run around
+    /// <paramref name="spot"/>'s arena with everyone, unable to touch the game.
+    /// </summary>
+    protected void ReleaseAsGhost(Player player, Vector3 spot)
+    {
+        if (player == null) return;
+        player.IsSpectator = true;
+        if (player.Interaction != null) player.Interaction.ForceDrop();
+        _playerSpawner.Teleport(player, spot);
+        player.MovementLocked = false;
+        player.ControlsLocked = false;
+    }
+
+    /// <summary>Host only. Ends the active chaos early (a twist that has done its job, e.g. one Double Dare turn).</summary>
+    protected void StopChaos()
+    {
+        if (HasStateAuthority && ActiveChaos != ChaosModifier.None) EndChaos();
+    }
+
     private void EndChaos()
     {
         var ended = ActiveChaos;
@@ -258,9 +301,9 @@ public class MinigameController : NetworkBehaviour
             else if (NextRandomChaos.Expired(Runner))
             {
                 NextRandomChaos = TickTimer.CreateFromSeconds(Runner, ChaosDirector.Level == ChaosLevel.Wild ? Random.Range(10f, 16f) : Random.Range(20f, 32f));
-                // The game's own twist comes up about a third of the time; it is the most memorable chaos.
+                // The game's own twist comes up about a quarter of the time; it is the most memorable chaos.
                 float seconds = ChaosDirector.Level == ChaosLevel.Wild ? 12f : 10f;
-                bool started = TwistTitle != null && Random.value < 0.35f && StartChaos(ChaosModifier.Twist, seconds);
+                bool started = TwistTitle != null && Random.value < 0.25f && StartChaos(ChaosModifier.Twist, seconds);
                 for (int attempt = 0; attempt < 8 && !started; attempt++)
                     started = StartChaos((ChaosModifier)Random.Range(1, ChaosInfo.COUNT), seconds);
             }

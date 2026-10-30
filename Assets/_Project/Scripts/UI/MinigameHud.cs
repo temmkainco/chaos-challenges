@@ -22,7 +22,8 @@ public class MinigameHud : MonoBehaviour
 
     private string _lastTimer, _lastStatus;
     private CanvasGroup _chip, _hintGroup;
-    private TMP_Text _banner, _splash;
+    private TMP_Text _banner, _splash, _callout;
+    private readonly System.Collections.Generic.Queue<string> _bannerQueue = new();
     private float _playingTime;
     private PlayerRef _lastTurn = PlayerRef.None;
     private MinigameController _shownFor;
@@ -48,6 +49,10 @@ public class MinigameHud : MonoBehaviour
         _banner = CreateBanner();
         CreateRulesCard();
         gameObject.AddComponent<ChaosEffects>();
+        _callout = CreateBanner();
+        _callout.name = "Callout";
+        _callout.fontSize = 84f;
+        ((RectTransform)_callout.transform).anchorMin = ((RectTransform)_callout.transform).anchorMax = new Vector2(0.5f, 0.86f);
         _splash = CreateBanner();
         _splash.name = "RoundSplash";
         _splash.fontSize = 96f;
@@ -120,8 +125,17 @@ public class MinigameHud : MonoBehaviour
         if (controller.AnnouncementId != _lastAnnouncement)
         {
             _lastAnnouncement = controller.AnnouncementId;
-            PopBanner(controller.Announcement.ToString());
+            _bannerQueue.Enqueue(controller.Announcement.ToString());
         }
+        // One banner at a time: chaos warnings used to wipe out Color Code's call before anyone read it.
+        if (_bannerQueue.Count > 0 && !_banner.gameObject.activeSelf)
+            PopBanner(_bannerQueue.Dequeue());
+
+        // A persistent big call-out for the minigame's current instruction (Color Code's colour).
+        string callout = controller.IsGameActive ? controller.Callout : null;
+        bool showCallout = !string.IsNullOrEmpty(callout);
+        if (_callout.gameObject.activeSelf != showCallout) _callout.gameObject.SetActive(showCallout);
+        if (showCallout && _callout.text != callout) _callout.text = callout;
 
         var definition = controller.Definition;
         if (controller.IsGameActive)
@@ -191,7 +205,8 @@ public class MinigameHud : MonoBehaviour
         var gameManager = NetworkGameManager.Instance;
         string name = controller.Definition != null ? controller.Definition.DisplayName.ToUpperInvariant() : "";
         string round = gameManager != null && gameManager.RoundCount > 0 ? $"<size=55%>ROUND {gameManager.RoundIndex + 1} OF {gameManager.RoundCount}</size>\n" : "";
-        _splash.text = round + name;
+        string map = controller.VariantName != null ? $"\n<size=45%>{controller.VariantName.ToUpperInvariant()}</size>" : "";
+        _splash.text = round + name + map;
         var t = (RectTransform)_splash.transform;
         t.DOKill();
         _splash.gameObject.SetActive(true);
@@ -206,6 +221,11 @@ public class MinigameHud : MonoBehaviour
 
     private void PopBanner(string text)
     {
+        // Chaos (incoming and started) gets its own look and stays up longer so nobody misses it.
+        bool chaos = text.Contains(" IN 3") || text.StartsWith("BUFF:") || text.StartsWith("DEBUFF:") || text.StartsWith("HAZARD:");
+        _banner.fontSize = chaos ? 96f : 120f;
+        _banner.color = chaos ? new Color(0.78f, 0.62f, 1f) : new Color(1f, 0.79f, 0.24f);
+        float hold = chaos ? 2.2f : 1.1f;
         _banner.text = text;
         var t = _banner.transform;
         t.DOKill();
@@ -214,7 +234,7 @@ public class MinigameHud : MonoBehaviour
         DOTween.Sequence()
             .Append(t.DOScale(1.1f, 0.25f).SetEase(Ease.OutBack))
             .Append(t.DOScale(1f, 0.1f))
-            .AppendInterval(1.1f)
+            .AppendInterval(hold)
             .Append(t.DOScale(0f, 0.2f).SetEase(Ease.InBack))
             .OnComplete(() => _banner.gameObject.SetActive(false))
             .SetLink(_banner.gameObject);

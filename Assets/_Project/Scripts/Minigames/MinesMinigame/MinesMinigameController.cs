@@ -23,21 +23,23 @@ public class MinesMinigameController : TurnBasedMinigameController
     private readonly List<(PlayerRef player, TickTimer timer)> _pendingBench = new();
     private readonly List<PlayerRef> _benched = new();
     private bool _firstPressDone;
-    private SpectatorLounge _lounge;
+
 
     /// <summary>Size chaos does nothing for a turn-based plate game (and giants hide the field).</summary>
     public override bool SupportsChaos(ChaosModifier modifier) =>
         modifier is not (ChaosModifier.Giants or ChaosModifier.Tiny) && base.SupportsChaos(modifier);
 
+    public static readonly string[] Layouts = { "Classic", "Wide Field", "Danger Zone" };
+    public override string[] Variants => Layouts;
+
     public override string TwistTitle => "DOUBLE DARE";
-    public override string TwistDescription => "Every turn you have to press two plates.";
+    public override string TwistDescription => "The next contestant has to press two plates.";
 
     public override void Spawned()
     {
         base.Spawned();
         _minefield.Initialize(this);
-        var field = _minefield.transform.position;
-        _lounge = SpectatorLounge.Build(transform, field + new Vector3(0f, 4f, 26f), field);
+
     }
 
     protected override void StartGame()
@@ -98,6 +100,8 @@ public class MinesMinigameController : TurnBasedMinigameController
         }
         else
         {
+            // A Double Dare covers one turn: once its second plate is pressed, the twist is over.
+            if (_firstPressDone && TwistActive) StopChaos();
             _firstPressDone = false;
             AdvanceTurn();
         }
@@ -126,12 +130,13 @@ public class MinesMinigameController : TurnBasedMinigameController
         _pendingBench.Add((player, TickTimer.CreateFromSeconds(Runner, _benchDelay)));
     }
 
-    /// <summary>Host only. Blown-up contestants watch from the lounge, free to move.</summary>
+    /// <summary>Host only. Blown-up contestants come back as ghosts around the field, free to move.</summary>
     private void SendToLounge(PlayerRef who)
     {
         if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
         if (!_benched.Contains(who)) _benched.Add(who);
-        _lounge.Admit(player);
+        var flat = Random.insideUnitCircle * 5f;
+        ReleaseAsGhost(player, _minefield.transform.position + new Vector3(flat.x, 1.5f, flat.y));
     }
 
     public override bool HandlePlayerFell(Player player)

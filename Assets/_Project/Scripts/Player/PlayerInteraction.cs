@@ -61,11 +61,18 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void UpdateLocalTarget()
     {
-        if (HeldObject != null || _player.ControlsLocked || _player.IsSpectator)
+        if (HeldObject != null || _player.ControlsLocked)
         {
             _focusHighlighter.Clear();
             CurrentTarget = null;
             HighlightShoveTarget(null);
+            return;
+        }
+        if (_player.IsSpectator)
+        {
+            _focusHighlighter.Clear();
+            CurrentTarget = null;
+            HighlightShoveTarget(FindShoveTarget(_player.Camera.transform.forward));
             return;
         }
 
@@ -83,7 +90,7 @@ public class PlayerInteraction : NetworkBehaviour
     private void HighlightShoveTarget(Player target)
     {
         var minigame = MinigameController.Current;
-        if (minigame == null || !minigame.IsGameActive || !minigame.AllowShove || _player.IsSpectator) target = null;
+        if (minigame == null || !minigame.IsGameActive || (!minigame.AllowShove && !_player.IsSpectator)) target = null;
         if (target == null)
         {
             if (_shoveMarker != null && _shoveMarker.gameObject.activeSelf) _shoveMarker.gameObject.SetActive(false);
@@ -120,7 +127,7 @@ public class PlayerInteraction : NetworkBehaviour
         for (int i = 0; i < count; i++)
         {
             var other = _overlap[i].GetComponentInParent<Player>();
-            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator) continue;
+            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator != _player.IsSpectator) continue;
             var to = other.transform.position - transform.position;
             to.y = 0f;
             if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;
@@ -175,9 +182,15 @@ public class PlayerInteraction : NetworkBehaviour
             ClearStaleHeldObject();
 
         if (!GetInput(out NetworkInputData input)) return;
-        // Spectators (knocked out) can't grab, throw or shove anything.
-        if (_player.ControlsLocked || _player.IsSpectator)
+        // Ghosts (knocked out) can't grab or throw; their shove only reaches other ghosts.
+        if (_player.ControlsLocked)
             input.Buttons = default;
+        else if (_player.IsSpectator)
+        {
+            bool shove = input.Buttons.IsSet(InputButtons.Throw);
+            input.Buttons = default;
+            input.Buttons.Set(InputButtons.Throw, shove);
+        }
 
         bool interactPressed = input.Buttons.WasPressed(PreviousButtons, InputButtons.Interact);
         bool throwPressed = input.Buttons.WasPressed(PreviousButtons, InputButtons.Throw);
@@ -243,9 +256,10 @@ public class PlayerInteraction : NetworkBehaviour
     private void TryShove()
     {
         var minigame = MinigameController.Current;
-        if (HasStateAuthority && minigame != null && minigame.IsGameActive && minigame.HandleShove(_player))
+        if (HasStateAuthority && !_player.IsSpectator && minigame != null && minigame.IsGameActive && minigame.HandleShove(_player))
             return;
-        if (!ShoveCooldown.ExpiredOrNotRunning(Runner) || (minigame != null && (!minigame.AllowShove || !minigame.IsGameActive)))
+        // Ghosts may always shove each other (it can't touch the game).
+        if (!ShoveCooldown.ExpiredOrNotRunning(Runner) || (minigame != null && ((!minigame.AllowShove && !_player.IsSpectator) || !minigame.IsGameActive)))
             return;
         ShoveCooldown = TickTimer.CreateFromSeconds(Runner, _shoveCooldown);
         ShoveTick = Runner.Tick;
@@ -260,7 +274,7 @@ public class PlayerInteraction : NetworkBehaviour
         for (int i = 0; i < count; i++)
         {
             var other = _overlap[i].GetComponentInParent<Player>();
-            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator) continue;
+            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator != _player.IsSpectator) continue;
             var to = other.transform.position - transform.position;
             to.y = 0f;
             if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;

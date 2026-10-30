@@ -138,7 +138,8 @@ public class RulesCard : MonoBehaviour
         _lastReadyMask = -1;
         var def = controller.Definition;
         var gm = NetworkGameManager.Instance;
-        _round.text = gm != null && gm.RoundCount > 0 ? $"ROUND {gm.RoundIndex + 1} OF {gm.RoundCount}" : "NEXT ROUND";
+        _round.text = (gm != null && gm.RoundCount > 0 ? $"ROUND {gm.RoundIndex + 1} OF {gm.RoundCount}" : "NEXT ROUND")
+                      + (controller.VariantName != null ? $"   ·   MAP: {controller.VariantName.ToUpperInvariant()}" : "");
         _title.text = def != null ? def.DisplayName.ToUpperInvariant() : "";
         _objective.text = def != null && !string.IsNullOrEmpty(def.Objective) ? def.Objective : def?.Description;
         _danger.text = def?.Danger ?? "";

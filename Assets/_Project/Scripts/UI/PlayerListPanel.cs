@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Tab: everyone in the show at a glance. In a round each contestant is IN or OUT (knocked out, in the lounge); in the
+/// Hold Tab: everyone in the show at a glance (you keep moving; the camera holds still so the mouse can click). In a round each contestant is IN or OUT (knocked out, in the lounge); in the
 /// lobby READY or NOT READY. The host also gets a KICK button per player and, in the lobby, START NOW. Lives for the
 /// whole session (DontDestroyOnLoad), built from code with <see cref="UiKit"/>.
 /// </summary>
@@ -103,10 +103,10 @@ public class PlayerListPanel : MonoBehaviour
     {
         var keyboard = Keyboard.current;
         bool inSession = Player.Local != null;
-        if (keyboard != null && keyboard.tabKey.wasPressedThisFrame && !keyboard.shiftKey.isPressed && inSession && !PauseMenu.IsOpen)   // Shift+Tab is Steam's overlay
-            Show(!IsOpen);
-        if (IsOpen && (!inSession || (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)))
-            Show(false);
+        // Held, not toggled (Shift+Tab is Steam's overlay).
+        bool held = keyboard != null && keyboard.tabKey.isPressed && !keyboard.shiftKey.isPressed && inSession && !PauseMenu.IsOpen;
+        if (held != IsOpen)
+            Show(held);
         if (IsOpen && Time.unscaledTime >= _nextRefresh)
         {
             _nextRefresh = Time.unscaledTime + 0.25f;
@@ -114,9 +114,23 @@ public class PlayerListPanel : MonoBehaviour
         }
     }
 
+    private Unity.Cinemachine.CinemachineInputAxisController _cameraInput;
+
     private void Show(bool open)
     {
         IsOpen = open;
+        // The camera holds still while the list is up, so the freed mouse can click KICK / START NOW.
+        if (open)
+        {
+            var player = Player.Local;
+            _cameraInput = player != null && player.Camera != null ? player.Camera.GetComponentInChildren<Unity.Cinemachine.CinemachineInputAxisController>(true) : null;
+            if (_cameraInput != null) _cameraInput.enabled = false;
+        }
+        else if (_cameraInput != null)
+        {
+            _cameraInput.enabled = true;
+            _cameraInput = null;
+        }
         _group.blocksRaycasts = open;
         _group.DOKill();
         _group.DOFade(open ? 1f : 0f, 0.15f).SetUpdate(true).SetLink(gameObject);

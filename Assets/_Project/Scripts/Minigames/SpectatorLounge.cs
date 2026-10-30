@@ -2,9 +2,9 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// The "knocked out" lounge: a railed platform floating beside the arena. Eliminated contestants are sent here with
-/// their controls back, so they can run, jump and emote while watching instead of standing frozen among the players.
-/// Built locally on every peer (the floor must exist for client prediction); see <see cref="EliminationMinigameController"/>.
+/// A railed viewing platform floating over or beside an arena (Key Hunt's glass deck over the vault): contestants who
+/// are done watch from here with their controls back; leaving it puts them straight back. Built locally on every peer
+/// (the floor must exist for client prediction).
 /// </summary>
 public class SpectatorLounge : MonoBehaviour
 {
@@ -17,12 +17,12 @@ public class SpectatorLounge : MonoBehaviour
     /// Host only. Sends a knocked-out contestant here as a spectator with controls back. They stay here: leaving the
     /// platform (jumping the rail, falling) puts them straight back, so they can't wander into the arena.
     /// </summary>
-    public void Admit(Player player)
+    public void Admit(Player player, bool spectator = true)
     {
         if (player == null) return;
         if (_spawner == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
         if (!_members.Contains(player)) _members.Add(player);
-        player.IsSpectator = true;
+        player.IsSpectator = spectator;
         if (player.Interaction != null) player.Interaction.ForceDrop();
         _spawner.Teleport(player, Spot(_members.IndexOf(player)), transform.rotation);
         player.MovementLocked = false;
@@ -44,7 +44,9 @@ public class SpectatorLounge : MonoBehaviour
     }
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
-    public static SpectatorLounge Build(Transform parent, Vector3 position, Vector3 lookAt)
+    private bool _glass;
+
+    public static SpectatorLounge Build(Transform parent, Vector3 position, Vector3 lookAt, bool glass = false)
     {
         var root = new GameObject("SpectatorLounge");
         root.transform.SetParent(parent, true);
@@ -53,6 +55,7 @@ public class SpectatorLounge : MonoBehaviour
         face.y = 0f;
         if (face.sqrMagnitude > 0.01f) root.transform.rotation = Quaternion.LookRotation(face);
         var lounge = root.AddComponent<SpectatorLounge>();
+        lounge._glass = glass;
         lounge.BuildGeometry();
         Physics.SyncTransforms();
         return lounge;
@@ -85,7 +88,14 @@ public class SpectatorLounge : MonoBehaviour
         floor.transform.localPosition = new Vector3(0f, -0.25f, 0f);
         floor.transform.localScale = new Vector3(RADIUS * 2f, 0.25f, RADIUS * 2f);
         floor.AddComponent<MeshCollider>().sharedMesh = floor.GetComponent<MeshFilter>().sharedMesh;
-        Tint(floor, new Color(0.72f, 0.61f, 0.95f));
+        if (_glass)
+        {
+            // See-through floor: you watch the round right under your feet.
+            var glass = new Material(Resources.Load<Material>("ThrowArc")) { color = new Color(0.75f, 0.9f, 1f, 0.22f) };
+            floor.GetComponent<Renderer>().sharedMaterial = glass;
+        }
+        else
+            Tint(floor, new Color(0.72f, 0.61f, 0.95f));
 
         var rim = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         Destroy(rim.GetComponent<Collider>());

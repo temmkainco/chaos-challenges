@@ -26,8 +26,9 @@ public class LobbyPlayersDisplay : NetworkBehaviour
         foreach (var item in _items)
             if (item != null && item.PlayerNickname_TMP != null)
             {
+                // Relative minimum: the TV labels are world-space text with a small font size.
                 item.PlayerNickname_TMP.fontSizeMax = item.PlayerNickname_TMP.fontSize;
-                item.PlayerNickname_TMP.fontSizeMin = 10f;
+                item.PlayerNickname_TMP.fontSizeMin = item.PlayerNickname_TMP.fontSize * 0.4f;
                 item.PlayerNickname_TMP.enableWordWrapping = false;
                 item.PlayerNickname_TMP.enableAutoSizing = true;
             }

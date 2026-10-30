@@ -47,7 +47,7 @@ public class PlayerInput : NetworkBehaviour
         if (Controls == null)
             return;
 
-        if (PauseMenu.IsOpen || GamePackPanel.IsOpen || PlayerListPanel.IsOpen)
+        if (PauseMenu.IsOpen || GamePackPanel.IsOpen)
         {
             Move = Vector2.zero;
             IsJumpPressed = false;

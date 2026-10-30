@@ -41,32 +41,288 @@ MonoBehaviour:
     Color: {r: 0.52, g: 0.33, b: 0.22, a: 1}
   - Name: Charcoal
     Color: {r: 0.28, g: 0.28, b: 0.33, a: 1}
+  - Name: Gold
+    Color: {r: 0.95, g: 0.75, b: 0.2, a: 1}
+  - Name: Peach
+    Color: {r: 1, g: 0.75, b: 0.6, a: 1}
+  - Name: Teal
+    Color: {r: 0.15, g: 0.6, b: 0.6, a: 1}
+  - Name: Navy
+    Color: {r: 0.15, g: 0.2, b: 0.45, a: 1}
+  - Name: Lavender
+    Color: {r: 0.75, g: 0.65, b: 0.95, a: 1}
+  - Name: Ink
+    Color: {r: 0.12, g: 0.1, b: 0.16, a: 1}
   <Hats>k__BackingField:
   - Name: None
     Prefab: {fileID: 0}
     LocalPosition: {x: 0, y: 0, z: 0}
     LocalEuler: {x: 0, y: 0, z: 0}
     Scale: 0
+    AttachTo: 0
+    WorldSpace: 0
   - Name: Top Hat
     Prefab: {fileID: 3952692635883924369, guid: 679aa667854bc994ba1f0d7669e8427a, type: 3}
     LocalPosition: {x: -0.00000932934, y: 0.004246168, z: -0.00015724951}
     LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
     Scale: 0.019577809
+    AttachTo: 0
+    WorldSpace: 0
   - Name: Crown
     Prefab: {fileID: 3781446964664321474, guid: 9b615b4df41053a42a407d386b2241b4, type: 3}
     LocalPosition: {x: -0.000010978309, y: 0.0036651264, z: -0.00020607989}
     LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
     Scale: 0.017050529
+    AttachTo: 0
+    WorldSpace: 0
   - Name: Headphones
     Prefab: {fileID: 6425698344607842257, guid: caa9fa9b44b152e4dbb67b7978597ef5, type: 3}
     LocalPosition: {x: 0.000015876587, y: -0.0032502678, z: -0.000076026714}
     LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
     Scale: 0.027595995
+    AttachTo: 0
+    WorldSpace: 0
   - Name: Cooking Pot
     Prefab: {fileID: 2104011583568910299, guid: 75ba208b04d53e5469a6429a3b2fa813, type: 3}
     LocalPosition: {x: 0.000000002634519, y: 0.006552725, z: -0.00039696845}
     LocalEuler: {x: 358.0484, y: 0.0000068833465, z: 180}
     Scale: 0.018116426
+    AttachTo: 0
+    WorldSpace: 0
+  - Name: Party Hat
+    Prefab: {fileID: 7280523132738051734, guid: 15c375a8accb9b441862473b9817d992, type: 3}
+    LocalPosition: {x: 0.06, y: 0.5, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: -12}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Cowboy Hat
+    Prefab: {fileID: 8027505359597074795, guid: e6681dbaafbe76f409e7f5863293fc77, type: 3}
+    LocalPosition: {x: 0, y: 0.47, z: 0.02}
+    LocalEuler: {x: -6, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Chef Hat
+    Prefab: {fileID: 734930201484468570, guid: 95143c378af72194888251f42f4be125, type: 3}
+    LocalPosition: {x: 0, y: 0.46, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Beanie
+    Prefab: {fileID: 4536181906018675049, guid: d7e691d1708de3143a5133372999dc73, type: 3}
+    LocalPosition: {x: 0, y: 0.42, z: 0.03}
+    LocalEuler: {x: -8, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Propeller Cap
+    Prefab: {fileID: 1739308613317416016, guid: 2b12ebc7c47740341a36796ddb918509, type: 3}
+    LocalPosition: {x: 0, y: 0.44, z: 0.02}
+    LocalEuler: {x: -6, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Halo
+    Prefab: {fileID: 12615521371221812, guid: 5404a920db3f2cc44965f6600327b463, type: 3}
+    LocalPosition: {x: 0, y: 0.66, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Viking Helmet
+    Prefab: {fileID: 351807713794676720, guid: 547c99c1b5af8d843863ef0277e452a7, type: 3}
+    LocalPosition: {x: 0, y: 0.42, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Bunny Ears
+    Prefab: {fileID: 1339988445480155106, guid: f271620f906761b448d89d00a22aa1c5, type: 3}
+    LocalPosition: {x: 0, y: 0.45, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Antennae
+    Prefab: {fileID: 4902375254442972222, guid: 185078ef7a0dadf479dafbed131be559, type: 3}
+    LocalPosition: {x: 0, y: 0.5, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Traffic Cone
+    Prefab: {fileID: 5498080050510002766, guid: 40024b230111efa44ae35b38b3666700, type: 3}
+    LocalPosition: {x: 0, y: 0.48, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Frying Pan
+    Prefab: {fileID: 5853269110063180645, guid: fe2365e601abd4d48847602c04af0477, type: 3}
+    LocalPosition: {x: 0, y: 0.52, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Bowl
+    Prefab: {fileID: 5620988199356349840, guid: 2c8f86c032a5f7740866801cebb4e84a, type: 3}
+    LocalPosition: {x: 0, y: 0.5, z: 0.02}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  <Faces>k__BackingField:
+  - Name: None
+    Prefab: {fileID: 0}
+    LocalPosition: {x: 0, y: 0, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 0
+    AttachTo: 0
+    WorldSpace: 0
+  - Name: Sunglasses
+    Prefab: {fileID: 9181923516591364485, guid: c8d93aa5190ca114fb240f8a34946615, type: 3}
+    LocalPosition: {x: 0, y: 0.31, z: 0.33}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Nerd Glasses
+    Prefab: {fileID: 5831772355376512559, guid: d99941b29851aba4a9e92356e0059905, type: 3}
+    LocalPosition: {x: 0, y: 0.31, z: 0.33}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Mustache
+    Prefab: {fileID: 9038266590754095948, guid: dd1b400b3384b8545bedb91647296029, type: 3}
+    LocalPosition: {x: 0, y: 0.18, z: 0.32}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Clown Nose
+    Prefab: {fileID: 161740500954978651, guid: ed7865a2192b93e44818ad18fc712431, type: 3}
+    LocalPosition: {x: 0, y: 0.23, z: 0.35}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Eye Patch
+    Prefab: {fileID: 5051547283806841798, guid: d8415ed9bab46824a8dd68ceabb1d571, type: 3}
+    LocalPosition: {x: 0, y: 0.31, z: 0.33}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Monocle
+    Prefab: {fileID: 66997184018820983, guid: 3678273526fa7e641a5b8384ec0cb8d4, type: 3}
+    LocalPosition: {x: 0.11, y: 0.31, z: 0.33}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  - Name: Diver Mask
+    Prefab: {fileID: 6977584929478685750, guid: 5453ae40ce82b8945b0bc629a07d4dbf, type: 3}
+    LocalPosition: {x: 0, y: 0.3, z: 0.3}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 0
+    WorldSpace: 1
+  <Necks>k__BackingField:
+  - Name: None
+    Prefab: {fileID: 0}
+    LocalPosition: {x: 0, y: 0, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 0
+    AttachTo: 0
+    WorldSpace: 0
+  - Name: Bow Tie
+    Prefab: {fileID: 4627473477985449948, guid: bdb8e759cdf67f543934a4d6eca622f5, type: 3}
+    LocalPosition: {x: 0, y: 0.39, z: 0.21}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 1
+    WorldSpace: 1
+  - Name: Tie
+    Prefab: {fileID: 315738869550927375, guid: a3d27f34d60c15e4488eb50b11ded952, type: 3}
+    LocalPosition: {x: 0, y: 0.39, z: 0.21}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 1
+    WorldSpace: 1
+  - Name: Scarf
+    Prefab: {fileID: 5974746485181383505, guid: 0cb46dff999ea084cad3e22f3738e488, type: 3}
+    LocalPosition: {x: 0, y: 0.42, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 1
+    WorldSpace: 1
+  - Name: Gold Chain
+    Prefab: {fileID: 3197612978667879905, guid: b3752d9e47b31ac4989f178335fe2d79, type: 3}
+    LocalPosition: {x: 0, y: 0.42, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 1
+    WorldSpace: 1
+  - Name: Medal
+    Prefab: {fileID: 259134258934390367, guid: 6fb7eb0407b66624aa6df51ed9a08b8a, type: 3}
+    LocalPosition: {x: 0, y: 0.28, z: 0.21}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 1
+    WorldSpace: 1
+  <Backs>k__BackingField:
+  - Name: None
+    Prefab: {fileID: 0}
+    LocalPosition: {x: 0, y: 0, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 0
+    AttachTo: 0
+    WorldSpace: 0
+  - Name: Backpack
+    Prefab: {fileID: 4044515167990166390, guid: a5ef17b07286cde4382da41303fbc57a, type: 3}
+    LocalPosition: {x: 0, y: 0.12, z: -0.33}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 2
+    WorldSpace: 1
+  - Name: Cape
+    Prefab: {fileID: 2820426620154933544, guid: 10bf24cc45ab1954b8357360c7e2499e, type: 3}
+    LocalPosition: {x: 0, y: 0.38, z: -0.22}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 2
+    WorldSpace: 1
+  - Name: Angel Wings
+    Prefab: {fileID: 6681722004047240907, guid: df33133e30600e545879af7e69a51a4f, type: 3}
+    LocalPosition: {x: 0, y: 0.2, z: -0.24}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 2
+    WorldSpace: 1
+  - Name: Bat Wings
+    Prefab: {fileID: 2311354567188264056, guid: 82d5d17838fab784280527ab7db03f53, type: 3}
+    LocalPosition: {x: 0, y: 0.2, z: -0.24}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 2
+    WorldSpace: 1
+  - Name: Jetpack
+    Prefab: {fileID: 1565424004864889410, guid: ce5b3c1db37ee9345a866bca56868284, type: 3}
+    LocalPosition: {x: 0, y: 0.15, z: -0.3}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 2
+    WorldSpace: 1
+  - Name: Turtle Shell
+    Prefab: {fileID: 529409079400374813, guid: 471c68cb3073d564dbe0fac985144a56, type: 3}
+    LocalPosition: {x: 0, y: 0.1, z: -0.2}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    Scale: 1
+    AttachTo: 2
+    WorldSpace: 1
   <DefaultBody>k__BackingField: 7
   <DefaultHands>k__BackingField: 2
   <DefaultHead>k__BackingField: 0

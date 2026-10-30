@@ -17,6 +17,17 @@ public class CosmeticsCatalog : ScriptableObject
         public Color Color;
     }
 
+    /// <summary>Where a wearable item hangs: on the head bone, the neck / upper chest, or the back of the chest.</summary>
+    public enum Attach { Head, Neck, Back }
+
+    /// <summary>The wearable slots (hat, face, neck, back), each its own list of items.</summary>
+    public enum Slot { Hat, Face, Neck, Back }
+
+    /// <summary>
+    /// One wearable item. Older hats are placed in the head bone's own space (<see cref="LocalPosition"/>, scaled by
+    /// the rig); items with <see cref="WorldSpace"/> are authored in metres in the character's frame (right, up,
+    /// forward from the bone) with <see cref="Scale"/> as their size, so they work on any rig scale.
+    /// </summary>
     [Serializable]
     public struct Hat
     {
@@ -25,10 +36,29 @@ public class CosmeticsCatalog : ScriptableObject
         public Vector3 LocalPosition;
         public Vector3 LocalEuler;
         public float Scale;
+        public Attach AttachTo;
+        public bool WorldSpace;
     }
 
     [field: SerializeField] public Swatch[] Colors { get; private set; } = Array.Empty<Swatch>();
     [field: SerializeField] public Hat[] Hats { get; private set; } = Array.Empty<Hat>();
+    [field: SerializeField] public Hat[] Faces { get; private set; } = Array.Empty<Hat>();
+    [field: SerializeField] public Hat[] Necks { get; private set; } = Array.Empty<Hat>();
+    [field: SerializeField] public Hat[] Backs { get; private set; } = Array.Empty<Hat>();
+
+    public Hat[] Items(Slot slot) => slot switch
+    {
+        Slot.Face => Faces,
+        Slot.Neck => Necks,
+        Slot.Back => Backs,
+        _ => Hats,
+    };
+
+    public Hat GetItem(Slot slot, int index)
+    {
+        var items = Items(slot);
+        return items.Length == 0 ? default : items[Mathf.Abs(index) % items.Length];
+    }
     [field: SerializeField] public int DefaultBody { get; private set; }
     [field: SerializeField] public int DefaultHands { get; private set; }
     [field: SerializeField] public int DefaultHead { get; private set; }

@@ -34,11 +34,11 @@ public class BombRushMinigameController : MinigameController
     private readonly List<PlayerRef> _alive = new();
     private readonly List<PlayerRef> _eliminationOrder = new();
     private int _nextBelt;
-    private SpectatorLounge _lounge;
     private readonly List<(PlayerRef player, TickTimer timer)> _toLounge = new();
 
     /// <summary>A blast this close (or in your hands) knocks you out; farther away it only launches you.</summary>
     public const float KILL_RADIUS = 3f;
+    private Vector3 _arenaCentre;
 
     public override void Spawned()
     {
@@ -47,7 +47,36 @@ public class BombRushMinigameController : MinigameController
         var centre = Vector3.zero;
         foreach (var belt in _belts) centre += belt.Evaluate(1f);
         centre = _belts.Length > 0 ? centre / _belts.Length : transform.position;
-        _lounge = SpectatorLounge.Build(transform, centre + new Vector3(0f, 4f, 30f), centre);
+        var arenaCentre = GameObject.Find("ArenaCentre");
+        _arenaCentre = arenaCentre != null ? arenaCentre.transform.position : centre;
+        // The belt ends sit above the stage: drop the centre onto the stage floor (out-of-arena checks and props use it).
+        if (Physics.Raycast(_arenaCentre + Vector3.up * 0.5f, Vector3.down, out var floorHit, 6f, ~0, QueryTriggerInteraction.Ignore))
+            _arenaCentre.y = floorHit.point.y;
+        BuildLayout();
+    }
+
+    public override string[] Variants => new[] { "Open Floor", "Crates", "Pillars" };
+
+    /// <summary>Cover in the middle of the arena: it blocks thrown bombs (not the blast).</summary>
+    private void BuildLayout()
+    {
+        var ground = _arenaCentre;
+        if (Variant == 1)
+        {
+            var crates = new[] { new Vector3(-4.5f, 0f, 2f), new Vector3(3.5f, 0f, 4.5f), new Vector3(5f, 0f, -3f), new Vector3(-2f, 0f, -5.5f), new Vector3(0.5f, 0f, 0.5f) };
+            for (int i = 0; i < crates.Length; i++)
+                ArenaProps.Block(transform, PrimitiveType.Cube, ground + crates[i], new Vector3(1.8f, 1.4f, 1.8f), new Color(0.78f, 0.55f, 0.32f), i * 23f);
+        }
+        else if (Variant == 2)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
+                ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 6.5f,
+                    new Vector3(1.8f, 3.5f, 1.8f), i % 2 == 0 ? ArenaProps.Blue : ArenaProps.Pink);
+            }
+        }
+        ArenaProps.Done();
     }
 
     public ConveyorBelt GetBelt(int index) => index >= 0 && index < _belts.Length ? _belts[index] : null;
@@ -55,7 +84,7 @@ public class BombRushMinigameController : MinigameController
     private bool SuddenDeath => IsTimeLimited && IsGameActive && TimeRemaining <= _suddenDeathSeconds;
 
     public override string TwistTitle => "BOMB BONANZA";
-    public override string TwistDescription => "The conveyors spit out bombs three times as fast.";
+    public override string TwistDescription => "Bombs rain down from the sky all over the arena.";
 
     public override string GetStatusText()
     {
@@ -78,6 +107,23 @@ public class BombRushMinigameController : MinigameController
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
+        // Leaving the arena (onto its raised rim, or down) is out: no hiding outside and jumping back in.
+        if (HasStateAuthority && IsGameActive && Runner.Tick % 10 == 0)
+        {
+            float floor = _arenaCentre.y - 1f, rim = _arenaCentre.y + 0.6f;
+            for (int i = _alive.Count - 1; i >= 0; i--)
+            {
+                if (!_playerSpawner.Players.TryGet(_alive[i], out var p) || p == null) continue;
+                float y = p.transform.position.y;
+                bool onRim = y > rim && p.TryGetComponent<PlayerMovement>(out var movement) && movement.IsGrounded && !ArenaProps.IsStandingOnProp(p.transform.position);
+                if (y < floor || onRim)
+                    Eliminate(_alive[i]);
+            }
+            foreach (var who in _eliminationOrder)
+                if (!_toLounge.Exists(t => t.player == who) && _playerSpawner.Players.TryGet(who, out var ghost) && ghost != null
+                    && ghost.IsSpectator && ghost.transform.position.y < floor)
+                    SendToLounge(who);
+        }
         if (HasStateAuthority)
             for (int i = _toLounge.Count - 1; i >= 0; i--)
                 if (_toLounge[i].timer.Expired(Runner))
@@ -92,11 +138,20 @@ public class BombRushMinigameController : MinigameController
         if (!SpawnTimer.Expired(Runner))
             return;
 
-        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f) * (TwistActive ? 0.33f : 1f);
+        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f) * (TwistActive ? 0.4f : 1f);
         SpawnTimer = TickTimer.CreateFromSeconds(Runner, interval);
 
         if (Bomb.Active.Count >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath || TwistActive ? 2 : 1))
             return;
+
+        // Bomb Bonanza: bombs rain from the sky at random spots across the arena instead of out of the conveyors.
+        if (TwistActive)
+        {
+            var flat = Random.insideUnitCircle * 15f;
+            Runner.Spawn(_bombPrefab, _arenaCentre + new Vector3(flat.x, 14f, flat.y), Quaternion.identity, null,
+                (runner, obj) => { var bomb = obj.GetComponent<Bomb>(); bomb.Initialize(this, -1); bomb.FromSky = true; });
+            return;
+        }
 
         int belt = _nextBelt++ % _belts.Length;
         Runner.Spawn(_bombPrefab, _belts[belt].Evaluate(0f), Quaternion.identity, null,
@@ -161,7 +216,7 @@ public class BombRushMinigameController : MinigameController
         {
             var who = player.Object.InputAuthority;
             if (_alive.Contains(who)) Eliminate(who);
-            else if (_eliminationOrder.Contains(who)) SendToLounge(who);   // fell off the lounge
+            else if (_eliminationOrder.Contains(who)) SendToLounge(who);   // a ghost fell off: back onto the arena
         }
         return true;
     }
@@ -169,8 +224,9 @@ public class BombRushMinigameController : MinigameController
     /// <summary>Host only. Knocked-out contestants watch from the lounge, free to move.</summary>
     private void SendToLounge(PlayerRef who)
     {
-        if (_lounge == null || !_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
-        _lounge.Admit(player);
+        if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
+        var flat = Random.insideUnitCircle * 8f;
+        ReleaseAsGhost(player, _arenaCentre + new Vector3(flat.x, 1f, flat.y));
     }
 
     public override void HandlePlayerLeft(PlayerRef player)

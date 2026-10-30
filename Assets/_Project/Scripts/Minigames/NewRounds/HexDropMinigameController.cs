@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Hex Drop: three stacked layers of hexagon tiles high above the studio floor. A tile you step on cracks and drops
 /// a moment later, so keep moving and plan your way down; fall through the bottom layer and you are out.
-/// Last contestant standing wins. Chaos: during ICE FLOOR or SPEED RUSH tiles drop faster; its own twist,
+/// Last contestant standing wins. Layouts: Classic Stack, Tall Tower, Twin Peaks, Donut. Chaos: during ICE FLOOR or SPEED RUSH tiles drop faster; its own twist,
 /// EARTHQUAKE, cracks random tiles on every floor.
 /// </summary>
 public class HexDropMinigameController : EliminationMinigameController
@@ -25,20 +25,29 @@ public class HexDropMinigameController : EliminationMinigameController
     [Networked, Capacity(MAX_TILES)] private NetworkArray<int> SteppedTick { get; }
 
     private readonly List<Vector3> _tilePositions = new();
+    private readonly List<int> _layerOf = new();
+    /// <summary>First tile index of each floor (plus the total at the end).</summary>
+    private readonly List<int> _layerStart = new();
     private Transform[] _tiles;
     private Collider[] _colliders;
     private Renderer[] _renderers;
     private byte[] _shown;
     private MaterialPropertyBlock _block;
-    private static readonly Color[] LayerColors = { new(1f, 0.49f, 0.71f), new(0.36f, 0.75f, 0.92f), new(1f, 0.79f, 0.24f) };
+    private static readonly Color[] LayerColors = { new(1f, 0.49f, 0.71f), new(0.36f, 0.75f, 0.92f), new(1f, 0.79f, 0.24f), new(0.31f, 0.82f, 0.63f) };
+
+    public override string[] Variants => new[] { "Classic Stack", "Tall Tower", "Twin Peaks", "Donut" };
 
     private Vector3 Base => _centre.position + Vector3.up * _baseHeight;
     protected override float OutHeight => Base.y - 3f;
 
+    /// <summary>Spread over the top floor's tiles (the layouts have gaps, so not a fixed circle).</summary>
     protected override Vector3 ArenaSpawn(int slot, int count)
     {
-        float angle = (slot + 0.5f) / Mathf.Max(1, count) * Mathf.PI * 2f;
-        return Base + Vector3.up * ((LAYERS - 1) * _layerGap + 1f) + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * _hexRadius * 3.5f;
+        if (_layerStart.Count < 2) Build();
+        int top = _layerStart.Count - 2;
+        int first = _layerStart[top], tiles = _layerStart[top + 1] - first;
+        int index = first + Mathf.Clamp(Mathf.FloorToInt((slot + 0.5f) / Mathf.Max(1, count) * tiles), 0, tiles - 1);
+        return _tilePositions[index] + Vector3.up;
     }
 
     public override void Spawned()
@@ -49,15 +58,42 @@ public class HexDropMinigameController : EliminationMinigameController
 
     private void Build()
     {
+        if (_tiles != null) return;
         _tilePositions.Clear();
+        _layerOf.Clear();
+        _layerStart.Clear();
+        // Floors, rings per floor, gap between floors, and which hexes (axial q, r) are solid.
+        int variant = Variant;
+        int layers = variant == 1 ? 4 : LAYERS;
+        int rings = variant == 1 ? 3 : RINGS;
+        float gap = variant == 1 ? _layerGap * 0.85f : _layerGap;
+        static int Distance(int q, int r) => (Mathf.Abs(q) + Mathf.Abs(r) + Mathf.Abs(q + r)) / 2;
+        bool Solid(int q, int r) => variant switch
+        {
+            // Two islands joined by a one-hex bridge.
+            2 => Distance(q + 3, r) <= 2 || Distance(q - 3, r) <= 2 || (r == 0 && q == 0),
+            // A ring: no middle.
+            3 => Distance(q, r) >= 2,
+            _ => true,
+        };
         float w = Mathf.Sqrt(3f) * _hexRadius * 0.98f;
-        for (int layer = 0; layer < LAYERS; layer++)
-            for (int q = -RINGS; q <= RINGS; q++)
-                for (int r = Mathf.Max(-RINGS, -q - RINGS); r <= Mathf.Min(RINGS, -q + RINGS); r++)
+        for (int layer = 0; layer < layers; layer++)
+        {
+            _layerStart.Add(_tilePositions.Count);
+            // Twin Peaks crosses its floors; the others twist a little per floor.
+            var turn = Quaternion.Euler(0f, variant == 2 ? layer * 90f : variant == 3 ? layer * 30f : 0f, 0f);
+            int reach = variant == 2 ? 5 : rings;
+            for (int q = -reach; q <= reach; q++)
+                for (int r = Mathf.Max(-reach, -q - reach); r <= Mathf.Min(reach, -q + reach); r++)
                 {
+                    if (!Solid(q, r)) continue;
+                    if (_tilePositions.Count >= MAX_TILES) break;
                     float x = w * (q + r * 0.5f), z = _hexRadius * 1.5f * 0.98f * r;
-                    _tilePositions.Add(Base + new Vector3(x, layer * _layerGap, z));
+                    _tilePositions.Add(Base + turn * new Vector3(x, 0f, z) + Vector3.up * (layer * gap));
+                    _layerOf.Add(layer);
                 }
+        }
+        _layerStart.Add(_tilePositions.Count);
 
         var mesh = HexMesh(_hexRadius * 0.96f, 0.5f);
         _tiles = new Transform[_tilePositions.Count];
@@ -72,6 +108,7 @@ public class HexDropMinigameController : EliminationMinigameController
             var go = new GameObject("Hex " + i, typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider));
             go.transform.SetParent(root, false);
             go.transform.position = _tilePositions[i];
+            go.transform.rotation = Quaternion.Euler(0f, Variant == 3 ? _layerOf[i] * 30f : Variant == 2 ? _layerOf[i] * 90f : 0f, 0f);
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             var collider = go.GetComponent<MeshCollider>();
             collider.sharedMesh = mesh;
@@ -80,7 +117,7 @@ public class HexDropMinigameController : EliminationMinigameController
             _colliders[i] = collider;
             _renderers[i] = go.GetComponent<MeshRenderer>();
             _renderers[i].sharedMaterial = _material;
-            Tint(i, LayerColors[i / PER_LAYER]);
+            Tint(i, LayerColors[_layerOf[i] % LayerColors.Length]);
         }
         Physics.SyncTransforms();   // runtime colliders must reach the physics scene on clients too
     }
@@ -95,7 +132,8 @@ public class HexDropMinigameController : EliminationMinigameController
     public override string TwistTitle => "EARTHQUAKE";
     public override string TwistDescription => "Random tiles on every floor crack on their own.";
 
-    private float Delay => ActiveChaos is ChaosModifier.IceFloor or ChaosModifier.SpeedRush ? _dropDelay * 0.6f : _dropDelay;
+    /// <summary>At least 0.75 s before a stepped tile drops: with lag, players saw tiles fall under them early.</summary>
+    private float Delay => (ActiveChaos is ChaosModifier.IceFloor or ChaosModifier.SpeedRush ? 0.6f : 1f) * Mathf.Max(_dropDelay, 0.75f);
 
     public override void FixedUpdateNetwork()
     {
@@ -104,9 +142,9 @@ public class HexDropMinigameController : EliminationMinigameController
 
         // Earthquake: four times a second one random intact tile per floor cracks.
         if (TwistActive && Runner.Tick % Mathf.Max(1, Runner.TickRate / 4) == 0)
-            for (int layer = 0; layer < LAYERS; layer++)
+            for (int layer = 0; layer < _layerStart.Count - 1; layer++)
             {
-                int index = layer * PER_LAYER + Random.Range(0, PER_LAYER);
+                int index = Random.Range(_layerStart[layer], _layerStart[layer + 1]);
                 if (SteppedTick[index] == 0) SteppedTick.Set(index, Runner.Tick);
             }
 
@@ -150,7 +188,7 @@ public class HexDropMinigameController : EliminationMinigameController
                 _colliders[i].enabled = true;
                 _tiles[i].gameObject.SetActive(true);
                 _tiles[i].localScale = Vector3.one;
-                Tint(i, LayerColors[i / PER_LAYER]);
+                Tint(i, LayerColors[_layerOf[i] % LayerColors.Length]);
             }
         }
     }

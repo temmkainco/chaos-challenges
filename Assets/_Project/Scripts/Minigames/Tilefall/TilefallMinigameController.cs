@@ -29,6 +29,8 @@ public class TilefallMinigameController : MinigameController
 
     public event Action<PlayerRef, int> OnPlayerFinished;
 
+    public override string[] Variants => TileCourse.Layouts;
+
     public override string TwistTitle => "CROSSWIND";
     public override string TwistDescription => "A gale blows across the course and flips direction every few seconds.";
 

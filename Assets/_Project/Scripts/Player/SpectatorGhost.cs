@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Knocked-out contestants (<see cref="Player.IsSpectator"/>) are drawn as see-through ghosts in their outfit colour,
-/// so everyone can tell at a glance who is still in. Swaps the renderers' materials for a transparent tint and back.
+/// Knocked-out contestants (<see cref="Player.IsSpectator"/>) are see-through ghosts in their outfit colour: they run
+/// around the arena with everyone, but pass straight through the living (ghosts still bump into each other).
+/// Swaps the renderers' materials for a transparent tint and back, and sets collision ignoring on every peer.
 /// </summary>
 public class SpectatorGhost : MonoBehaviour
 {
@@ -26,6 +27,20 @@ public class SpectatorGhost : MonoBehaviour
         _shown = ghost;
         if (ghost) Apply();
         else Restore();
+        UpdateCollisions();
+    }
+
+    /// <summary>Living and ghosts ignore each other; two of a kind collide.</summary>
+    private void UpdateCollisions()
+    {
+        if (!TryGetComponent<CharacterController>(out var mine)) return;
+        foreach (var other in PlayerMovement.Controllers)
+        {
+            if (other == null || other.gameObject == gameObject || !other.TryGetComponent<CharacterController>(out var theirs)) continue;
+            var otherPlayer = other.GetComponent<Player>();
+            bool otherGhost = otherPlayer != null && otherPlayer.IsSpectator && MinigameController.Current != null;
+            Physics.IgnoreCollision(mine, theirs, _shown != otherGhost);
+        }
     }
 
     private void Apply()

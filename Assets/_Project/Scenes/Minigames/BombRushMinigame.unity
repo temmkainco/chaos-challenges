@@ -1058,6 +1058,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel_02
       objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -7422,6 +7426,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel_02
       objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -9591,6 +9599,10 @@ PrefabInstance:
     - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
       propertyPath: m_Name
       value: OilBarrel_02
+      objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -15713,6 +15725,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel_01
       objectReference: {fileID: 0}
+    - target: {fileID: 3930682334720130657, guid: 1be4e0c2942b9a749a31190ebf5e6017, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4451604192378037467, guid: 1be4e0c2942b9a749a31190ebf5e6017, type: 3}
       propertyPath: m_LocalScale.x
       value: 1.1099055
@@ -21764,7 +21780,6 @@ MonoBehaviour:
   _focusedCamera: {fileID: 1864927953}
   _fadeInDuration: 0.4
   _fadeOutDuration: 0.4
-  _entryStaggerDelay: 0.1
   _finalRevealStagger: 1.2
 --- !u!1 &1778543801
 GameObject:
@@ -23199,6 +23214,9 @@ MonoBehaviour:
     _data:
       Data: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   _AnnouncementId: 0
+  _ReadyMask: 0
+  _ActiveChaos: 0
+  _PendingChaos: 0
   _minigameDefinition: {fileID: 11400000, guid: c47d9589ad0e5054c911319c89abbc04, type: 2}
   _hasCountdown: 1
   _bombPrefab:
@@ -26204,6 +26222,10 @@ PrefabInstance:
     - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
       propertyPath: m_Name
       value: OilBarrel_02
+      objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

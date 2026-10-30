@@ -27,6 +27,8 @@ public class PrizeGrabMinigameController : MinigameController
     [Networked, Capacity(MAX_PLAYERS)] private NetworkDictionary<PlayerRef, int> Scores => default;
     [Networked] private TickTimer RainTimer { get; set; }
     [Networked] private NetworkBool BonusAnnounced { get; set; }
+    [Networked] private float GoldenAt { get; set; }
+    private const float GOLDEN_SECONDS = 6f;
 
     private readonly List<PlayerRef> _order = new();
     private readonly Dictionary<PlayerRef, Transform> _podiums = new();
@@ -86,7 +88,11 @@ public class PrizeGrabMinigameController : MinigameController
         if (!HasStateAuthority || !IsGameActive)
             return;
 
-        bool bonus = IsTimeLimited && TimeRemaining <= _bonusSeconds;
+        // One short Golden Rain at a random moment mid-round (at the very end it decided every match).
+        float total = Definition.GameDuration * MatchSettings.LengthMultiplier;
+        float elapsed = total - TimeRemaining;
+        if (GoldenAt <= 0f) GoldenAt = total * Random.Range(0.35f, 0.65f);
+        bool bonus = IsTimeLimited && elapsed >= GoldenAt && elapsed < GoldenAt + GOLDEN_SECONDS;
         if (bonus && !BonusAnnounced)
         {
             BonusAnnounced = true;
@@ -135,6 +141,37 @@ public class PrizeGrabMinigameController : MinigameController
         var position = _stageCentre.position + new Vector3(flat.x, 12f, flat.y);
         Runner.Spawn(_prizePrefab, position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
             (runner, spawned) => spawned.GetComponent<Prize>().Value = (byte)(golden ? 3 : 1));
+    }
+
+    public override string[] Variants => new[] { "Open Stage", "Hurdles", "Towers" };
+
+    public override void Spawned()
+    {
+        base.Spawned();
+        var ground = _stageCentre.position;
+        if (Variant == 1)
+        {
+            // A broken ring of low hurdles: hop them with a prize, or go round through the gaps.
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = (i * 60f + 15f) * Mathf.Deg2Rad;
+                var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                ArenaProps.Block(transform, PrimitiveType.Cube, ground + direction * 7f, new Vector3(4f, 0.7f, 0.6f), ArenaProps.Yellow,
+                    Quaternion.LookRotation(direction).eulerAngles.y);
+            }
+        }
+        else if (Variant == 2)
+        {
+            // Low towers to jump on: prizes landing up there are a scramble.
+            for (int i = 0; i < 3; i++)
+            {
+                float angle = (i * 120f + 30f) * Mathf.Deg2Rad;
+                ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5.5f,
+                    new Vector3(3.2f, 1.1f, 3.2f), i == 0 ? ArenaProps.Pink : i == 1 ? ArenaProps.Blue : ArenaProps.Green);
+            }
+            ArenaProps.Block(transform, PrimitiveType.Cylinder, ground, new Vector3(2.4f, 1.6f, 2.4f), ArenaProps.Purple);
+        }
+        ArenaProps.Done();
     }
 
     public override bool HandlePrimaryAction(Player player)

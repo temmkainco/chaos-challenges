@@ -29,7 +29,39 @@ public class HotPotatoMinigameController : EliminationMinigameController
     private Transform _bomb;
     private float _blink;
 
-    protected override float OutHeight => _centre.position.y - 6f;
+    public override string[] Variants => new[] { "Open Stage", "Pillars", "Crossroads" };
+
+    public override void Spawned()
+    {
+        base.Spawned();
+        var ground = _centre.position;
+        if (Variant == 1)
+        {
+            // A ring of pillars to dodge around (and lose your pursuer behind).
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = i / 6f * Mathf.PI * 2f;
+                ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 4.5f,
+                    new Vector3(1.6f, 3f, 1.6f), i % 2 == 0 ? ArenaProps.Pink : ArenaProps.Blue);
+            }
+            ArenaProps.Block(transform, PrimitiveType.Cylinder, ground, new Vector3(2.2f, 3f, 2.2f), ArenaProps.Yellow);
+        }
+        else if (Variant == 2)
+        {
+            // Four low walls in an X: hop over them or run around.
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
+                var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                ArenaProps.Block(transform, PrimitiveType.Cube, ground + direction * 4f, new Vector3(0.8f, 1.1f, 4.5f), ArenaProps.Purple,
+                    Quaternion.LookRotation(direction).eulerAngles.y);
+            }
+        }
+        ArenaProps.Done();
+    }
+
+    // Just below the stage top: stepping down onto the studio floor counts as out (no walking back in).
+    protected override float OutHeight => _centre.position.y - 0.8f;
 
     protected override Vector3 ArenaSpawn(int slot, int count)
     {

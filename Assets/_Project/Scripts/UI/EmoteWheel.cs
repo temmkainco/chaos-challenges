@@ -12,7 +12,7 @@ using UnityEngine.UI;
 /// </summary>
 public class EmoteWheel : MonoBehaviour
 {
-    private const int SLOTS = 8;
+    private const int SLOTS = 9;
     private const float RADIUS = 210f;
 
     private CanvasGroup _group;

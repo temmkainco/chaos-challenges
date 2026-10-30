@@ -6,7 +6,8 @@ using UnityEngine;
 /// <summary>
 /// Key Hunt, musical chairs with keys: with N contestants only N-1 doors are open, each glowing in its own colour,
 /// and there is exactly one key per open door, in the same colour, hidden around the vault. Grab a key (E), run to
-/// the door of its colour and press E to escape; that door then shuts for good. Someone is always left without a
+/// the door of its colour and press E to escape; that door then shuts for good. Every colour also has a fake key that
+/// looks the same and crumbles when tried. Someone is always left without a
 /// key, so shoving a key-holder knocks the key out of their hands. Escape order decides the placement; the last one
 /// inside places last. (Playtesters found the old hidden-match version unreadable.)
 /// </summary>
@@ -25,6 +26,7 @@ public class KeyLockMinigameController : MinigameController
     [Networked, Capacity(16)] private NetworkArray<byte> DoorColor { get; }
 
     private HuntDoor[] _doors = System.Array.Empty<HuntDoor>();
+    private SpectatorLounge _deck;
     private readonly byte[] _shownColor = new byte[16];
     private readonly List<PlayerRef> _escapeOrder = new();
     private readonly List<Vector3> _spawnSpots = new();
@@ -58,6 +60,8 @@ public class KeyLockMinigameController : MinigameController
     {
         base.Spawned();
         _doors = FindObjectsByType<HuntDoor>(FindObjectsSortMode.None).OrderBy(d => d.Id).ToArray();
+        // Escaped contestants watch the scramble from a glass deck above the vault.
+        _deck = SpectatorLounge.Build(transform, _keySpawnArea.position + Vector3.up * 11f, _keySpawnArea.position + Vector3.forward, glass: true);
         for (int i = 0; i < _shownColor.Length; i++) _shownColor[i] = 254;   // force the first refresh
         if (HasStateAuthority)
             for (int i = 0; i < _doors.Length && i < 16; i++) DoorColor.Set(i, CLOSED);
@@ -86,7 +90,7 @@ public class KeyLockMinigameController : MinigameController
             else
             {
                 int c = key.Variant % VaultKey.Colors.Length;
-                todo = $"Run to the <color=#{ColorUtility.ToHtmlStringRGB(VaultKey.Colors[c] * 0.8f)}><b>{VaultKey.Names[c]}</b></color> door and press <b>E</b>!";
+                todo = $"Run to the <color=#{ColorUtility.ToHtmlStringRGB(VaultKey.Colors[c] * 0.8f)}><b>{VaultKey.Names[c]}</b></color> door and press <b>E</b> - if it's real!";
             }
         }
         else
@@ -113,20 +117,21 @@ public class KeyLockMinigameController : MinigameController
         if (!HasStateAuthority) return;
 
         int openDoors = OpenDoors();
-        var spots = PickSpawnSpots(openDoors);
+        var spots = PickSpawnSpots(openDoors * 2);
         int spot = 0;
         for (int i = 0; i < _doors.Length && i < 16; i++)
         {
             if (DoorColor[i] == CLOSED) continue;
-            byte doorId = (byte)_doors[i].Id;
             byte variant = DoorColor[i];
-            Runner.Spawn(_keyPrefab, spots[spot++], Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
-                (runner, spawned) =>
-                {
-                    var key = spawned.GetComponent<VaultKey>();
-                    key.Variant = variant;
-                    key.DoorId = doorId;
-                });
+            // The real key and a fake of the same colour.
+            foreach (byte doorId in new[] { (byte)_doors[i].Id, VaultKey.FAKE })
+                Runner.Spawn(_keyPrefab, spots[spot++], Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
+                    (runner, spawned) =>
+                    {
+                        var key = spawned.GetComponent<VaultKey>();
+                        key.Variant = variant;
+                        key.DoorId = doorId;
+                    });
         }
         Debug.Log($"[Keys] {openDoors} open doors and keys");
     }
@@ -226,6 +231,13 @@ public class KeyLockMinigameController : MinigameController
         var who = player.Object.InputAuthority;
         int index = DoorIndex(door);
         bool open = index >= 0 && index < 16 && DoorColor[index] != CLOSED;
+        if (open && key.DoorId == VaultKey.FAKE && DoorColor[index] == key.Variant)
+        {
+            // Right colour, but a fake: it crumbles, go find the real one.
+            Runner.Despawn(key.Object);
+            RPC_Fake(door.Id);
+            return;
+        }
         if (!open || (key.DoorId != door.Id && !key.IsMaster))
         {
             RPC_Tried(door.Id, open, false);
@@ -233,13 +245,15 @@ public class KeyLockMinigameController : MinigameController
         }
 
         // Through the door: it shuts for good, and a door opened by the master key takes its own key with it.
+        byte shutColor = DoorColor[index];
         DoorColor.Set(index, CLOSED);
         int doorId = door.Id;
         Runner.Despawn(key.Object);
         for (int i = VaultKey.Active.Count - 1; i >= 0; i--)
         {
             var other = VaultKey.Active[i];
-            if (other != null && other != key && other.DoorId == doorId && other.Object != null)
+            if (other != null && other != key && other.Object != null
+                && (other.DoorId == doorId || (other.DoorId == VaultKey.FAKE && other.Variant == shutColor)))
             {
                 if (other.Grabbable.IsGrabbed)
                     foreach (var entry in _playerSpawner.Players)
@@ -254,8 +268,13 @@ public class KeyLockMinigameController : MinigameController
         Debug.Log($"[Keys] {who} escaped through door {door.Id} (#{_escapeOrder.Count})");
         RPC_Tried(door.Id, true, true);
 
-        player.ControlsLocked = true;
-        _playerSpawner.Teleport(player, _door.EscapePosition + Random.insideUnitSphere.WithY(0f) * 1.5f);
+        // Up to the glass deck over the vault (free to move, not a ghost: they escaped).
+        if (_deck != null) _deck.Admit(player, spectator: false);
+        else
+        {
+            player.ControlsLocked = true;
+            _playerSpawner.Teleport(player, _door.EscapePosition + Random.insideUnitSphere.WithY(0f) * 1.5f);
+        }
 
         var inside = ConnectedPlayers().Where(p => !_escapeOrder.Contains(p)).ToList();
         if (inside.Count <= 1 || OpenDoors() == 0)
@@ -280,6 +299,16 @@ public class KeyLockMinigameController : MinigameController
         if (inside.Count > 0)
             standings.Add(inside);
         return standings;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Fake(int doorId)
+    {
+        var door = _doors.FirstOrDefault(d => d.Id == doorId);
+        if (door == null) return;
+        Sfx.Play(Sound.Nope);
+        door.PlayReject();
+        WorldPopup.Show(door.FrontPosition + Vector3.up * 2.4f, "FAKE KEY!", new Color(1f, 0.6f, 0.2f), 9f);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

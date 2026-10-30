@@ -72,6 +72,19 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         }
     }
 
+    /// <summary>Height of the lowest spawn point (the floor of the arena the round starts on).</summary>
+    public float LowestSpawnY
+    {
+        get
+        {
+            float lowest = float.MaxValue;
+            if (_spawnPoints != null)
+                foreach (var point in _spawnPoints)
+                    if (point != null) lowest = Mathf.Min(lowest, point.position.y);
+            return lowest == float.MaxValue ? 0f : lowest;
+        }
+    }
+
     /// <summary>Host only. Puts the player back on their spawn point (respawn zones).</summary>
     public void RequestSpawn(Player player)
     {

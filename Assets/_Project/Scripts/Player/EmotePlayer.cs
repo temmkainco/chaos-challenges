@@ -10,14 +10,14 @@ using UnityEngine;
 public class EmotePlayer : MonoBehaviour
 {
     public const float DURATION = 2.6f;
-    public const int COUNT = 9;   // index 0 is "none"
+    public const int COUNT = 10;   // index 0 is "none"
 
-    public static readonly string[] Names = { "", "Wave", "Dance", "Laugh", "Cheer", "Cry", "6-7", "Clap", "Love" };
-    private static readonly string[] Bubbles = { "", "HI!", "LA LA LA!", "HAHA!", "YAY!", "WAAH...", "SIX SEVEN!", "CLAP CLAP", "<3" };
+    public static readonly string[] Names = { "", "Wave", "Dance", "Laugh", "Cheer", "Cry", "6-7", "Clap", "Love", "Dab" };
+    private static readonly string[] Bubbles = { "", "HI!", "LA LA LA!", "HAHA!", "YAY!", "WAAH...", "SIX SEVEN!", "CLAP CLAP", "<3", "DAB!" };
     private static readonly Color[] BubbleColors =
     {
         Color.white, new(1f, 0.79f, 0.24f), new(0.72f, 0.61f, 0.95f), new(1f, 0.54f, 0.24f), new(0.31f, 0.82f, 0.63f),
-        new(0.36f, 0.75f, 0.92f), new(1f, 0.37f, 0.36f), new(1f, 0.79f, 0.24f), new(1f, 0.49f, 0.71f),
+        new(0.36f, 0.75f, 0.92f), new(1f, 0.37f, 0.36f), new(1f, 0.79f, 0.24f), new(1f, 0.49f, 0.71f), new(0.31f, 0.82f, 0.63f),
     };
 
     private Player _player;
@@ -116,6 +116,15 @@ public class EmotePlayer : MonoBehaviour
                 Aim(_rUpper, _rLower, (fwd + right * 0.4f - up * 0.2f).normalized, w);
                 Aim(_lLower, null, (fwd + right * (0.2f + 0.6f * clap)).normalized, w);
                 Aim(_rLower, null, (fwd - right * (0.2f + 0.6f * clap)).normalized, w);
+                break;
+            case 9: // Dab: face buried in one elbow, the other arm thrown out and up, held
+                float hit = Mathf.Clamp01(t / 0.25f);
+                Tilt(_head, right, 25f * w * hit);
+                Tilt(_head, fwd, 20f * w * hit);
+                Aim(_lUpper, _lLower, (-right * 0.2f + up * 0.6f + fwd * 0.6f).normalized, w * hit);
+                Aim(_lLower, null, (right + up * 0.3f + fwd * 0.2f).normalized, w * hit);
+                Aim(_rUpper, _rLower, (right + up * 0.55f).normalized, w * hit);
+                Aim(_rLower, null, (right + up * 0.6f).normalized, w * hit);
                 break;
             case 8: // Love: hands to the chest, swaying
                 Tilt(_spine, fwd, 8f * s2 * w);

@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Main menu character customizer: body, hands and head colour plus a hat, with a turning 3D preview.
+/// Main menu character customizer: body, hands and head colour plus hat, face, neck and back items, with a turning
+/// 3D preview.
 /// Choices are saved right away (<see cref="LocalLook"/>) and used in every match.
 /// </summary>
 public class CustomizePanel : PanelBase
@@ -39,10 +40,58 @@ public class CustomizePanel : PanelBase
         Hook(_body, CosmeticsCatalog.Part.Body);
         Hook(_hands, CosmeticsCatalog.Part.Hands);
         Hook(_head, CosmeticsCatalog.Part.Head);
-        _hat.Previous.onClick.AddListener(() => LocalLook.StepHat(-1));
-        _hat.Next.onClick.AddListener(() => LocalLook.StepHat(1));
+        _hat.Previous.onClick.AddListener(() => LocalLook.StepItem(CosmeticsCatalog.Slot.Hat, -1));
+        _hat.Next.onClick.AddListener(() => LocalLook.StepItem(CosmeticsCatalog.Slot.Hat, 1));
+        BuildExtraRows();
         _randomButton.onClick.AddListener(LocalLook.Randomize);
         _doneButton.onClick.AddListener(Close);
+    }
+
+    private readonly Row[] _extra = new Row[3];
+    private static readonly CosmeticsCatalog.Slot[] ExtraSlots = { CosmeticsCatalog.Slot.Face, CosmeticsCatalog.Slot.Neck, CosmeticsCatalog.Slot.Back };
+
+    /// <summary>
+    /// Face, neck and back rows, cloned from the hat row at runtime; the original four rows move up a little to make
+    /// room (the scene layout has fixed positions: 190 / 70 / -50 / -170).
+    /// </summary>
+    private void BuildExtraRows()
+    {
+        var parent = (RectTransform)_hat.Value.transform.parent;
+        float[] oldY = { 190f, 70f, -50f, -170f };
+        float[] newY = { 250f, 170f, 90f, 10f };
+        RectTransform hatLabel = null;
+        foreach (RectTransform child in parent)
+        {
+            for (int k = 0; k < oldY.Length; k++)
+                if (Mathf.Abs(child.anchoredPosition.y - oldY[k]) < 1f)
+                    child.anchoredPosition = new Vector2(child.anchoredPosition.x, newY[k]);
+            if (child.TryGetComponent<TMP_Text>(out var text) && text.text == "Hat") hatLabel = child;
+            if (child.GetComponent<Button>() != null && Mathf.Abs(child.anchoredPosition.y + 300f) < 1f)
+                child.anchoredPosition = new Vector2(child.anchoredPosition.x, -318f);
+        }
+        for (int k = 0; k < ExtraSlots.Length; k++)
+        {
+            float y = -70f - 80f * k;
+            var slot = ExtraSlots[k];
+            if (hatLabel != null)
+            {
+                var label = Clone(hatLabel, y);
+                label.GetComponent<TMP_Text>().text = slot.ToString();
+            }
+            var previous = Clone((RectTransform)_hat.Previous.transform, y).GetComponent<Button>();
+            var next = Clone((RectTransform)_hat.Next.transform, y).GetComponent<Button>();
+            var value = Clone((RectTransform)_hat.Value.transform, y).GetComponent<TMP_Text>();
+            previous.onClick.AddListener(() => LocalLook.StepItem(slot, -1));
+            next.onClick.AddListener(() => LocalLook.StepItem(slot, 1));
+            _extra[k] = new Row { Previous = previous, Next = next, Value = value };
+        }
+
+        RectTransform Clone(RectTransform source, float y)
+        {
+            var copy = (RectTransform)Instantiate(source.gameObject, parent).transform;
+            copy.anchoredPosition = new Vector2(source.anchoredPosition.x, y);
+            return copy;
+        }
     }
 
     private static void Hook(Row row, CosmeticsCatalog.Part part)
@@ -108,10 +157,13 @@ public class CustomizePanel : PanelBase
         Show(_body, catalog.GetColor(LocalLook.Body));
         Show(_hands, catalog.GetColor(LocalLook.Hands));
         Show(_head, catalog.GetColor(LocalLook.Head));
-        _hat.Value.text = catalog.GetHat(LocalLook.Hat).Name;
+        _hat.Value.text = catalog.GetItem(CosmeticsCatalog.Slot.Hat, LocalLook.Hat).Name;
+        for (int k = 0; k < ExtraSlots.Length; k++)
+            if (_extra[k].Value != null)
+                _extra[k].Value.text = catalog.GetItem(ExtraSlots[k], LocalLook.GetItem(ExtraSlots[k])).Name;
 
         if (_model != null)
-            _model.Apply(LocalLook.Body, LocalLook.Hands, LocalLook.Head, LocalLook.Hat);
+            _model.Apply(LocalLook.Body, LocalLook.Hands, LocalLook.Head, LocalLook.Hat, LocalLook.Face, LocalLook.Neck, LocalLook.Back);
     }
 
     private static void Show(Row row, CosmeticsCatalog.Swatch swatch)

@@ -99,8 +99,13 @@ public class TileCourse : NetworkBehaviour
             Generate();
     }
 
+    /// <summary>Hole patterns, one per round (<see cref="MinigameController.VariantOf"/>).</summary>
+    public static readonly string[] Layouts = { "Classic", "Swiss Cheese", "Stepping Stones" };
+
     private void Generate()
     {
+        int layout = MinigameController.VariantOf(Layouts.Length);
+        float holeChance = layout == 1 ? _holeChance * 2.2f : _holeChance;
         for (int lane = 0; lane < _lanes; lane++)
         {
             bool previousHole = true; // never open with a hole
@@ -108,7 +113,10 @@ public class TileCourse : NetworkBehaviour
             {
                 bool checkpoint = IsCheckpointRow(row);
                 bool lastRow = row == _rows - 1;
-                bool hole = !checkpoint && !lastRow && !previousHole && Random.value < _holeChance;
+                // Stepping Stones: a checkerboard, so every step forward is a diagonal hop.
+                bool hole = layout == 2
+                    ? !checkpoint && !lastRow && (lane + row) % 2 == 1
+                    : !checkpoint && !lastRow && !previousHole && Random.value < holeChance;
                 previousHole = hole;
 
                 int i = Index(lane, row);

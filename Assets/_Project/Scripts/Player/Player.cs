@@ -21,6 +21,9 @@ public class Player : NetworkBehaviour, ISpawned
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte HandsColor { get; private set; }
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte HeadColor { get; private set; }
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Hat { get; private set; }
+    [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Face { get; private set; }
+    [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Neck { get; private set; }
+    [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Back { get; private set; }
     [field: SerializeField] public CinemachineCamera Camera { get; private set; }
     [field: SerializeField] public PlayerInteraction Interaction { get; private set; }
     [field: SerializeField] public PlayerInput Input { get; private set; }
@@ -107,7 +110,8 @@ public class Player : NetworkBehaviour, ISpawned
 
     private void SendLocalLook()
     {
-        RPC_SetLook((byte)LocalLook.Body, (byte)LocalLook.Hands, (byte)LocalLook.Head, (byte)LocalLook.Hat);
+        RPC_SetLook((byte)LocalLook.Body, (byte)LocalLook.Hands, (byte)LocalLook.Head, (byte)LocalLook.Hat,
+            (byte)LocalLook.Face, (byte)LocalLook.Neck, (byte)LocalLook.Back);
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -118,12 +122,15 @@ public class Player : NetworkBehaviour, ISpawned
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_SetLook(byte body, byte hands, byte head, byte hat)
+    private void RPC_SetLook(byte body, byte hands, byte head, byte hat, byte face, byte neck, byte back)
     {
         BodyColor = body;
         HandsColor = hands;
         HeadColor = head;
         Hat = hat;
+        Face = face;
+        Neck = neck;
+        Back = back;
     }
 
     private void OnNicknameChanged()
@@ -134,6 +141,6 @@ public class Player : NetworkBehaviour, ISpawned
     private void OnLookChanged()
     {
         if (Look != null)
-            Look.Apply(BodyColor, HandsColor, HeadColor, Hat);
+            Look.Apply(BodyColor, HandsColor, HeadColor, Hat, Face, Neck, Back);
     }
 }

@@ -41,6 +41,8 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     [Networked] public int RoundCount { get; private set; }
     [Networked] public int RosterCount { get; private set; }
     [Networked] public TickTimer PhaseTimer { get; private set; }
+    /// <summary>Drawn by the host for every round: picks the arena layout (<see cref="MinigameController.Variant"/>).</summary>
+    [Networked] public int RoundSeed { get; private set; }
 
     [Networked, Capacity(MAX_ROUNDS)] private NetworkArray<int> RoundMinigames { get; }
     [Networked, Capacity(SessionSettings.MAX_PLAYERS)] private NetworkArray<RosterEntry> Roster { get; }
@@ -153,6 +155,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
 
         var definition = CurrentMinigame;
         SetPhase(MatchPhase.Playing);
+        NewRoundSeed();
         LoadScene(definition.SceneBuildIndex);
     }
 
@@ -312,6 +315,8 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
 
     /// <summary>Editor/test only: play these minigame ids in this order instead of the random draw.</summary>
     public static string[] ForcedRoundIds;
+    /// <summary>Editor/test only: play every round on this arena layout (-1 = random).</summary>
+    public static int ForcedVariant = -1;
 
     /// <summary>Random order without repeats; when there are more rounds than minigames, reshuffle without back-to-back repeats.</summary>
     private void BuildRounds()
@@ -355,8 +360,11 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     private void LoadRound()
     {
         SetPhase(MatchPhase.Playing);
+        NewRoundSeed();
         LoadScene(CurrentMinigame.SceneBuildIndex);
     }
+
+    private void NewRoundSeed() => RoundSeed = ForcedVariant >= 0 ? ForcedVariant : UnityEngine.Random.Range(0, int.MaxValue);
 
     private void GoToIntermission()
     {

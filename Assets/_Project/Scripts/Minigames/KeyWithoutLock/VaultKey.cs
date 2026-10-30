@@ -29,6 +29,8 @@ public class VaultKey : NetworkBehaviour
     /// <summary><see cref="DoorId"/> of the Master Key twist: opens any door.</summary>
     public const byte MASTER = 255;
     public bool IsMaster => DoorId == MASTER;
+    /// <summary><see cref="DoorId"/> of a fake: looks like a real key of its colour but opens nothing.</summary>
+    public const byte FAKE = 254;
     /// <summary>0 = untried, 1 = cold, 2 = warm, 3 = hot (its door is close to the last door tried).</summary>
     [Networked, OnChangedRender(nameof(ApplyColor))] public byte Heat { get; set; }
 

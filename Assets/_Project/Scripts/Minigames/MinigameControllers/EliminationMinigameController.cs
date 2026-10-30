@@ -6,8 +6,9 @@ using UnityEngine;
 /// <summary>
 /// Base for last-one-standing minigames on a built arena. During the intro the host places everyone on the arena
 /// (<see cref="ArenaSpawn"/>); a contestant is out when they drop below <see cref="OutHeight"/>, touch the kill zone,
-/// are eliminated by the game, or leave. Eliminated contestants go to the <see cref="SpectatorLounge"/> beside the
-/// arena with their controls back (run, jump, emote while watching); falling off the lounge puts them back on it.
+/// are eliminated by the game, or leave. Eliminated contestants come back onto the arena as ghosts
+/// (<see cref="MinigameController.ReleaseAsGhost"/>): they run around with everyone but can't touch the game, and a
+/// ghost that falls off is put back.
 /// Placement: survivors first (tied when time runs out), then the eliminated in reverse order.
 /// </summary>
 public abstract class EliminationMinigameController : MinigameController
@@ -20,7 +21,6 @@ public abstract class EliminationMinigameController : MinigameController
 
     public bool IsAlive(PlayerRef player) => HasStateAuthority ? _alive.Contains(player) : !IsPlayerLocked(player);
 
-    private SpectatorLounge _lounge;
 
     /// <summary>Contestants still in, replicated for the status line (<see cref="_alive"/> lives on the host only).</summary>
     [Networked] protected int AliveCount { get; private set; }
@@ -28,15 +28,13 @@ public abstract class EliminationMinigameController : MinigameController
     public override void Spawned()
     {
         base.Spawned();
-        // Beside the arena: centre of the spawn ring, a little up and well off to the side.
-        var centre = Vector3.zero;
-        for (int i = 0; i < 4; i++) centre += ArenaSpawn(i, 4);
-        centre /= 4f;
-        _lounge = SpectatorLounge.Build(transform, centre + new Vector3(0f, 4f, 26f), centre);
+
     }
 
     /// <summary>Contestants below this height are out.</summary>
     protected abstract float OutHeight { get; }
+    /// <summary>Contestants standing (grounded) above this height are on the arena's rim, which counts as out.</summary>
+    protected virtual float RimHeight => float.MaxValue;
 
     /// <summary>Start position for <paramref name="slot"/> of <paramref name="count"/> contestants.</summary>
     protected abstract Vector3 ArenaSpawn(int slot, int count);
@@ -84,15 +82,15 @@ public abstract class EliminationMinigameController : MinigameController
         if (!HasStateAuthority) return true;
         var who = player.Object.InputAuthority;
         if (_alive.Contains(who)) Eliminate(who);
-        else if (_out.Contains(who)) SendToLounge(who);   // fell off the lounge
+        else if (_out.Contains(who)) SendToLounge(who);   // a ghost fell off: back onto the arena
         return true;
     }
 
     /// <summary>Host only. Puts a knocked-out contestant on the lounge with controls back.</summary>
-    private void SendToLounge(PlayerRef who)
+    private void SendToLounge(PlayerRef who)   // (now: back onto the arena as a ghost)
     {
-        if (_lounge == null || !_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
-        _lounge.Admit(player);
+        if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
+        ReleaseAsGhost(player, ArenaSpawn(Random.Range(0, 4), 4) + Vector3.up * 0.5f);
     }
 
     public override void HandlePlayerLeft(PlayerRef player)
@@ -110,16 +108,26 @@ public abstract class EliminationMinigameController : MinigameController
             if (!_toBench[i].timer.Expired(Runner)) continue;
             var who = _toBench[i].player;
             _toBench.RemoveAt(i);
-            if (_lounge != null) SendToLounge(who);
-            else if (_bench != null && _playerSpawner.Players.TryGet(who, out var benched) && benched != null)
-                _playerSpawner.Teleport(benched, _bench.position + Random.insideUnitSphere.WithY(0f) * 2f);
+            SendToLounge(who);
         }
 
         if (!IsGameActive) return;
-        float outHeight = OutHeight;
+        float outHeight = OutHeight, rim = RimHeight;
+        // Ghosts that drop off the arena are put back on it.
+        if (Runner.Tick % 10 == 0)
+            foreach (var who in _out)
+                if (!_toBench.Exists(b => b.player == who) && _playerSpawner.Players.TryGet(who, out var ghost) && ghost != null && ghost.IsSpectator
+                    && ghost.transform.position.y < outHeight)
+                    SendToLounge(who);
         for (int i = _alive.Count - 1; i >= 0; i--)
-            if (_playerSpawner.Players.TryGet(_alive[i], out var player) && player != null && player.transform.position.y < outHeight)
+        {
+            if (!_playerSpawner.Players.TryGet(_alive[i], out var player) || player == null) continue;
+            float y = player.transform.position.y;
+            bool onRim = y > rim && player.TryGetComponent<PlayerMovement>(out var movement) && movement.IsGrounded
+                         && !ArenaProps.IsStandingOnProp(player.transform.position);
+            if (y < outHeight || onRim)
                 Eliminate(_alive[i]);
+        }
     }
 
     protected override IReadOnlyList<IReadOnlyList<PlayerRef>> GetTimeUpStandings() => Standings();

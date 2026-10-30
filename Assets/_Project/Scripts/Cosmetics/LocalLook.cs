@@ -25,6 +25,23 @@ public static class LocalLook
     public static int Hands => GetColor(CosmeticsCatalog.Part.Hands);
     public static int Head => GetColor(CosmeticsCatalog.Part.Head);
     public static int Hat => PlayerPrefs.GetInt(HAT_KEY, 0);
+    public static int Face => PlayerPrefs.GetInt("look.face", 0);
+    public static int Neck => PlayerPrefs.GetInt("look.neck", 0);
+    public static int Back => PlayerPrefs.GetInt("look.back", 0);
+
+    public static int GetItem(CosmeticsCatalog.Slot slot) => slot switch
+    {
+        CosmeticsCatalog.Slot.Face => Face,
+        CosmeticsCatalog.Slot.Neck => Neck,
+        CosmeticsCatalog.Slot.Back => Back,
+        _ => Hat,
+    };
+
+    private static string ItemKey(CosmeticsCatalog.Slot slot) => slot == CosmeticsCatalog.Slot.Hat ? HAT_KEY : "look." + slot.ToString().ToLowerInvariant();
+
+    /// <summary>Steps a wearable slot forwards or backwards through its items (index 0 is "none").</summary>
+    public static void StepItem(CosmeticsCatalog.Slot slot, int delta) =>
+        Set(ItemKey(slot), GetItem(slot) + delta, Catalog != null ? Catalog.Items(slot).Length : 1);
 
     /// <summary>Steps a part's colour forwards or backwards through the catalogue.</summary>
     public static void StepColor(CosmeticsCatalog.Part part, int delta) =>
@@ -38,7 +55,12 @@ public static class LocalLook
         int colors = Catalog != null ? Catalog.Colors.Length : 1;
         foreach (CosmeticsCatalog.Part part in Enum.GetValues(typeof(CosmeticsCatalog.Part)))
             PlayerPrefs.SetInt(Key(part), UnityEngine.Random.Range(0, colors));
-        PlayerPrefs.SetInt(HAT_KEY, UnityEngine.Random.Range(0, Catalog != null ? Catalog.Hats.Length : 1));
+        foreach (CosmeticsCatalog.Slot slot in Enum.GetValues(typeof(CosmeticsCatalog.Slot)))
+        {
+            int count = Catalog != null ? Catalog.Items(slot).Length : 1;
+            // Hats always, the other slots about half the time, so random looks aren't overloaded.
+            PlayerPrefs.SetInt(ItemKey(slot), slot == CosmeticsCatalog.Slot.Hat || UnityEngine.Random.value < 0.5f ? UnityEngine.Random.Range(0, count) : 0);
+        }
         PlayerPrefs.Save();
         Changed?.Invoke();
     }

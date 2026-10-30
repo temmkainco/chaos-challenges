@@ -6,7 +6,8 @@ using UnityEngine;
 /// <summary>
 /// Cannon Barrage: cannons around the stage fire cannonballs straight across it, more and faster as time goes on.
 /// A cannonball hit knocks you out (one shot); falling off the stage too. Watch the cannons, they glow before they fire.
-/// Last contestant standing wins; survivors tie at the bell.
+/// Last contestant standing wins; survivors tie at the bell. Layouts: cannons all around, two batteries facing each
+/// other (Crossfire), or one long battery on a single side (Firing Line).
 /// Chaos: METEOR SHOWER on top of the barrage, SLOW MOTION makes dodging harder; its own twist, BROADSIDE,
 /// fires every cannon but two at once.
 /// </summary>
@@ -32,7 +33,10 @@ public class CannonBarrageMinigameController : EliminationMinigameController
     private Transform[] _cannonModels;
     private readonly List<(Transform ball, int cannon, int tick)> _visualBalls = new();
 
-    protected override float OutHeight => _centre.position.y - 4f;
+    // Just below the stage top: stepping off onto the ground around it counts as out.
+    protected override float OutHeight => _centre.position.y - 0.8f;
+    /// <summary>Standing on the raised rim around the stage counts as out.</summary>
+    protected override float RimHeight => _centre.position.y + 0.6f;
 
     protected override Vector3 ArenaSpawn(int slot, int count)
     {
@@ -40,9 +44,20 @@ public class CannonBarrageMinigameController : EliminationMinigameController
         return _centre.position + Vector3.up * 0.5f + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 6f;
     }
 
+    public override string[] Variants => new[] { "Full Circle", "Crossfire", "Firing Line" };
+
+    private float CannonAngle(int i) => Variant switch
+    {
+        // Two batteries of cannons on opposite sides.
+        1 => (i % 2) * Mathf.PI + ((i / 2) - (_cannons / 2 - 1) * 0.5f) * 0.32f,
+        // One battery along one side: everything comes from the same direction.
+        2 => Mathf.PI * 0.5f + (i / (float)Mathf.Max(1, _cannons - 1) - 0.5f) * 2.4f,
+        _ => i / (float)_cannons * Mathf.PI * 2f,
+    };
+
     private Vector3 CannonPosition(int i)
     {
-        float angle = i / (float)_cannons * Mathf.PI * 2f;
+        float angle = CannonAngle(i);
         return _centre.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (_arenaRadius + CANNON_SETBACK) + Vector3.up * 0.9f;
     }
 

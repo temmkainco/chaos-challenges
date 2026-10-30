@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Ring Out: a sumo stage high above the studio floor that shrinks as the clock runs down. Shoves hit much harder
 /// here; knock rivals off the edge and stay on yourself. Last contestant standing wins; survivors tie at the bell.
-/// Chaos: GIANTS and ICE FLOOR turn it into a skating brawl; its own twist, SHRINK RAY, squeezes the ring for a while.
+/// Layouts: a round ring, a square ring, or a ring with pillars to dodge around. Chaos: GIANTS and ICE FLOOR turn it into a skating brawl; its own twist, SHRINK RAY, squeezes the ring for a while.
 /// </summary>
 public class RingOutMinigameController : EliminationMinigameController
 {
@@ -14,6 +14,10 @@ public class RingOutMinigameController : EliminationMinigameController
     [SerializeField] private float _endRadius = 4f;
 
     private Transform _ring, _rim;
+    private readonly System.Collections.Generic.List<Transform> _pillars = new();
+
+    public override string[] Variants => new[] { "Classic Ring", "Square Ring", "Pillars" };
+    private bool Square => Variant == 1;
 
     [Fusion.Networked] private int TwistStartTick { get; set; }
 
@@ -32,7 +36,7 @@ public class RingOutMinigameController : EliminationMinigameController
     protected override Vector3 ArenaSpawn(int slot, int count)
     {
         float angle = (slot + 0.5f) / Mathf.Max(1, count) * Mathf.PI * 2f;
-        return Top + Vector3.up * 0.5f + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * _startRadius * 0.6f;
+        return Top + Vector3.up * 0.5f + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * _startRadius * (Variant == 2 ? 0.8f : 0.6f);
     }
 
     /// <summary>Radius from the round clock, so every peer shrinks the ring identically.</summary>
@@ -63,20 +67,32 @@ public class RingOutMinigameController : EliminationMinigameController
         _ring = Disc("Ring", new Color(0.72f, 0.61f, 0.95f), 0.6f, 0f);
         _rim = Disc("RingRim", new Color(1f, 0.79f, 0.24f), 0.5f, -0.06f);
         Destroy(_rim.GetComponent<Collider>());
+        if (Variant == 2)
+            for (int i = 0; i < 4; i++)
+            {
+                // Pillars to hide behind and get pinned against; they close in with the ring.
+                var pillar = Disc("Pillar " + i, new Color(1f, 0.49f, 0.71f), 2.4f, 2.4f);
+                pillar.localScale = new Vector3(1.6f, 1.2f, 1.6f);
+                _pillars.Add(pillar);
+            }
         Apply(_startRadius);
     }
 
     private Transform Disc(string name, Color color, float thickness, float offset)
     {
-        var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        bool box = Square && !name.StartsWith("Pillar");
+        var go = GameObject.CreatePrimitive(box ? PrimitiveType.Cube : PrimitiveType.Cylinder);
         go.name = name;
         go.transform.SetParent(transform, false);
         go.transform.position = Top + Vector3.up * (offset - thickness * 0.5f);
-        Destroy(go.GetComponent<Collider>());
-        var collider = go.AddComponent<MeshCollider>();
-        collider.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
-        collider.convex = true;   // a cylinder is convex; convex contacts are steadier for the character controller
-        go.transform.localScale = new Vector3(1f, thickness * 0.5f, 1f);
+        if (!box)
+        {
+            Destroy(go.GetComponent<Collider>());
+            var collider = go.AddComponent<MeshCollider>();
+            collider.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
+            collider.convex = true;   // a cylinder is convex; convex contacts are steadier for the character controller
+        }
+        go.transform.localScale = new Vector3(1f, box ? thickness : thickness * 0.5f, 1f);
         var renderer = go.GetComponent<Renderer>();
         renderer.sharedMaterial = _material;
         var block = new MaterialPropertyBlock();
@@ -95,8 +111,16 @@ public class RingOutMinigameController : EliminationMinigameController
     {
         if (_ring == null || Mathf.Abs(radius - _appliedRadius) < 0.05f) return;
         _appliedRadius = radius;
-        _ring.localScale = new Vector3(radius * 2f, _ring.localScale.y, radius * 2f);
-        _rim.localScale = new Vector3(radius * 2f + 0.5f, _rim.localScale.y, radius * 2f + 0.5f);
+        // A square of the same area as the circle, so both shrink at the same pace.
+        float size = Square ? radius * 1.77f : radius * 2f;
+        _ring.localScale = new Vector3(size, _ring.localScale.y, size);
+        _rim.localScale = new Vector3(size + 0.5f, _rim.localScale.y, size + 0.5f);
+        for (int i = 0; i < _pillars.Count; i++)
+        {
+            float angle = (i + 0.5f) * Mathf.PI * 0.5f;
+            var position = Top + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius * 0.5f;
+            _pillars[i].position = new Vector3(position.x, _pillars[i].position.y, position.z);
+        }
         Physics.SyncTransforms();
     }
 

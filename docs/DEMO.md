@@ -4,7 +4,7 @@ A party game show for 2–6 players online. One match = every minigame once, in 
 
 ## How to play
 
-1. **Main menu** — *Customize* your contestant (body, hands and head colour, hat; saved and used in every match), adjust *Settings*, then *Host* (public/private, max players 2–6), *Join By Code*, or *Join Random*.
+1. **Main menu** — *Customize* your contestant (body, hands and head colour, hat, face, neck and back wearables; saved and used in every match), adjust *Settings*, then *Host* (public/private, max players 2–6), *Join By Code*, or *Join Random*.
 2. **Lobby** — the room code is in the top-right corner. Invite Steam friends through the Steam overlay (Shift+Tab); friends can also use "Join Game" from your profile. Press **E** on the big red button when everyone is in.
 3. **Intermission** — the TV explains the next minigame. Press *Ready*; the round starts by itself after 30 s.
 4. **Results** — after each round the board shows every contestant with a "?" badge; the totals are revealed, last place to first, after the final round. Then everyone is back in the lobby for a rematch.
@@ -20,6 +20,22 @@ A party game show for 2–6 players online. One match = every minigame once, in 
 | **Bomb Rush** | Scrapyard | Conveyors deliver bombs: grab, throw, blast rivals off the stage. Sudden death doubles the bombs at the end. |
 | **Pistol Round** | Desert standoff | Six chambers, one live round. Aim at a rival and pull the trigger: click… or BANG. |
 | **Key Without Lock** | Vault warehouse | Find a key that fits the vault door. Duds shatter; escape before the others. |
+
+### Arena layouts
+
+Each round draws one layout for its arena (shown on the rules card as **MAP** and in the round splash). The host picks it with the round (`NetworkGameManager.RoundSeed`), so every peer builds the same one; `MinigameController.Variants` lists the names.
+
+| Minigame | Layouts |
+|---|---|
+| Hex Drop | Classic Stack · Tall Tower (4 smaller floors) · Twin Peaks (two islands, crossed floors) · Donut |
+| Color Code | Square · Cross · Islands (hop between quarters) · Diamond |
+| Ring Out | Classic Ring · Square Ring · Pillars |
+| Cannon Barrage | Full Circle · Crossfire (two batteries) · Firing Line (one side) |
+| Hot Potato | Open Stage · Pillars · Crossroads (low walls) |
+| Tilefall | Classic · Swiss Cheese (more holes) · Stepping Stones (checkerboard) |
+| Bomb Rush | Open Floor · Crates · Pillars (cover blocks thrown bombs) |
+| Prize Grab | Open Stage · Hurdles · Towers |
+| Mines | Classic · Wide Field · Danger Zone |
 
 Scoring: each round awards points by place (ties share the better place); the most points after all rounds wins.
 
