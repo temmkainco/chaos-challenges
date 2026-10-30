@@ -66,3 +66,7 @@ UserSettings/
 # ============== Local builds and documents =================
 chaos-build/
 *.pdf
+
+# Written by the Performance Testing package during builds
+/Assets/Resources/PerformanceTestRun*
+/Assets/Resources.meta
