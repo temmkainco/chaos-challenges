@@ -31,6 +31,10 @@ Goal: feel like a TV game show (GDD: "Welcome to the show", unseen announcer, ru
 - Pistol Round: western main street (saloon fronts, barrels, cacti) at sunset.
 - Key Without Lock: white multi-level vault with walkways, ladders and coloured symbol doors.
 
+## Status
+- Done: controls (cone targeting, outlines, hand-held items, aimed charged throw, drop), nameplates, lean HUD with announcer banners, Mines numbers, quick-draw Pistol Round, colour-matched keys, a round end that is only a banner (full board only for the final reveal), and a set per minigame (saved under a `Set` object in each scene; the old octagon is kept but switched off where a set replaces it).
+- Next: round intro (camera fly-over of the set + announcer line), interactive set hazards (Tilefall hammers that knock players), Console Round.
+
 ## Order of work
 1. Controls: targeting + outlines, hand attach, aimed charged throw, drop. Nameplates.
 2. HUD reduction and announcer banners.

@@ -18,7 +18,7 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
     public NetworkBool IsGrabbed { get; private set; }
 
-    public bool CanBeInteractedWith => !IsGrabbed;
+    public bool CanBeInteractedWith => Object != null && Object.IsValid && !IsGrabbed;
     public Outline Outline { get; private set; }
 
     [Networked] public PlayerRef CurrentHolder { get; private set; }

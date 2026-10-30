@@ -20,7 +20,6 @@ public class LeaderboardUI : MonoBehaviour
     [Header("Animation")]
     [SerializeField] private float _fadeInDuration = 0.4f;
     [SerializeField] private float _fadeOutDuration = 0.4f;
-    [SerializeField] private float _entryStaggerDelay = 0.1f;
     [SerializeField, Tooltip("Final reveal: delay between places, revealed from last to first")]
     private float _finalRevealStagger = 1.2f;
 
@@ -76,26 +75,42 @@ public class LeaderboardUI : MonoBehaviour
         _isFinal = isFinal;
         Sfx.Play(isFinal ? Sound.Fanfare : Sound.RoundOver, 1f, 0f);
 
+        // Mid-match the results are secret, so a short banner over the arena is all a round end needs;
+        // the full board with cards, backdrop and camera move is saved for the final reveal.
+        var backdrop = _canvasGroup.transform.Find("Backdrop");
+        if (backdrop != null)
+            backdrop.gameObject.SetActive(isFinal);
+        if (_countdownText != null)
+            _countdownText.gameObject.SetActive(isFinal);
         if (_titleText != null)
-            _titleText.text = _isFinal ? "FINAL RESULTS!" : "ROUND OVER!\n<size=55%>Results stay secret until the finale...</size>";
-
-        // Only real contestants get a card; empty slots would just leave blank cards on screen.
-        entries = entries.Where(e => !e.IsEmpty).ToList();
-        int shownCount = entries.Count;
-        for (int i = 0; i < entries.Count; i++)
         {
-            var ui = Instantiate(_entryPrefab, _entriesContainer);
-            ui.Populate(entries[i]);
-
-            // The final reveal builds suspense: last place appears first, the winner last.
-            float delay = _isFinal ? (shownCount - 1 - i) * _finalRevealStagger : i * _entryStaggerDelay;
-            ui.AnimateIn(delay);
-            _spawnedEntries.Add(ui);
+            _titleText.text = isFinal ? "FINAL RESULTS!" : "ROUND OVER!";
+            _titleText.rectTransform.anchoredPosition = new Vector2(0f, isFinal ? 380f : 200f);
         }
 
-        _focusedCamera.Priority = 20;
-        _canvasGroup.blocksRaycasts = true;
+        if (isFinal)
+        {
+            // Only real contestants get a card; the reveal builds suspense from last place to the winner.
+            entries = entries.Where(e => !e.IsEmpty).ToList();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var ui = Instantiate(_entryPrefab, _entriesContainer);
+                ui.Populate(entries[i]);
+                ui.AnimateIn((entries.Count - 1 - i) * _finalRevealStagger);
+                _spawnedEntries.Add(ui);
+            }
+            _focusedCamera.Priority = 20;
+            _canvasGroup.blocksRaycasts = true;
+        }
+
         _canvasGroup.DOFade(1f, _fadeInDuration).SetEase(Ease.OutSine);
+        if (!isFinal && _titleText != null)
+        {
+            var title = _titleText.transform;
+            title.DOKill(true);
+            title.localScale = Vector3.zero;
+            title.DOScale(1f, 0.35f).SetEase(Ease.OutBack);
+        }
 
         _timer = _controller.RemainingTime;
         _isCounting = true;
