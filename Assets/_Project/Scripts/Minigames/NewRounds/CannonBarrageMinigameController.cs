@@ -43,18 +43,27 @@ public class CannonBarrageMinigameController : EliminationMinigameController
         return _centre.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * _arenaRadius + Vector3.up * 0.9f;
     }
 
-    /// <summary>Each cannon fires slightly off-centre so lanes vary between volleys but stay predictable.</summary>
+    /// <summary>
+    /// Each shot aims at a point anywhere on the stage (a hash of the fire tick, so every peer agrees): no corner is
+    /// safe. The cannon swings to face its shot when it fires, so you can read where it goes.
+    /// </summary>
     private Vector3 Direction(int i, int tick)
     {
-        var toCentre = (_centre.position + Vector3.up * 0.9f - CannonPosition(i)).WithY(0f).normalized;
-        float wobble = ((tick * 7919 + i * 104729) % 41 - 20) * 0.6f;
-        return Quaternion.Euler(0f, wobble, 0f) * toCentre;
+        uint h = (uint)(tick * 7919 + i * 104729);
+        h ^= h >> 13; h *= 0x5bd1e995; h ^= h >> 15;
+        float angle = (h & 0xFFFF) / 65535f * Mathf.PI * 2f;
+        float radius = Mathf.Sqrt(((h >> 16) & 0xFFFF) / 65535f) * _arenaRadius * 0.85f;
+        var target = _centre.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius + Vector3.up * 0.9f;
+        return (target - CannonPosition(i)).WithY(0f).normalized;
     }
+
+    /// <summary>The Quaternius cannon's muzzle points down its -X axis.</summary>
+    private static readonly Quaternion MuzzleFix = Quaternion.Euler(0f, 90f, 0f);
 
     private Vector3 BallPosition(int cannon, int tick, float now) =>
         CannonPosition(cannon) + Direction(cannon, tick) * BALL_SPEED * Mathf.Max(0f, now - tick * Runner.DeltaTime - WARNING);
 
-    public override string GetStatusText() => IsGameActive ? $"{_alive.Count} still dodging" : null;
+    public override string GetStatusText() => IsGameActive ? $"{AliveCount} still dodging" : null;
 
     public override void Spawned()
     {
@@ -83,7 +92,7 @@ public class CannonBarrageMinigameController : EliminationMinigameController
                 cannon.localScale = new Vector3(1.2f, 1f, 1.2f);
             }
             cannon.position = CannonPosition(i) - Vector3.up * 0.6f;
-            cannon.rotation = Quaternion.LookRotation((_centre.position - cannon.position).WithY(0f));
+            cannon.rotation = Quaternion.LookRotation((_centre.position - cannon.position).WithY(0f)) * (model != null ? MuzzleFix : Quaternion.identity);
             foreach (var c in cannon.GetComponentsInChildren<Collider>()) Destroy(c);
             _cannonModels[i] = cannon;
         }
@@ -153,7 +162,12 @@ public class CannonBarrageMinigameController : EliminationMinigameController
         ball.position = CannonPosition(cannon);
         _visualBalls.Add((ball, cannon, tick));
         if (_cannonModels != null && cannon < _cannonModels.Length)
-            _cannonModels[cannon].DOPunchScale(Vector3.one * 0.25f, WARNING, 8);
+        {
+            var model = _cannonModels[cannon];
+            model.DOKill(true);
+            model.DORotateQuaternion(Quaternion.LookRotation(Direction(cannon, tick)) * (_cannonModel != null ? MuzzleFix : Quaternion.identity), 0.25f).SetLink(model.gameObject);
+            model.DOPunchScale(Vector3.one * 0.25f, WARNING, 8).SetLink(model.gameObject);
+        }
         Sfx.Play(Sound.Tick, 0.7f, 0.1f);
     }
 

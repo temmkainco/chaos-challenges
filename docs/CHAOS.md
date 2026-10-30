@@ -6,6 +6,8 @@ The GDD's Streamer Mode lets viewers vote on chaos from a website. That site doe
 ChaosDirector.Request(ChaosModifier modifier, float seconds = 12f); // returns false if it can't run now
 ```
 
+A request is announced first ("BLACKOUT IN 3..." plus a countdown on the HUD) and starts 3 seconds later, so players can react. A new request replaces one that is still waiting.
+
 `MinigameController.Current.SupportsChaos(modifier)` says what the running round accepts, so the vote page can list only those. `TwistTitle`, `TwistDescription` and `TwistKind` give the round's own twist, for the vote button.
 
 ## Shared modifiers (every round)
@@ -15,9 +17,9 @@ ChaosDirector.Request(ChaosModifier modifier, float seconds = 12f); // returns f
 | LowGravity | buff | Floaty jumps |
 | SpeedRush | buff | Everyone 1.5x faster |
 | SuperJump | buff | Much higher jumps |
-| Giants | buff | Big contestants |
+| Giants | buff | Big contestants (not in Mines) |
 | SlowMotion | debuff | Everyone slower |
-| Tiny | debuff | Small contestants |
+| Tiny | debuff | Small contestants (not in Mines) |
 | ReversedControls | debuff | Controls are inverted |
 | IceFloor | debuff | Slippery ground |
 | Blackout | debuff | The lights go out |

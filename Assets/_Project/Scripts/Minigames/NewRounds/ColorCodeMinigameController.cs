@@ -84,6 +84,7 @@ public class ColorCodeMinigameController : EliminationMinigameController
             _renderers[i] = go.GetComponent<Renderer>();
             _renderers[i].sharedMaterial = _material;
         }
+        Physics.SyncTransforms();   // runtime colliders must reach the physics scene on clients too
     }
 
     protected override void OnIntro()

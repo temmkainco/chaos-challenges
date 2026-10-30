@@ -9,7 +9,7 @@ public class Nameplate : MonoBehaviour
 {
     private const float ABOVE_HEAD = 0.75f;
     /// <summary>World height of the text at 10 m from the camera; scales linearly with distance.</summary>
-    private const float SIZE_AT_10M = 1f;
+    private const float SIZE_AT_10M = 0.55f;
 
     private Player _player;
     private Transform _head;

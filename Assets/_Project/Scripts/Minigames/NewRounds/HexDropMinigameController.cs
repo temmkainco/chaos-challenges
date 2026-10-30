@@ -82,6 +82,7 @@ public class HexDropMinigameController : EliminationMinigameController
             _renderers[i].sharedMaterial = _material;
             Tint(i, LayerColors[i / PER_LAYER]);
         }
+        Physics.SyncTransforms();   // runtime colliders must reach the physics scene on clients too
     }
 
     private void Tint(int i, Color color)

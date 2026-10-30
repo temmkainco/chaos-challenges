@@ -12,7 +12,7 @@ using UnityEngine;
 public class HotPotatoMinigameController : EliminationMinigameController
 {
     [SerializeField] private Transform _centre;
-    [SerializeField] private float _passRange = 1.6f;
+    [SerializeField, Tooltip("Centre to centre; a bit generous so passing still works with lag")] private float _passRange = 2.3f;
     [SerializeField] private Vector2 _fuseSeconds = new(9f, 15f);
 
     [Networked] public PlayerRef Holder { get; private set; }
@@ -39,7 +39,9 @@ public class HotPotatoMinigameController : EliminationMinigameController
     public override string GetStatusText()
     {
         if (!IsGameActive || Holder == PlayerRef.None) return null;
-        return Holder == Runner.LocalPlayer ? "<color=#E03131>YOU have the bomb - pass it!</color>" : "Run from the bomb!";
+        return Holder == Runner.LocalPlayer
+            ? "<color=#E03131>YOU have the bomb - run into someone to pass it!</color>"
+            : $"<b>{NameOf(Holder)}</b> has the bomb - run!";
     }
 
     protected override void StartGame()
@@ -88,7 +90,7 @@ public class HotPotatoMinigameController : EliminationMinigameController
                     PreviousHolder = PlayerRef.None;
                     Holder = next;
                     PassCooldown = TickTimer.CreateFromSeconds(Runner, 0.6f);
-                    RPC_Pass(hopTo.transform.position);
+                    RPC_Pass(hopTo.transform.position, next, true);
                 }
             }
             NextHop = TickTimer.CreateFromSeconds(Runner, 3f);
@@ -108,7 +110,7 @@ public class HotPotatoMinigameController : EliminationMinigameController
             Holder = other;
             PassCooldown = TickTimer.CreateFromSeconds(Runner, 0.6f);
             NoPassBack = TickTimer.CreateFromSeconds(Runner, 1.5f);
-            RPC_Pass(target.transform.position);
+            RPC_Pass(target.transform.position, other, false);
             break;
         }
     }
@@ -154,11 +156,15 @@ public class HotPotatoMinigameController : EliminationMinigameController
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_Pass(Vector3 position)
+    private void RPC_Pass(Vector3 position, PlayerRef to, NetworkBool hop)
     {
         Sfx.Play(Sound.Pop, 1f, 0.1f);
-        WorldPopup.Show(position + Vector3.up * 3.2f, "TAG!", new Color(1f, 0.79f, 0.24f), 8f);
+        string text = to == Runner.LocalPlayer ? (hop ? "HOP! YOURS!" : "TAG! YOURS!") : $"{(hop ? "HOP" : "TAG")}: {NameOf(to)}";
+        WorldPopup.Show(position + Vector3.up * 3.2f, text, to == Runner.LocalPlayer ? new Color(1f, 0.37f, 0.36f) : new Color(1f, 0.79f, 0.24f), 8f);
     }
+
+    private string NameOf(PlayerRef player) =>
+        _playerSpawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname) ? p.Nickname : $"Player {player.PlayerId}";
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_Boom(Vector3 position)

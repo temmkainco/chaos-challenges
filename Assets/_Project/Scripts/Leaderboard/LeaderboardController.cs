@@ -73,7 +73,7 @@ public class LeaderboardController : NetworkBehaviour
         }
         else
         {
-            // Round podium: top three of this round only (ties share a place); totals stay secret until the finale.
+            // Round podium: everyone's place this round (ties share a place); totals stay secret until the finale.
             entries = roster
                 .Where(r => r.LastRoundPoints > 0)
                 .OrderByDescending(r => r.LastRoundPoints)
@@ -84,7 +84,6 @@ public class LeaderboardController : NetworkBehaviour
                     HideScores = true,
                     RoundPodium = true,
                 })
-                .Where(e => e.Rank <= 3)
                 .ToList();
         }
 

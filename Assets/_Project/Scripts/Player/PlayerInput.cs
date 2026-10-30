@@ -14,6 +14,8 @@ public class PlayerInput : NetworkBehaviour
 
     public PlayerInputActions Controls;
     private Camera _camera;
+    private const float WHEEL_JUMP_HOLD = 0.35f;
+    private float _jumpHoldUntil;
      
     public override void Spawned()
     {
@@ -53,7 +55,12 @@ public class PlayerInput : NetworkBehaviour
         else
         {
             Move = Controls.Player.Move.ReadValue<Vector2>();
-            IsJumpPressed = Controls.Player.Jump.IsPressed();
+            // The mouse wheel jumps too (playtesters asked for it). A wheel notch lasts one frame, so it is held for a
+            // full jump: the tick sees it and releasing early doesn't cut it to a short hop.
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            if (mouse != null && Mathf.Abs(mouse.scroll.ReadValue().y) > 0.01f)
+                _jumpHoldUntil = Time.unscaledTime + WHEEL_JUMP_HOLD;
+            IsJumpPressed = Controls.Player.Jump.IsPressed() || Time.unscaledTime < _jumpHoldUntil;
             IsInteractPressed = Controls.Player.Interact.IsPressed();
             IsThrowPressed = Controls.Player.Attack.IsPressed();
         }

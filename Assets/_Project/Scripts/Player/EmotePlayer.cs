@@ -12,8 +12,8 @@ public class EmotePlayer : MonoBehaviour
     public const float DURATION = 2.6f;
     public const int COUNT = 9;   // index 0 is "none"
 
-    public static readonly string[] Names = { "", "Wave", "Dance", "Laugh", "Cheer", "Cry", "Angry", "Clap", "Love" };
-    private static readonly string[] Bubbles = { "", "HI!", "LA LA LA!", "HAHA!", "YAY!", "WAAH...", "GRR!", "CLAP CLAP", "<3" };
+    public static readonly string[] Names = { "", "Wave", "Dance", "Laugh", "Cheer", "Cry", "6-7", "Clap", "Love" };
+    private static readonly string[] Bubbles = { "", "HI!", "LA LA LA!", "HAHA!", "YAY!", "WAAH...", "SIX SEVEN!", "CLAP CLAP", "<3" };
     private static readonly Color[] BubbleColors =
     {
         Color.white, new(1f, 0.79f, 0.24f), new(0.72f, 0.61f, 0.95f), new(1f, 0.54f, 0.24f), new(0.31f, 0.82f, 0.63f),
@@ -96,12 +96,13 @@ public class EmotePlayer : MonoBehaviour
                 Aim(_rUpper, _rLower, (fwd + right * 0.2f - up * 0.3f).normalized, w);
                 Aim(_rLower, null, (up - right * 0.3f).normalized, w);
                 break;
-            case 6: // Angry: leaning in, fists shaking
-                Tilt(_spine, right, 12f * w);
-                Aim(_lUpper, _lLower, (-up - right * 0.5f + fwd * 0.2f).normalized, w);
-                Aim(_rUpper, _rLower, (-up + right * 0.5f + fwd * 0.2f).normalized, w);
-                Aim(_lLower, null, (fwd + up * (0.4f + 0.4f * Mathf.Sin(t * 25f))).normalized, w);
-                Aim(_rLower, null, (fwd + up * (0.4f - 0.4f * Mathf.Sin(t * 25f))).normalized, w);
+            case 6: // 6-7: palms up in front, weighing up and down in turn, head bobbing
+                float weigh = Mathf.Sin(t * 12f);
+                Aim(_lUpper, _lLower, (-up + fwd * 0.6f - right * 0.35f).normalized, w);
+                Aim(_rUpper, _rLower, (-up + fwd * 0.6f + right * 0.35f).normalized, w);
+                Aim(_lLower, null, (fwd + up * (0.15f + 0.55f * weigh)).normalized, w);
+                Aim(_rLower, null, (fwd + up * (0.15f - 0.55f * weigh)).normalized, w);
+                Tilt(_head, fwd, 8f * weigh * w);
                 break;
             case 7: // Clap: forearms meeting in front
                 float clap = (Mathf.Sin(t * 14f) + 1f) * 0.5f;

@@ -6,9 +6,9 @@ public static class GameSettings
 {
     public static event Action Changed;
 
-    public static float MasterVolume { get => Get("set.master", 0.8f); set => Set("set.master", Mathf.Clamp01(value)); }
+    public static float MasterVolume { get => Get("set.master", 0.65f); set => Set("set.master", Mathf.Clamp01(value)); }
     public static float MusicVolume { get => Get("set.music", 0.45f); set => Set("set.music", Mathf.Clamp01(value)); }
-    public static float SfxVolume { get => Get("set.sfx", 0.8f); set => Set("set.sfx", Mathf.Clamp01(value)); }
+    public static float SfxVolume { get => Get("set.sfx", 0.5f); set => Set("set.sfx", Mathf.Clamp01(value)); }
     /// <summary>Camera speed multiplier (0.2 - 3).</summary>
     public static float MouseSensitivity { get => Get("set.sens", 1f); set => Set("set.sens", Mathf.Clamp(value, 0.2f, 3f)); }
     public static bool InvertY { get => Get("set.invert", 0f) > 0.5f; set => Set("set.invert", value ? 1f : 0f); }

@@ -21,7 +21,13 @@ public class MinesMinigameController : TurnBasedMinigameController
     public bool IsLocalTurnOrHost => HasStateAuthority || CurrentTurn == Runner.LocalPlayer;
 
     private readonly List<(PlayerRef player, TickTimer timer)> _pendingBench = new();
+    private readonly List<PlayerRef> _benched = new();
     private bool _firstPressDone;
+    private SpectatorLounge _lounge;
+
+    /// <summary>Size chaos does nothing for a turn-based plate game (and giants hide the field).</summary>
+    public override bool SupportsChaos(ChaosModifier modifier) =>
+        modifier is not (ChaosModifier.Giants or ChaosModifier.Tiny) && base.SupportsChaos(modifier);
 
     public override string TwistTitle => "DOUBLE DARE";
     public override string TwistDescription => "Every turn you have to press two plates.";
@@ -30,6 +36,8 @@ public class MinesMinigameController : TurnBasedMinigameController
     {
         base.Spawned();
         _minefield.Initialize(this);
+        var field = _minefield.transform.position;
+        _lounge = SpectatorLounge.Build(transform, field + new Vector3(0f, 4f, 26f), field);
     }
 
     protected override void StartGame()
@@ -118,6 +126,23 @@ public class MinesMinigameController : TurnBasedMinigameController
         _pendingBench.Add((player, TickTimer.CreateFromSeconds(Runner, _benchDelay)));
     }
 
+    /// <summary>Host only. Blown-up contestants watch from the lounge, free to move.</summary>
+    private void SendToLounge(PlayerRef who)
+    {
+        if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
+        if (!_benched.Contains(who)) _benched.Add(who);
+        _playerSpawner.Teleport(player, _lounge.Spot(_benched.IndexOf(who)), _lounge.transform.rotation);
+        player.MovementLocked = false;
+        player.ControlsLocked = false;
+    }
+
+    public override bool HandlePlayerFell(Player player)
+    {
+        if (!IsGameActive || !_benched.Contains(player.Object.InputAuthority)) return false;
+        if (HasStateAuthority) SendToLounge(player.Object.InputAuthority);
+        return true;
+    }
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
@@ -132,8 +157,7 @@ public class MinesMinigameController : TurnBasedMinigameController
                 continue;
 
             _pendingBench.RemoveAt(i);
-            if (_playerSpawner.Players.TryGet(player, out var playerObject) && playerObject != null)
-                _playerSpawner.RequestSpawn(playerObject);
+            SendToLounge(player);
         }
     }
 }

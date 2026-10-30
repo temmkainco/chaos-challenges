@@ -6,7 +6,8 @@ using UnityEngine;
 /// <summary>
 /// Base for last-one-standing minigames on a built arena. During the intro the host places everyone on the arena
 /// (<see cref="ArenaSpawn"/>); a contestant is out when they drop below <see cref="OutHeight"/>, touch the kill zone,
-/// are eliminated by the game, or leave. Eliminated contestants are benched off the arena with controls locked.
+/// are eliminated by the game, or leave. Eliminated contestants go to the <see cref="SpectatorLounge"/> beside the
+/// arena with their controls back (run, jump, emote while watching); falling off the lounge puts them back on it.
 /// Placement: survivors first (tied when time runs out), then the eliminated in reverse order.
 /// </summary>
 public abstract class EliminationMinigameController : MinigameController
@@ -18,6 +19,21 @@ public abstract class EliminationMinigameController : MinigameController
     private readonly List<(PlayerRef player, TickTimer timer)> _toBench = new();
 
     public bool IsAlive(PlayerRef player) => HasStateAuthority ? _alive.Contains(player) : !IsPlayerLocked(player);
+
+    private SpectatorLounge _lounge;
+
+    /// <summary>Contestants still in, replicated for the status line (<see cref="_alive"/> lives on the host only).</summary>
+    [Networked] protected int AliveCount { get; private set; }
+
+    public override void Spawned()
+    {
+        base.Spawned();
+        // Beside the arena: centre of the spawn ring, a little up and well off to the side.
+        var centre = Vector3.zero;
+        for (int i = 0; i < 4; i++) centre += ArenaSpawn(i, 4);
+        centre /= 4f;
+        _lounge = SpectatorLounge.Build(transform, centre + new Vector3(0f, 4f, 26f), centre);
+    }
 
     /// <summary>Contestants below this height are out.</summary>
     protected abstract float OutHeight { get; }
@@ -40,6 +56,7 @@ public abstract class EliminationMinigameController : MinigameController
         _alive.Clear();
         _alive.AddRange(ConnectedPlayers());
         _out.Clear();
+        AliveCount = _alive.Count;
     }
 
     /// <summary>Host only.</summary>
@@ -48,6 +65,7 @@ public abstract class EliminationMinigameController : MinigameController
         if (!HasStateAuthority || !IsGameActive || !_alive.Remove(player))
             return;
         _out.Add(player);
+        AliveCount = _alive.Count;
         SetPlayerInput(player, false);
         _toBench.Add((player, TickTimer.CreateFromSeconds(Runner, 2f)));
         Debug.Log($"[Elimination] {player} out, {_alive.Count} left");
@@ -63,8 +81,20 @@ public abstract class EliminationMinigameController : MinigameController
     public override bool HandlePlayerFell(Player player)
     {
         if (!IsGameActive) return false;
-        if (HasStateAuthority) Eliminate(player.Object.InputAuthority);
+        if (!HasStateAuthority) return true;
+        var who = player.Object.InputAuthority;
+        if (_alive.Contains(who)) Eliminate(who);
+        else if (_out.Contains(who)) SendToLounge(who);   // fell off the lounge
         return true;
+    }
+
+    /// <summary>Host only. Puts a knocked-out contestant on the lounge with controls back.</summary>
+    private void SendToLounge(PlayerRef who)
+    {
+        if (_lounge == null || !_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
+        _playerSpawner.Teleport(player, _lounge.Spot(_out.IndexOf(who)), _lounge.transform.rotation);
+        player.MovementLocked = false;
+        SetPlayerInput(who, true);
     }
 
     public override void HandlePlayerLeft(PlayerRef player)
@@ -82,7 +112,8 @@ public abstract class EliminationMinigameController : MinigameController
             if (!_toBench[i].timer.Expired(Runner)) continue;
             var who = _toBench[i].player;
             _toBench.RemoveAt(i);
-            if (_bench != null && _playerSpawner.Players.TryGet(who, out var benched) && benched != null)
+            if (_lounge != null) SendToLounge(who);
+            else if (_bench != null && _playerSpawner.Players.TryGet(who, out var benched) && benched != null)
                 _playerSpawner.Teleport(benched, _bench.position + Random.insideUnitSphere.WithY(0f) * 2f);
         }
 

@@ -342,7 +342,7 @@ public class ConsoleRoundMinigameController : MinigameController
                 _game.Best = Mathf.Max(_bestLocal, BestOf(Runner.LocalPlayer));
                 _game.Draw(screen);
                 if (_game.Over) DrawGameOver(screen);
-                if (chaos == ChaosModifier.Blackout) { screen.Dim(0.35f); screen.Static(0.12f, (uint)Time.frameCount); }
+                if (chaos == ChaosModifier.Blackout) { screen.Dim(0.6f); screen.Static(0.04f, (uint)Time.frameCount); }
                 Report();
                 break;
 

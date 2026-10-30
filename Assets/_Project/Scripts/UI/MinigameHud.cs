@@ -161,8 +161,13 @@ public class MinigameHud : MonoBehaviour
                     PopBanner("YOUR TURN!");
             }
         }
-        // Active chaos (buff / debuff / hazard) on top of the status line, with its countdown.
-        if (controller.ActiveChaos != ChaosModifier.None)
+        // Chaos about to start, then the active one (buff / debuff / hazard) on top of the status line, with countdowns.
+        if (controller.PendingChaos != ChaosModifier.None)
+        {
+            string incoming = $"<color=#{ColorUtility.ToHtmlStringRGB(ChaosInfo.KindColor(controller.PendingChaos) * 0.8f)}><b>{ChaosInfo.Title(controller.PendingChaos)}</b> in {Mathf.CeilToInt(controller.PendingTimeRemaining)}...</color>";
+            status = string.IsNullOrEmpty(status) ? incoming : $"{incoming}\n{status}";
+        }
+        else if (controller.ActiveChaos != ChaosModifier.None)
         {
             string chaos = $"<color=#{ColorUtility.ToHtmlStringRGB(ChaosInfo.KindColor(controller.ActiveChaos) * 0.8f)}><b>{ChaosInfo.Title(controller.ActiveChaos)}</b> {Mathf.CeilToInt(controller.ChaosTimeRemaining)}s</color>";
             status = string.IsNullOrEmpty(status) ? chaos : $"{chaos}\n{status}";

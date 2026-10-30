@@ -544,7 +544,9 @@ public sealed class BrickGame : ConsoleGame
             }
         s.Rect((int)_px, PY, PW, 3, C(240, 240, 255));
         s.Rect((int)_px + 2, PY + 3, PW - 4, 1, C(150, 150, 190));
-        s.Rect((int)_bx, (int)_by, 2, 2, C(255, 255, 255));
+        // A bright ball with a dark rim, readable even through blackout static.
+        s.Rect((int)_bx - 1, (int)_by - 1, 4, 4, C(20, 10, 40));
+        s.Rect((int)_bx, (int)_by, 2, 2, C(255, 240, 120));
         if (!_launched && ((int)(T * 3f) & 1) == 0)
             s.TextShadowCentered(60, "PRESS SPACE", C(255, 255, 255), C(60, 40, 100));
         Header(s, C(46, 26, 71), C(255, 202, 61));

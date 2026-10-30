@@ -44,6 +44,34 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         }
     }
 
+    /// <summary>Metres below the lowest spawn point that count as "fell off the world".</summary>
+    private const float FALL_LIMIT = 12f;
+
+    /// <summary>
+    /// Host only: a fall guard for every scene (the lobby had none). Whoever drops far below the spawn points is handed
+    /// to the minigame first (it may knock them out or send them to the lounge); otherwise they respawn.
+    /// </summary>
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority || Runner.Tick % 15 != 0 || _spawnPoints == null || _spawnPoints.Length == 0)
+            return;
+
+        float lowest = float.MaxValue;
+        foreach (var point in _spawnPoints)
+            if (point != null) lowest = Mathf.Min(lowest, point.position.y);
+        float limit = lowest - FALL_LIMIT;
+
+        var minigame = MinigameController.Current;
+        bool minigameReady = minigame != null && minigame.Object != null && minigame.Object.IsValid;
+        foreach (var entry in Players)
+        {
+            var player = entry.Value;
+            if (player == null || player.transform.position.y > limit) continue;
+            if (minigameReady && minigame.HandlePlayerFell(player)) continue;
+            RequestSpawn(player);
+        }
+    }
+
     /// <summary>Host only. Puts the player back on their spawn point (respawn zones).</summary>
     public void RequestSpawn(Player player)
     {

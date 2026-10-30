@@ -5,8 +5,10 @@ using UnityEngine;
 
 /// <summary>
 /// Bomb Rush: conveyors keep feeding bombs into the arena. Grab one (E), throw it (E again) at a rival:
-/// thrown bombs go off on contact, lit ones on their own after the fuse. Blasts launch everyone nearby;
-/// whoever falls off the arena is out. Last contestant standing wins; on time-up the survivors tie.
+/// thrown bombs go off on contact, lit ones on their own after the fuse. A bomb going off in your hands or right
+/// next to you knocks you out; farther away it launches you, and whoever falls off the arena is out too.
+/// Knocked-out contestants watch from the <see cref="SpectatorLounge"/>. Last contestant standing wins; on time-up
+/// the survivors tie.
 /// </summary>
 public class BombRushMinigameController : MinigameController
 {
@@ -32,11 +34,20 @@ public class BombRushMinigameController : MinigameController
     private readonly List<PlayerRef> _alive = new();
     private readonly List<PlayerRef> _eliminationOrder = new();
     private int _nextBelt;
+    private SpectatorLounge _lounge;
+    private readonly List<(PlayerRef player, TickTimer timer)> _toLounge = new();
+
+    /// <summary>A blast this close (or in your hands) knocks you out; farther away it only launches you.</summary>
+    private const float KILL_RADIUS = 2.2f;
 
     public override void Spawned()
     {
         base.Spawned();
         _belts = FindObjectsByType<ConveyorBelt>(FindObjectsSortMode.InstanceID);
+        var centre = Vector3.zero;
+        foreach (var belt in _belts) centre += belt.Evaluate(1f);
+        centre = _belts.Length > 0 ? centre / _belts.Length : transform.position;
+        _lounge = SpectatorLounge.Build(transform, centre + new Vector3(0f, 4f, 30f), centre);
     }
 
     public ConveyorBelt GetBelt(int index) => index >= 0 && index < _belts.Length ? _belts[index] : null;
@@ -67,6 +78,14 @@ public class BombRushMinigameController : MinigameController
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
+        if (HasStateAuthority)
+            for (int i = _toLounge.Count - 1; i >= 0; i--)
+                if (_toLounge[i].timer.Expired(Runner))
+                {
+                    var who = _toLounge[i].player;
+                    _toLounge.RemoveAt(i);
+                    SendToLounge(who);
+                }
         if (!HasStateAuthority || !IsGameActive || _belts.Length == 0)
             return;
 
@@ -125,6 +144,11 @@ public class BombRushMinigameController : MinigameController
 
             if (player.TryGetComponent<PlayerMovement>(out var movement))
                 movement.Launch(away.normalized * _blastLaunch * strength + Vector3.up * _blastLift * strength);
+            if (holding || distance <= KILL_RADIUS)
+            {
+                RPC_Out(player.transform.position);
+                Eliminate(entry.Key);
+            }
         }
     }
 
@@ -134,8 +158,21 @@ public class BombRushMinigameController : MinigameController
             return false;
 
         if (HasStateAuthority)
-            Eliminate(player.Object.InputAuthority);
+        {
+            var who = player.Object.InputAuthority;
+            if (_alive.Contains(who)) Eliminate(who);
+            else if (_eliminationOrder.Contains(who)) SendToLounge(who);   // fell off the lounge
+        }
         return true;
+    }
+
+    /// <summary>Host only. Knocked-out contestants watch from the lounge, free to move.</summary>
+    private void SendToLounge(PlayerRef who)
+    {
+        if (_lounge == null || !_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
+        _playerSpawner.Teleport(player, _lounge.Spot(_eliminationOrder.IndexOf(who)), _lounge.transform.rotation);
+        player.MovementLocked = false;
+        SetPlayerInput(who, true);
     }
 
     public override void HandlePlayerLeft(PlayerRef player)
@@ -152,8 +189,10 @@ public class BombRushMinigameController : MinigameController
         _eliminationOrder.Add(player);
         AliveCount = _alive.Count;
         SetPlayerInput(player, false);
-        if (_bench != null && _playerSpawner.Players.TryGet(player, out var playerObject) && playerObject != null)
-            _playerSpawner.Teleport(playerObject, _bench.position + Random.insideUnitSphere.WithY(0f) * 2f);
+        // Let the blast play out, then off to the lounge.
+        _toLounge.Add((player, TickTimer.CreateFromSeconds(Runner, 2f)));
+        if (_playerSpawner.Players.TryGet(player, out var held) && held != null && held.Interaction != null)
+            held.Interaction.ForceDrop();
 
         Debug.Log($"[BombRush] {player} is out, {_alive.Count} left");
 
@@ -170,6 +209,12 @@ public class BombRushMinigameController : MinigameController
         var standings = new List<IReadOnlyList<PlayerRef>> { _alive.ToList() };
         standings.AddRange(Enumerable.Reverse(_eliminationOrder).Select(p => (IReadOnlyList<PlayerRef>)new[] { p }));
         return standings;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Out(Vector3 position)
+    {
+        WorldPopup.Show(position + Vector3.up * 2.6f, "OUT!", new Color(1f, 0.37f, 0.36f), 9f);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

@@ -78,10 +78,16 @@ public class RulesCard : MonoBehaviour
         strip.type = Image.Type.Sliced;
         Place(strip.rectTransform, -175f, -300f, 890f, 110f);
         _readyList = MakeText(strip.transform, "Ready", 30f, UiKit.Ink, false, 0f, 14f, 850f, 46f);
+        // Five or six long names must still fit on one line at any resolution.
+        _readyList.enableWordWrapping = false;
+        _readyList.enableAutoSizing = true;
+        _readyList.fontSizeMin = 14f;
+        _readyList.fontSizeMax = 30f;
         _readyHint = MakeText(strip.transform, "Hint", 24f, UiKit.Ink, false, 0f, -28f, 850f, 36f);
 
         var button = MakeImage(card.transform, "ReadyButton", kit.Button, UiKit.Yellow);
         button.type = Image.Type.Sliced;
+        button.raycastTarget = true;   // MakeImage turns raycasts off; without this the button can't be clicked
         Place(button.rectTransform, 465f, -300f, 290f, 100f);
         _readyButton = button.gameObject.AddComponent<Button>();
         _readyButton.targetGraphic = button;

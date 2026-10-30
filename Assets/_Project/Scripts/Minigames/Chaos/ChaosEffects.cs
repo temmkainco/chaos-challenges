@@ -26,13 +26,13 @@ public class ChaosEffects : MonoBehaviour
         }
         if (_sun != null && _sunIntensity >= 0f)
         {
-            float target = chaos == ChaosModifier.Blackout ? _sunIntensity * 0.08f : _sunIntensity;
+            float target = chaos == ChaosModifier.Blackout ? _sunIntensity * 0.3f : _sunIntensity;   // dark, but the arena stays readable
             _sun.intensity = Mathf.MoveTowards(_sun.intensity, target, Time.deltaTime * _sunIntensity * 1.5f);
-            RenderSettings.ambientLight = Color.Lerp(RenderSettings.ambientLight, chaos == ChaosModifier.Blackout ? _ambient * 0.15f : _ambient, Time.deltaTime * 3f);
+            RenderSettings.ambientLight = Color.Lerp(RenderSettings.ambientLight, chaos == ChaosModifier.Blackout ? _ambient * 0.45f : _ambient, Time.deltaTime * 3f);
         }
 
         // Giants / tiny: scale every contestant's model (the collider stays, so gameplay is unchanged).
-        float scale = chaos == ChaosModifier.Giants ? 1.6f : chaos == ChaosModifier.Tiny ? 0.55f : 1f;
+        float scale = chaos == ChaosModifier.Giants ? 1.3f : chaos == ChaosModifier.Tiny ? 0.55f : 1f;
         _currentScale = Mathf.MoveTowards(_currentScale, scale, Time.deltaTime * 2f);
         foreach (var controllerComponent in PlayerMovement.Controllers)
         {

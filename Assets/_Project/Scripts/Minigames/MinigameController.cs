@@ -43,6 +43,12 @@ public class MinigameController : NetworkBehaviour
     public float ChaosTimeRemaining => ChaosTimer.RemainingTime(Runner) ?? 0f;
     [Networked] private TickTimer NextRandomChaos { get; set; }
     [Networked] private TickTimer NextMeteor { get; set; }
+    /// <summary>Chaos about to start: announced <see cref="CHAOS_WARNING"/> seconds ahead so players can react.</summary>
+    [Networked] public ChaosModifier PendingChaos { get; private set; }
+    [Networked] private TickTimer PendingTimer { get; set; }
+    [Networked] private float PendingSeconds { get; set; }
+    public float PendingTimeRemaining => PendingTimer.RemainingTime(Runner) ?? 0f;
+    public const float CHAOS_WARNING = 3f;
 
     /// <summary>The minigame of the loaded scene, on every peer.</summary>
     public static MinigameController Current { get; private set; }
@@ -185,11 +191,23 @@ public class MinigameController : NetworkBehaviour
     protected virtual void OnChaosStarted(ChaosModifier modifier) { }
     protected virtual void OnChaosEnded(ChaosModifier modifier) { }
 
-    /// <summary>Host only; see <see cref="ChaosDirector.Request"/>.</summary>
+    /// <summary>
+    /// Host only; see <see cref="ChaosDirector.Request"/>. The modifier is announced first and starts
+    /// <see cref="CHAOS_WARNING"/> seconds later (a new request replaces one still waiting).
+    /// </summary>
     public bool StartChaos(ChaosModifier modifier, float seconds)
     {
         if (!HasStateAuthority || !IsGameActive || !SupportsChaos(modifier))
             return false;
+        PendingChaos = modifier;
+        PendingSeconds = seconds;
+        PendingTimer = TickTimer.CreateFromSeconds(Runner, CHAOS_WARNING);
+        Announce($"{ChaosInfo.Title(modifier)} IN 3...");
+        return true;
+    }
+
+    private void ActivateChaos(ChaosModifier modifier, float seconds)
+    {
         if (ActiveChaos != ChaosModifier.None)
             EndChaos();
         ActiveChaos = modifier;
@@ -198,7 +216,6 @@ public class MinigameController : NetworkBehaviour
         Announce($"{ChaosInfo.Kind(modifier)}: {ChaosInfo.Title(modifier)}!");
         Debug.Log($"[Chaos] {modifier} for {seconds:0}s");
         OnChaosStarted(modifier);
-        return true;
     }
 
     private void EndChaos()
@@ -214,14 +231,22 @@ public class MinigameController : NetworkBehaviour
         if (!IsGameActive)
         {
             if (ActiveChaos != ChaosModifier.None) EndChaos();
+            PendingChaos = ChaosModifier.None;
             return;
+        }
+
+        if (PendingChaos != ChaosModifier.None && PendingTimer.Expired(Runner))
+        {
+            var next = PendingChaos;
+            PendingChaos = ChaosModifier.None;
+            ActivateChaos(next, PendingSeconds);
         }
 
         if (ActiveChaos != ChaosModifier.None && ChaosTimer.Expired(Runner))
             EndChaos();
 
         // Random director until the audience vote exists.
-        if (ChaosDirector.Level != ChaosLevel.Off && ActiveChaos == ChaosModifier.None)
+        if (ChaosDirector.Level != ChaosLevel.Off && ActiveChaos == ChaosModifier.None && PendingChaos == ChaosModifier.None)
         {
             if (!NextRandomChaos.IsRunning)
                 NextRandomChaos = TickTimer.CreateFromSeconds(Runner, ChaosDirector.Level == ChaosLevel.Wild ? 8f : 18f);

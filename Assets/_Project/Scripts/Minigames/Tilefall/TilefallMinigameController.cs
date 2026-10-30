@@ -56,6 +56,8 @@ public class TilefallMinigameController : MinigameController
         PlayersFinished = _finishOrder.Count;
         Debug.Log($"Player {player} finished #{PlayersFinished}");
         RPC_OnPlayerFinished(player, PlayersFinished);
+        string name = _playerSpawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname) ? p.Nickname : $"Player {player.PlayerId}";
+        Announce($"{(name.Length > 14 ? name.Substring(0, 14) : name)} FINISHED #{PlayersFinished}!");
 
         CheckRaceOver();
     }
@@ -149,5 +151,10 @@ public class TilefallMinigameController : MinigameController
     private void RPC_OnPlayerFinished(PlayerRef player, int position)
     {
         OnPlayerFinished?.Invoke(player, position);
+        // Finish feedback: a popup over the finisher and a cheer; your own finish also gets the big banner.
+        string place = position switch { 1 => "1ST", 2 => "2ND", 3 => "3RD", _ => position + "TH" };
+        if (_playerSpawner.Players.TryGet(player, out var finisher) && finisher != null)
+            WorldPopup.Show(finisher.transform.position + Vector3.up * 3f, $"FINISH! {place}", new Color(1f, 0.79f, 0.24f), 10f);
+        Sfx.Play(player == Runner.LocalPlayer ? Sound.Fanfare : Sound.Pop, 1f, 0f);
     }
 }

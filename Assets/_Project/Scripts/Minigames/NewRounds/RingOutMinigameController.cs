@@ -55,7 +55,7 @@ public class RingOutMinigameController : EliminationMinigameController
         }
     }
 
-    public override string GetStatusText() => IsGameActive ? $"{_alive.Count} on the ring" : null;
+    public override string GetStatusText() => IsGameActive ? $"{AliveCount} on the ring" : null;
 
     public override void Spawned()
     {
@@ -73,7 +73,9 @@ public class RingOutMinigameController : EliminationMinigameController
         go.transform.SetParent(transform, false);
         go.transform.position = Top + Vector3.up * (offset - thickness * 0.5f);
         Destroy(go.GetComponent<Collider>());
-        go.AddComponent<MeshCollider>().sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
+        var collider = go.AddComponent<MeshCollider>();
+        collider.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
+        collider.convex = true;   // a cylinder is convex; convex contacts are steadier for the character controller
         go.transform.localScale = new Vector3(1f, thickness * 0.5f, 1f);
         var renderer = go.GetComponent<Renderer>();
         renderer.sharedMaterial = _material;
@@ -83,11 +85,19 @@ public class RingOutMinigameController : EliminationMinigameController
         return go.transform;
     }
 
+    private float _appliedRadius = -1f;
+
+    /// <summary>
+    /// Resizes the ring in 5 cm steps. Rescaling a mesh collider every tick made the predicted local contestant sink
+    /// into the floor on clients (the collider is rebuilt during resimulation).
+    /// </summary>
     private void Apply(float radius)
     {
-        if (_ring == null) return;
+        if (_ring == null || Mathf.Abs(radius - _appliedRadius) < 0.05f) return;
+        _appliedRadius = radius;
         _ring.localScale = new Vector3(radius * 2f, _ring.localScale.y, radius * 2f);
         _rim.localScale = new Vector3(radius * 2f + 0.5f, _rim.localScale.y, radius * 2f + 0.5f);
+        Physics.SyncTransforms();
     }
 
     public override void FixedUpdateNetwork()

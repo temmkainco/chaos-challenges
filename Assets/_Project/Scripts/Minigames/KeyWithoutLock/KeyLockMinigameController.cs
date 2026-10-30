@@ -64,7 +64,16 @@ public class KeyLockMinigameController : MinigameController
     public override string GetStatusText()
     {
         int inside = PlayerCount - Escaped;
-        return $"{_doors.Length} doors - find the one your key opens\n<size=80%>{Escaped} escaped, {inside} still inside</size>";
+        // What to do next, for the local contestant.
+        var held = Player.Local != null && Player.Local.Interaction != null ? Player.Local.Interaction.HeldObject : null;
+        string todo = held != null && held.TryGetComponent<VaultKey>(out var key)
+            ? (key.IsMaster ? "MASTER KEY! Press <b>E</b> at any door"
+               : key.Heat == 3 ? "<color=#E03131>HOT</color>: its door is close - press <b>E</b> at doors nearby"
+               : key.Heat == 2 ? "<color=#E8590C>WARM</color>: its door is not far - keep trying"
+               : key.Heat == 1 ? "<color=#3A7BD5>COLD</color>: its door is far away"
+               : "Walk to any door and press <b>E</b> to try your key")
+            : "Grab a key with <b>E</b>, then try it on the doors";
+        return $"{todo}\n<size=80%>{Escaped} escaped, {inside} still inside</size>";
     }
 
     protected override void StartGame()
@@ -219,7 +228,8 @@ public class KeyLockMinigameController : MinigameController
         var door = _doors.FirstOrDefault(d => d.Id == doorId);
         if (door == null) return;
         Sfx.Play(opened ? Sound.Escape : Sound.Nope);
-        var at = door.transform.position + Vector3.up * 4.2f;
+        // In front of the door (its own position is inside the wall).
+        var at = door.FrontPosition + Vector3.up * 2.4f;
         if (opened)
         {
             door.PlayOpen();

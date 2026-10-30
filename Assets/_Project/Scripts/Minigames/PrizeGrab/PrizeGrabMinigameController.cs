@@ -30,6 +30,7 @@ public class PrizeGrabMinigameController : MinigameController
 
     private readonly List<PlayerRef> _order = new();
     private readonly Dictionary<PlayerRef, Transform> _podiums = new();
+    private readonly Dictionary<PlayerRef, string> _shownNames = new();
     private Transform _podiumRoot;
 
     public int ScoreOf(PlayerRef player) => Scores.TryGet(player, out var s) ? s : 0;
@@ -198,6 +199,31 @@ public class PrizeGrabMinigameController : MinigameController
             if (!_podiums.TryGetValue(player, out var podium) || podium == null)
                 _podiums[player] = podium = BuildPodium(player);
             podium.position = PodiumPosition(i, players.Count);
+            RefreshPodium(player, podium);
+        }
+    }
+
+    /// <summary>
+    /// Names and colours replicate after the podiums are first built, so keep them current; your own podium gets a
+    /// bouncing "YOU" marker so nobody has to guess which one is theirs.
+    /// </summary>
+    private void RefreshPodium(PlayerRef player, Transform podium)
+    {
+        if (!_playerSpawner.Players.TryGet(player, out var p) || p == null) return;
+        var label = podium.Find("Name")?.GetComponent<TextMeshPro>();
+        bool mine = player == Runner.LocalPlayer;
+        if (label != null && mine)
+            label.transform.localPosition = new Vector3(0f, 3f + Mathf.Abs(Mathf.Sin(Time.time * 3f)) * 0.5f, 0f);
+        if (_shownNames.TryGetValue(player, out var shown) && shown == p.Nickname) return;
+        _shownNames[player] = p.Nickname;
+        string name = string.IsNullOrEmpty(p.Nickname) ? $"Player {player.PlayerId}" : p.Nickname;
+        string text = mine ? $"<size=150%><color=#FFCA3D>YOU</color></size>\n{name}" : name;
+        if (label != null && label.text != text)
+        {
+            label.text = text;
+            label.color = p.OutfitColor;
+            var pad = podium.Find("Pad")?.GetComponent<Renderer>();
+            if (pad != null) pad.material.color = new Color(p.OutfitColor.r, p.OutfitColor.g, p.OutfitColor.b, 0.85f);
         }
     }
 
@@ -206,6 +232,7 @@ public class PrizeGrabMinigameController : MinigameController
         var root = new GameObject("Podium " + player.PlayerId).transform;
         root.SetParent(_podiumRoot, false);
         var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        pad.name = "Pad";
         Destroy(pad.GetComponent<Collider>());
         pad.transform.SetParent(root, false);
         pad.transform.localPosition = new Vector3(0f, 0.05f, 0f);
