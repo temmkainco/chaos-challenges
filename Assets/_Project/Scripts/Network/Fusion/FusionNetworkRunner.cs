@@ -77,6 +77,7 @@ namespace Networking
                     PlayerCount = settings.MaxPlayers,
                     Scene = SceneRef.FromIndex(GameScenes.LobbyBuildIndex),
                     SceneManager = runner.GetComponent<INetworkSceneManager>(),
+                    ObjectProvider = PooledProvider(runner),
                     SessionProperties = properties,
                 });
 
@@ -185,6 +186,14 @@ namespace Networking
                 _runner.Shutdown();
         }
 
+        /// <summary>Recycles bombs, keys and prizes instead of instantiating them every time.</summary>
+        private static INetworkObjectProvider PooledProvider(NetworkRunner runner)
+        {
+            if (!runner.TryGetComponent<PooledObjectProvider>(out var provider))
+                provider = runner.gameObject.AddComponent<PooledObjectProvider>();
+            return provider;
+        }
+
         private async UniTask<bool> JoinAsync(string sessionName)
         {
             NetworkRunner runner;
@@ -198,6 +207,7 @@ namespace Networking
                     GameMode = GameMode.Client,
                     SessionName = sessionName,
                     SceneManager = runner.GetComponent<INetworkSceneManager>(),
+                    ObjectProvider = PooledProvider(runner),
                     EnableClientSessionCreation = false,
                 });
 

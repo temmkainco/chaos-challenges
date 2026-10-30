@@ -36,11 +36,14 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;
+    private Transform _interpolationTarget;
+
 
     private void Awake()
     {
         _nrb = GetComponent<NetworkRigidbody3D>();
         _collider = GetComponent<Collider>();
+        _interpolationTarget = FindInterpolationTarget();
         Outline = GetComponent<Outline>();
         if (Outline == null)
         {
@@ -99,7 +102,25 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         {
             GetHoldPose(out var position, out var rotation);
             transform.SetPositionAndRotation(position, rotation);
+            // The rigidbody's interpolation moves the visual child; while held it must sit exactly in the hand.
+            if (_interpolationTarget != null)
+            {
+                _interpolationTarget.localPosition = Vector3.zero;
+                _interpolationTarget.localRotation = Quaternion.identity;
+            }
         }
+    }
+
+    private Transform FindInterpolationTarget()
+    {
+        // Walk up the generic base types until the field is found (NetworkRigidbody<,> -> NetworkRigidbodyBase).
+        for (var type = typeof(NetworkRigidbody3D); type != null; type = type.BaseType)
+        {
+            var field = type.GetField("_interpolationTarget", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field != null)
+                return field.GetValue(_nrb) as Transform;
+        }
+        return null;
     }
 
     public void Interact(PlayerRef player, NetworkObject playerObject)

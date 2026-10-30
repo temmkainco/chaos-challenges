@@ -14,7 +14,8 @@ public class Nameplate : MonoBehaviour
     private Player _player;
     private Transform _head;
     private TextMeshPro _text;
-    private string _shown;
+    private string _shownName;
+    private Color _shownColor;
 
     public static void Attach(Player player)
     {
@@ -22,6 +23,7 @@ public class Nameplate : MonoBehaviour
         var go = new GameObject("Nameplate " + player.name);
         var plate = go.AddComponent<Nameplate>();
         plate._player = player;
+        player.OnNicknameUpdated += plate.OnNickname;
         plate._text = go.AddComponent<TextMeshPro>();
         plate._text.fontSize = 3.2f;
         plate._text.alignment = TextAlignmentOptions.Center;
@@ -63,12 +65,25 @@ public class Nameplate : MonoBehaviour
         if (!visible)
             return;
 
-        string name = string.IsNullOrEmpty(_player.Nickname) ? "" : _player.Nickname;
-        string label = $"<color=#{ColorUtility.ToHtmlStringRGB(_player.OutfitColor)}>{name}</color>";
-        if (label != _shown)
+        // The name arrives through OnNicknameUpdated (reading the networked string allocates); only the colour is polled.
+        if (_shownName == null)
+            OnNickname(_player.Nickname);
+        var color = _player.OutfitColor;
+        if (color != _shownColor)
         {
-            _shown = label;
-            _text.text = label;
+            _shownColor = color;
+            _text.color = color;
         }
+    }
+
+    private void OnNickname(string name)
+    {
+        _shownName = name ?? "";
+        if (_text != null) _text.text = _shownName;
+    }
+
+    private void OnDestroy()
+    {
+        if (_player != null) _player.OnNicknameUpdated -= OnNickname;
     }
 }

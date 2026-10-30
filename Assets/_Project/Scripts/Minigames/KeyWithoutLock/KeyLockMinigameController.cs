@@ -94,7 +94,7 @@ public class KeyLockMinigameController : MinigameController
             return;
 
         // Keys knocked off the walkways or out of the room come back, so no door ever runs out of keys.
-        foreach (var key in FindObjectsByType<VaultKey>(FindObjectsSortMode.None))
+        foreach (var key in VaultKey.Active)
         {
             if (key.Grabbable.IsGrabbed || key.transform.position.y > _keySpawnArea.position.y - 4f)
                 continue;

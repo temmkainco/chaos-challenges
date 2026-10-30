@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using Fusion;
 using UnityEngine;
@@ -10,6 +11,9 @@ using UnityEngine;
 [RequireComponent(typeof(GrabbableObject))]
 public class VaultKey : NetworkBehaviour
 {
+    /// <summary>Live instances on this peer (no scene searches in the simulation).</summary>
+    public static readonly List<VaultKey> Active = new();
+
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
     public static readonly string[] Names = { "GOLD", "SILVER", "COPPER", "BLUE", "PINK" };
     public static readonly Color[] Colors =
@@ -37,6 +41,7 @@ public class VaultKey : NetworkBehaviour
 
     public override void Spawned()
     {
+        if (!Active.Contains(this)) Active.Add(this);
         ApplyColor();
         if (_visual != null)
         {
@@ -56,5 +61,10 @@ public class VaultKey : NetworkBehaviour
             block.SetColor(BaseColor, color);
             r.SetPropertyBlock(block);
         }
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        Active.Remove(this);
     }
 }

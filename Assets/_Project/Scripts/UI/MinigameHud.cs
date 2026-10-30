@@ -27,6 +27,9 @@ public class MinigameHud : MonoBehaviour
     private PlayerRef _lastTurn = PlayerRef.None;
     private MinigameController _shownFor;
     private int _lastAnnouncement;
+    private int _lastTimerSeconds = -1;
+    private float _nextStatus;
+    private static BasePlayerSpawner _spawner;
 
     private void Awake()
     {
@@ -122,10 +125,18 @@ public class MinigameHud : MonoBehaviour
         if (controller.IsGameActive)
             _playingTime += Time.deltaTime;
 
+        // Timer text only changes once a second; the status line is refreshed four times a second.
+        int timerSeconds = controller.IsGameActive && controller.IsTimeLimited ? Mathf.CeilToInt(controller.TimeRemaining) : -1;
+        bool statusDue = Time.unscaledTime >= _nextStatus;
+        if (timerSeconds == _lastTimerSeconds && !statusDue)
+            goto Hint;
+        _lastTimerSeconds = timerSeconds;
+        _nextStatus = Time.unscaledTime + 0.25f;
+
         string timer = "";
-        if (controller.IsGameActive && controller.IsTimeLimited)
+        if (timerSeconds >= 0)
         {
-            int seconds = Mathf.CeilToInt(controller.TimeRemaining);
+            int seconds = timerSeconds;
             timer = $"{seconds / 60}:{seconds % 60:00}";
             if (seconds <= URGENT_SECONDS) timer = $"<color=#E03131>{timer}</color>";
             timer = $"<size=55%><color=#E03131><size=180%>●</size></color> LIVE</size>  {timer}";
@@ -153,6 +164,7 @@ public class MinigameHud : MonoBehaviour
         _timer.gameObject.SetActive(timer.Length > 0);
         _chip.alpha = Mathf.MoveTowards(_chip.alpha, timer.Length + status.Length > 0 ? 1f : 0f, Time.deltaTime * 5f);
 
+    Hint:
         if (_hint.text.Length == 0 && definition != null && definition.Rules != null && definition.Rules.Length > 0)
             _hint.text = definition.Rules[0];
         bool showHint = controller.IsGameActive && _playingTime < HINT_SECONDS;
@@ -197,7 +209,8 @@ public class MinigameHud : MonoBehaviour
 
     private static string Nickname(PlayerRef player)
     {
-        var spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        if (_spawner == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        var spawner = _spawner;
         if (spawner != null && spawner.Object != null && spawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname))
             return $"<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(p.OutfitColor, new Color(0.18f, 0.1f, 0.28f), 0.35f))}>{p.Nickname}</color>";
         return $"Player {player.PlayerId}";

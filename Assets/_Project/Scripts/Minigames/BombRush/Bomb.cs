@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Fusion;
 using Fusion.Addons.Physics;
 using UnityEngine;
@@ -10,6 +11,9 @@ using UnityEngine;
 [RequireComponent(typeof(GrabbableObject))]
 public class Bomb : NetworkBehaviour
 {
+    /// <summary>Live instances on this peer (no scene searches in the simulation).</summary>
+    public static readonly List<Bomb> Active = new();
+
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
     [Networked] public TickTimer Fuse { get; private set; }
@@ -54,6 +58,7 @@ public class Bomb : NetworkBehaviour
 
     public override void Spawned()
     {
+        if (!Active.Contains(this)) Active.Add(this);
         _controller ??= FindFirstObjectByType<BombRushMinigameController>();
     }
 
@@ -173,5 +178,10 @@ public class Bomb : NetworkBehaviour
 
         if (_spark != null)
             _spark.localScale = Vector3.one * (0.6f + Random.value * 0.6f) * 0.25f;
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        Active.Remove(this);
     }
 }

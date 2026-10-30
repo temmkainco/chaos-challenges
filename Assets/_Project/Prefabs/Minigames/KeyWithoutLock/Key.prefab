@@ -192,7 +192,7 @@ MonoBehaviour:
   _stateAuthorityChangeErrorCorrectionDelta: 0
   SyncScale: 0
   SyncParent: 1
-  _interpolationTarget: {fileID: 0}
+  _interpolationTarget: {fileID: 1553816552476013575}
   UsePreciseRotation: 0
   UseRenderSleepThresholds: 1
   RenderThresholds:
@@ -239,6 +239,7 @@ MonoBehaviour:
   _handOffset: {x: 0.05, y: -0.05, z: 0.18}
   _handEuler: {x: 0, y: 0, z: 0}
   _canThrow: 0
+  _carrySpeed: 1
 --- !u!114 &1404686675135013186
 MonoBehaviour:
   m_ObjectHideFlags: 0

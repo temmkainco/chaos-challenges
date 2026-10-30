@@ -102,7 +102,7 @@ MonoBehaviour:
   _stateAuthorityChangeErrorCorrectionDelta: 0
   SyncScale: 0
   SyncParent: 1
-  _interpolationTarget: {fileID: 0}
+  _interpolationTarget: {fileID: 1553816552476013575}
   UsePreciseRotation: 0
   UseRenderSleepThresholds: 1
   RenderThresholds:

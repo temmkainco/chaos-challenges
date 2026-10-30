@@ -20,41 +20,51 @@ public static class LowPolyExplosion
         _material = material;
         _puffMesh ??= CreatePuffMesh();
 
-        var root = new GameObject("Explosion");
-        root.transform.position = position;
-
         for (int i = 0; i < 9; i++)
-            SpawnPuff(root.transform, FireColors[i % FireColors.Length], size * Random.Range(0.5f, 0.9f),
+            SpawnPuff(position, FireColors[i % FireColors.Length], size * Random.Range(0.5f, 0.9f),
                 Random.insideUnitSphere * size * 0.6f + Vector3.up * size * 0.3f, 0.25f, i * 0.02f);
 
         for (int i = 0; i < 7; i++)
-            SpawnPuff(root.transform, SmokeColor, size * Random.Range(0.45f, 0.75f),
+            SpawnPuff(position, SmokeColor, size * Random.Range(0.45f, 0.75f),
                 Random.insideUnitSphere * size * 0.5f + Vector3.up * size * Random.Range(0.8f, 1.6f), 0.7f, 0.12f + i * 0.04f);
-
-        Object.Destroy(root, 2f);
     }
 
-    private static void SpawnPuff(Transform parent, Color color, float scale, Vector3 offset, float lifetime, float delay)
-    {
-        var puff = new GameObject("Puff", typeof(MeshFilter), typeof(MeshRenderer));
-        puff.transform.SetParent(parent, false);
-        puff.transform.localRotation = Random.rotation;
-        puff.transform.localScale = Vector3.zero;
-        puff.GetComponent<MeshFilter>().sharedMesh = _puffMesh;
+    // Puffs are pooled: an explosion reuses 16 parked puffs instead of creating GameObjects.
+    private static readonly System.Collections.Generic.Stack<MeshRenderer> Pool = new();
+    private static MaterialPropertyBlock _block;
 
-        var renderer = puff.GetComponent<MeshRenderer>();
+    private static void SpawnPuff(Vector3 origin, Color color, float scale, Vector3 offset, float lifetime, float delay)
+    {
+        MeshRenderer renderer = null;
+        while (Pool.Count > 0 && renderer == null)
+            renderer = Pool.Pop();   // entries die with their scene
+        if (renderer == null)
+        {
+            var go = new GameObject("Puff", typeof(MeshFilter), typeof(MeshRenderer));
+            go.GetComponent<MeshFilter>().sharedMesh = _puffMesh;
+            renderer = go.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+        var puff = renderer.gameObject;
+        puff.SetActive(true);
+        puff.transform.SetPositionAndRotation(origin, Random.rotation);
+        puff.transform.localScale = Vector3.zero;
         renderer.sharedMaterial = _material;
-        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        var block = new MaterialPropertyBlock();
-        block.SetColor(BaseColor, color);
-        renderer.SetPropertyBlock(block);
+        _block ??= new MaterialPropertyBlock();
+        _block.SetColor(BaseColor, color);
+        renderer.SetPropertyBlock(_block);
 
         DOTween.Sequence()
             .SetDelay(delay)
             .Append(puff.transform.DOScale(scale, 0.18f).SetEase(Ease.OutBack))
-            .Join(puff.transform.DOLocalMove(offset, 0.35f + lifetime).SetEase(Ease.OutCubic))
+            .Join(puff.transform.DOMove(origin + offset, 0.35f + lifetime).SetEase(Ease.OutCubic))
             .AppendInterval(lifetime * 0.4f)
             .Append(puff.transform.DOScale(0f, lifetime).SetEase(Ease.InQuad))
+            .OnComplete(() =>
+            {
+                puff.SetActive(false);
+                Pool.Push(renderer);
+            })
             .SetLink(puff);
     }
 

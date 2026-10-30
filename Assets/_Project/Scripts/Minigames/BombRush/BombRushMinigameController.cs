@@ -73,7 +73,7 @@ public class BombRushMinigameController : MinigameController
         float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f);
         SpawnTimer = TickTimer.CreateFromSeconds(Runner, interval);
 
-        if (FindObjectsByType<Bomb>(FindObjectsSortMode.None).Length >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath ? 2 : 1))
+        if (Bomb.Active.Count >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath ? 2 : 1))
             return;
 
         int belt = _nextBelt++ % _belts.Length;

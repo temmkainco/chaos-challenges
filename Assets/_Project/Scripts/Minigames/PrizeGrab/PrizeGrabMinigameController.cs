@@ -93,14 +93,15 @@ public class PrizeGrabMinigameController : MinigameController
         {
             float interval = _rainInterval * 2f / players * (bonus ? 0.5f : 1f);
             RainTimer = TickTimer.CreateFromSeconds(Runner, interval);
-            if (FindObjectsByType<Prize>(FindObjectsSortMode.None).Length < players * _maxPrizesPerPlayer)
+            if (Prize.Active.Count < players * _maxPrizesPerPlayer)
                 DropPrize(bonus || Random.value < _goldenChance);
         }
 
         // Prizes thrown or dropped onto a podium bank for that podium's owner.
         if (Runner.Tick % 6 == 0)
-            foreach (var prize in FindObjectsByType<Prize>(FindObjectsSortMode.None))
+            for (int p = Prize.Active.Count - 1; p >= 0; p--)
             {
+                var prize = Prize.Active[p];
                 if (prize.Object == null || !prize.Object.IsValid || prize.Grabbable.IsGrabbed) continue;
             {
                 var owners = SortedPlayers();
@@ -118,8 +119,8 @@ public class PrizeGrabMinigameController : MinigameController
 
         // Prizes that fall off the stage come back down from the sky.
         if (Runner.Tick % 30 == 0)
-            foreach (var prize in FindObjectsByType<Prize>(FindObjectsSortMode.None))
-                if (!prize.Grabbable.IsGrabbed && prize.transform.position.y < _stageCentre.position.y - 6f)
+            for (int p = Prize.Active.Count - 1; p >= 0; p--)
+                if (Prize.Active[p] is var prize && !prize.Grabbable.IsGrabbed && prize.transform.position.y < _stageCentre.position.y - 6f)
                     Runner.Despawn(prize.Object);
     }
 

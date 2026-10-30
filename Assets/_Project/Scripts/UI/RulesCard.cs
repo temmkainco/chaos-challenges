@@ -202,10 +202,13 @@ public class RulesCard : MonoBehaviour
         _orbit.transform.LookAt(_orbitCentre + Vector3.up * 1.5f);
     }
 
+    private BasePlayerSpawner _spawner;
+
     private bool TryArenaCentre(out Vector3 centre)
     {
         centre = Vector3.zero;
-        var spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        if (_spawner == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        var spawner = _spawner;
         if (spawner == null || spawner.Object == null) return false;
         int count = 0;
         foreach (var entry in spawner.Players)

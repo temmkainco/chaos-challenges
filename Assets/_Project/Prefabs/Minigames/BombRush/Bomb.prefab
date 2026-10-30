@@ -102,7 +102,7 @@ MonoBehaviour:
   _stateAuthorityChangeErrorCorrectionDelta: 0
   SyncScale: 0
   SyncParent: 1
-  _interpolationTarget: {fileID: 0}
+  _interpolationTarget: {fileID: 739461891670211626}
   UsePreciseRotation: 0
   UseRenderSleepThresholds: 1
   RenderThresholds:
@@ -146,9 +146,10 @@ MonoBehaviour:
   _IsGrabbed:
     _value: 0
   _HolderObject: {fileID: 0}
-  _holdPositionOffset: {x: 0, y: 1.3, z: 1}
-  _throwForce: 14
-  _throwLift: 4
+  _handOffset: {x: 0.05, y: -0.05, z: 0.18}
+  _handEuler: {x: 0, y: 0, z: 0}
+  _canThrow: 1
+  _carrySpeed: 1
 --- !u!114 &7256270945262497862
 MonoBehaviour:
   m_ObjectHideFlags: 0
