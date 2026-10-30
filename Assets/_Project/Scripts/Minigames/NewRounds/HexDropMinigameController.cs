@@ -114,7 +114,7 @@ public class HexDropMinigameController : EliminationMinigameController
         foreach (var entry in _playerSpawner.Players)
         {
             var player = entry.Value;
-            if (player == null || player.ControlsLocked) continue;
+            if (player == null || player.ControlsLocked || player.IsSpectator) continue;
             if (!Runner.GetPhysicsScene().Raycast(player.transform.position + Vector3.up * 0.3f, Vector3.down, out var hit, 1.2f, ~0, QueryTriggerInteraction.Ignore))
                 continue;
             int index = System.Array.IndexOf(_colliders, hit.collider);

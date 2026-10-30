@@ -19,18 +19,18 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Hot Potato
-  <Description>k__BackingField: Someone is carrying a ticking bomb! Touch a rival
-    to pass it on before it blows.
+  <Description>k__BackingField: Someone is carrying a ticking bomb! Click a rival
+    next to you to hand it over before it blows.
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 4b1310a22146e83469914083c0b8612b, type: 3}
   <Rules>k__BackingField:
-  - Touch a rival to pass the bomb
-  - The holder runs a little faster
+  - Click a rival in front of you to hand the bomb over
+  - Bumping into someone passes it too
   - The bomb pulses faster before it blows
   <Objective>k__BackingField: Don't be holding the bomb when it explodes.
-  <Danger>k__BackingField: The bomb blasts its holder out. It can't be passed straight
-    back.
+  <Danger>k__BackingField: The bomb knocks out whoever holds it when it blows. It
+    can't be handed straight back.
   <Scoring>k__BackingField: Last one standing wins; the order of explosions decides
     the rest.
   <Controls>k__BackingField:
-  - Touch|Pass the bomb
-  - LMB|Shove
+  - LMB|Hand the bomb over
+  - E|Hand it over

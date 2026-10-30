@@ -54,7 +54,7 @@ public class ConsoleRoundMinigameController : MinigameController
     private float _accumulator, _restartTimer, _nextRemoteDraw, _nextReport;
     private ConsoleViewmodel _viewmodel;
     private ConsoleInput _input;
-    private bool _prevA, _prevUp, _bodyHidden;
+    private bool _prevA, _prevUp, _bodyHidden, _reversedDown;
 
     /// <summary>Test hook: when 0 or more, the host plays this cartridge and the next one in the following round.</summary>
     public static int NextTestCartridge = -1;
@@ -87,6 +87,9 @@ public class ConsoleRoundMinigameController : MinigameController
             _ => false,
         };
     }
+
+    /// <summary>Fastest honest scoring per cartridge (points per second): snake, flap, runner, bricks, hopper.</summary>
+    private static readonly float[] MaxRate = { 4f, 2.5f, 14f, 8f, 30f };
 
     public int BestOf(PlayerRef player) => Best.TryGet(player, out var v) ? v : 0;
 
@@ -250,6 +253,9 @@ public class ConsoleRoundMinigameController : MinigameController
     {
         if (!IsGameActive) return;
         var player = info.Source == PlayerRef.None ? Runner.LocalPlayer : info.Source;
+        // Plausibility cap: no cartridge scores faster than MaxRate per second (a client reported 9999 in playtest).
+        float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
+        score = Mathf.Clamp(score, 0, Mathf.CeilToInt((elapsed + 2f) * MaxRate[Mathf.Min(Cartridge, MaxRate.Length - 1)]));
         Live.Set(player, score);
         if (score > BestOf(player)) Best.Set(player, score);
         int bit = 1 << player.PlayerId;
@@ -312,7 +318,17 @@ public class ConsoleRoundMinigameController : MinigameController
                     Jump = chaos == ChaosModifier.SuperJump ? 1.3f : chaos == ChaosModifier.LowGravity ? 0.8f : 1f,
                 };
                 var input = _input;
-                if (chaos == ChaosModifier.ReversedControls) { input.X = -input.X; input.Y = -input.Y; }
+                if (chaos == ChaosModifier.ReversedControls)
+                {
+                    // Everything flips: left/right, up/down, and jump/action trades places with down
+                    // (Pixel Runner: S jumps, Space ducks).
+                    bool down = input.Y < 0, upOrAction = input.Y > 0 || input.A;
+                    input.X = -input.X;
+                    input.Y = upOrAction ? -1 : down ? 1 : 0;
+                    input.A = down;
+                    input.APressed = input.UpPressed = down && !_reversedDown;
+                    _reversedDown = down;
+                }
 
                 if (_game.Over)
                 {

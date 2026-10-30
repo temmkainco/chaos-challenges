@@ -90,6 +90,8 @@ public class MinigameController : NetworkBehaviour
             return;
 
         SetPlayersInput(false);
+        foreach (var entry in _playerSpawner.Players)
+            if (entry.Value != null) entry.Value.IsSpectator = false;
         ReadyMask = 0;
         SetPhase(MinigamePhase.Intro, INTRO_SECONDS);
         OnIntro();
@@ -142,6 +144,9 @@ public class MinigameController : NetworkBehaviour
     /// (e.g. firing the revolver), so the normal interaction does not run.
     /// </summary>
     public virtual bool HandlePrimaryAction(Player player) => false;
+
+    /// <summary>Host only. The empty-handed throw button was pressed; return true to use it instead of a shove.</summary>
+    public virtual bool HandleShove(Player player) => false;
 
     /// <summary>Whether contestants can shove each other (empty hands + throw button) in this minigame.</summary>
     public virtual bool AllowShove => MatchSettings.Shoving;
@@ -267,7 +272,7 @@ public class MinigameController : NetworkBehaviour
             NextMeteor = TickTimer.CreateFromSeconds(Runner, 0.7f);
             var targets = new List<Player>();
             foreach (var entry in _playerSpawner.Players)
-                if (entry.Value != null && !entry.Value.ControlsLocked) targets.Add(entry.Value);
+                if (entry.Value != null && !entry.Value.ControlsLocked && !entry.Value.IsSpectator) targets.Add(entry.Value);
             if (targets.Count > 0)
             {
                 var target = targets[Random.Range(0, targets.Count)];
@@ -287,7 +292,7 @@ public class MinigameController : NetworkBehaviour
             foreach (var entry in _playerSpawner.Players)
             {
                 var player = entry.Value;
-                if (player == null || player.ControlsLocked) continue;
+                if (player == null || player.ControlsLocked || player.IsSpectator) continue;
                 var away = player.transform.position - impact;
                 if (away.magnitude > 2.6f) continue;
                 away.y = 0f;

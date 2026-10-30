@@ -996,6 +996,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel_02
       objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -5136,6 +5140,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OilBarrel_02
       objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -6861,6 +6869,10 @@ PrefabInstance:
     - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
       propertyPath: m_Name
       value: OilBarrel_02
+      objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -11997,6 +12009,10 @@ PrefabInstance:
     - target: {fileID: 3930682334720130657, guid: 1be4e0c2942b9a749a31190ebf5e6017, type: 3}
       propertyPath: m_Name
       value: OilBarrel_01
+      objectReference: {fileID: 0}
+    - target: {fileID: 3930682334720130657, guid: 1be4e0c2942b9a749a31190ebf5e6017, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4451604192378037467, guid: 1be4e0c2942b9a749a31190ebf5e6017, type: 3}
       propertyPath: m_LocalScale.x
@@ -17874,6 +17890,7 @@ MonoBehaviour:
   _AnnouncementId: 0
   _ReadyMask: 0
   _ActiveChaos: 0
+  _PendingChaos: 0
   _minigameDefinition: {fileID: 11400000, guid: 4e349a967dbca7e46b179511686109d0, type: 2}
   _hasCountdown: 1
   _bench: {fileID: 1412506226}
@@ -20412,6 +20429,10 @@ PrefabInstance:
     - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
       propertyPath: m_Name
       value: OilBarrel_02
+      objectReference: {fileID: 0}
+    - target: {fileID: 3318902649047232332, guid: aae84da7d08598d4d822bea7969e88b9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

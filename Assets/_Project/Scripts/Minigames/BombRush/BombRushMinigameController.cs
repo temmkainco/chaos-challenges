@@ -38,7 +38,7 @@ public class BombRushMinigameController : MinigameController
     private readonly List<(PlayerRef player, TickTimer timer)> _toLounge = new();
 
     /// <summary>A blast this close (or in your hands) knocks you out; farther away it only launches you.</summary>
-    private const float KILL_RADIUS = 2.2f;
+    public const float KILL_RADIUS = 3f;
 
     public override void Spawned()
     {
@@ -170,9 +170,7 @@ public class BombRushMinigameController : MinigameController
     private void SendToLounge(PlayerRef who)
     {
         if (_lounge == null || !_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
-        _playerSpawner.Teleport(player, _lounge.Spot(_eliminationOrder.IndexOf(who)), _lounge.transform.rotation);
-        player.MovementLocked = false;
-        SetPlayerInput(who, true);
+        _lounge.Admit(player);
     }
 
     public override void HandlePlayerLeft(PlayerRef player)

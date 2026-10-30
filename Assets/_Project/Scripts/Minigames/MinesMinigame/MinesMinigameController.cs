@@ -131,9 +131,7 @@ public class MinesMinigameController : TurnBasedMinigameController
     {
         if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
         if (!_benched.Contains(who)) _benched.Add(who);
-        _playerSpawner.Teleport(player, _lounge.Spot(_benched.IndexOf(who)), _lounge.transform.rotation);
-        player.MovementLocked = false;
-        player.ControlsLocked = false;
+        _lounge.Admit(player);
     }
 
     public override bool HandlePlayerFell(Player player)

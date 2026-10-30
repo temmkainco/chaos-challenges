@@ -139,6 +139,15 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
+    /// <summary>Host only: start the show now even if not everyone pressed ready (player list, Tab).</summary>
+    public void ForceStart()
+    {
+        if (!HasStateAuthority || IsCountingDown) return;
+        foreach (var entry in _spawner.Players)
+            if (ReadyStates.ContainsKey(entry.Key)) ReadyStates.Set(entry.Key, true);
+        StartCountdown();
+    }
+
     private void StartCountdown()
     {
         IsCountingDown = true;

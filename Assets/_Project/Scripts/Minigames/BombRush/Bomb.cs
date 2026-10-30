@@ -158,6 +158,7 @@ public class Bomb : NetworkBehaviour
         if (!Lit)
         {
             _visual.localScale = _visualScale;
+            ShowBlastRing(false, 0f);
             return;
         }
 
@@ -178,10 +179,53 @@ public class Bomb : NetworkBehaviour
 
         if (_spark != null)
             _spark.localScale = Vector3.one * (0.6f + Random.value * 0.6f) * 0.25f;
+        ShowBlastRing(true, 1f - remaining);
+    }
+
+    private Transform _blastRing;
+    private Material _blastMaterial;
+
+    /// <summary>
+    /// A ring on the ground under a lit bomb marking the knock-out radius (<see cref="BombRushMinigameController.KILL_RADIUS"/>),
+    /// getting stronger as the fuse burns down, so everyone can see what the blast will catch.
+    /// </summary>
+    private void ShowBlastRing(bool show, float urgency)
+    {
+        if (!show)
+        {
+            if (_blastRing != null && _blastRing.gameObject.activeSelf) _blastRing.gameObject.SetActive(false);
+            return;
+        }
+        if (_blastRing == null)
+        {
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Destroy(ring.GetComponent<Collider>());
+            ring.name = "BlastRadius";
+            _blastRing = ring.transform;
+            _blastRing.localScale = new Vector3(BombRushMinigameController.KILL_RADIUS * 2f, 0.01f, BombRushMinigameController.KILL_RADIUS * 2f);
+            _blastMaterial = new Material(Resources.Load<Material>("ThrowArc"));
+            var renderer = ring.GetComponent<Renderer>();
+            renderer.sharedMaterial = _blastMaterial;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+        if (!_blastRing.gameObject.activeSelf) _blastRing.gameObject.SetActive(true);
+        var origin = transform.position;
+        _blastRing.position = Physics.Raycast(origin + Vector3.up * 0.2f, Vector3.down, out var hit, 20f, ~0, QueryTriggerInteraction.Ignore)
+            ? hit.point + Vector3.up * 0.03f
+            : origin;
+        float blink = 0.5f + 0.5f * Mathf.Sin(Time.time * Mathf.Lerp(4f, 18f, urgency));
+        _blastMaterial.color = new Color(1f, 0.25f, 0.2f, Mathf.Lerp(0.1f, 0.35f, urgency) * (0.6f + 0.4f * blink));
+    }
+
+    private void OnDestroy()
+    {
+        if (_blastRing != null) Destroy(_blastRing.gameObject);
+        if (_blastMaterial != null) Destroy(_blastMaterial);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
         Active.Remove(this);
+        ShowBlastRing(false, 0f);
     }
 }

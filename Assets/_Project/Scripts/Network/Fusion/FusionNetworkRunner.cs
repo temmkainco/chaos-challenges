@@ -299,6 +299,7 @@ namespace Networking
                 data.CameraRotation = localInput.CameraRotation;
                 data.LookDirection = localInput.LookDirection;
                 data.Buttons.Set(InputButtons.Jump, localInput.IsJumpPressed);
+                data.Buttons.Set(InputButtons.Sprint, localInput.IsSprintPressed);
                 data.Buttons.Set(InputButtons.Interact, localInput.IsInteractPressed);
                 data.Buttons.Set(InputButtons.Throw, localInput.IsThrowPressed);
             }

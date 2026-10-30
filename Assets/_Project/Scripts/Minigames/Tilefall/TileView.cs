@@ -94,6 +94,7 @@ public class TileView : MonoBehaviour
             .Append(_visual.DOLocalMoveY(-12f, 0.9f).SetEase(Ease.InQuad))
             .Join(_visual.DOLocalRotate(new Vector3(Random.Range(-40f, 40f), 0f, Random.Range(-40f, 40f)), 0.9f))
             .Join(_visual.DOScale(0.4f, 0.9f).SetEase(Ease.InQuad))
+            .AppendCallback(() => _visual.localScale = Vector3.zero)   // gone, not piling up under the course
             .SetLink(gameObject);
     }
 

@@ -15,10 +15,12 @@ public class VaultKey : NetworkBehaviour
     public static readonly List<VaultKey> Active = new();
 
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
-    public static readonly string[] Names = { "GOLD", "SILVER", "COPPER", "BLUE", "PINK" };
+    /// <summary>Key and door colours (Key Hunt pairs each open door with one key of its colour).</summary>
+    public static readonly string[] Names = { "RED", "ORANGE", "YELLOW", "GREEN", "BLUE", "PURPLE", "PINK" };
     public static readonly Color[] Colors =
     {
-        new(1f, 0.82f, 0.25f), new(0.8f, 0.83f, 0.88f), new(0.85f, 0.5f, 0.3f), new(0.45f, 0.75f, 1f), new(0.95f, 0.45f, 0.7f),
+        new(1f, 0.3f, 0.28f), new(1f, 0.58f, 0.2f), new(1f, 0.86f, 0.25f), new(0.35f, 0.85f, 0.45f),
+        new(0.3f, 0.6f, 1f), new(0.68f, 0.45f, 1f), new(1f, 0.5f, 0.8f),
     };
 
     [Networked, OnChangedRender(nameof(ApplyColor))] public byte Variant { get; set; }

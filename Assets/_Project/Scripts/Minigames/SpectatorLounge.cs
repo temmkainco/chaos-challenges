@@ -9,6 +9,39 @@ using UnityEngine;
 public class SpectatorLounge : MonoBehaviour
 {
     private const float RADIUS = 5f;
+
+    private readonly System.Collections.Generic.List<Player> _members = new();
+    private BasePlayerSpawner _spawner;
+
+    /// <summary>
+    /// Host only. Sends a knocked-out contestant here as a spectator with controls back. They stay here: leaving the
+    /// platform (jumping the rail, falling) puts them straight back, so they can't wander into the arena.
+    /// </summary>
+    public void Admit(Player player)
+    {
+        if (player == null) return;
+        if (_spawner == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        if (!_members.Contains(player)) _members.Add(player);
+        player.IsSpectator = true;
+        if (player.Interaction != null) player.Interaction.ForceDrop();
+        _spawner.Teleport(player, Spot(_members.IndexOf(player)), transform.rotation);
+        player.MovementLocked = false;
+        player.ControlsLocked = false;
+    }
+
+    private void FixedUpdate()
+    {
+        if (_spawner == null || _spawner.Object == null || !_spawner.Object.IsValid || !_spawner.HasStateAuthority) return;
+        for (int i = _members.Count - 1; i >= 0; i--)
+        {
+            var player = _members[i];
+            if (player == null || player.Object == null || !player.Object.IsValid) { _members.RemoveAt(i); continue; }
+            var offset = player.transform.position - transform.position;
+            float flat = new Vector2(offset.x, offset.z).magnitude;
+            if (flat > RADIUS + 0.6f || offset.y < -2f)
+                _spawner.Teleport(player, Spot(i), transform.rotation);
+        }
+    }
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
     public static SpectatorLounge Build(Transform parent, Vector3 position, Vector3 lookAt)

@@ -81,6 +81,7 @@ public class LeaderboardController : NetworkBehaviour
                 {
                     PlayerName = r.Name.ToString(),
                     Rank = 1 + roster.Count(other => other.LastRoundPoints > r.LastRoundPoints),
+                    MinigameScore = r.LastRoundPoints,
                     HideScores = true,
                     RoundPodium = true,
                 })

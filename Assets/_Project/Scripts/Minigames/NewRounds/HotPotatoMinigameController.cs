@@ -12,7 +12,8 @@ using UnityEngine;
 public class HotPotatoMinigameController : EliminationMinigameController
 {
     [SerializeField] private Transform _centre;
-    [SerializeField, Tooltip("Centre to centre; a bit generous so passing still works with lag")] private float _passRange = 2.3f;
+    [SerializeField, Tooltip("Bumping into someone (centre to centre) passes the bomb")] private float _passRange = 1.4f;
+    [SerializeField, Tooltip("Click (or E) hands the bomb to the rival in front within this reach")] private float _handReach = 3.2f;
     [SerializeField] private Vector2 _fuseSeconds = new(9f, 15f);
 
     [Networked] public PlayerRef Holder { get; private set; }
@@ -40,7 +41,7 @@ public class HotPotatoMinigameController : EliminationMinigameController
     {
         if (!IsGameActive || Holder == PlayerRef.None) return null;
         return Holder == Runner.LocalPlayer
-            ? "<color=#E03131>YOU have the bomb - run into someone to pass it!</color>"
+            ? "<color=#E03131>YOU have the bomb - click a rival to hand it over!</color>"
             : $"<b>{NameOf(Holder)}</b> has the bomb - run!";
     }
 
@@ -113,6 +114,38 @@ public class HotPotatoMinigameController : EliminationMinigameController
             RPC_Pass(target.transform.position, other, false);
             break;
         }
+    }
+
+    /// <summary>The holder's click hands the bomb to the rival right in front (deliberate, unlike bumping).</summary>
+    public override bool HandleShove(Player player) => TryHandOver(player);
+    public override bool HandlePrimaryAction(Player player) => TryHandOver(player);
+
+    private bool TryHandOver(Player player)
+    {
+        if (!IsGameActive || player.Object.InputAuthority != Holder) return false;
+        if (!PassCooldown.ExpiredOrNotRunning(Runner)) return true;
+        var look = player.Interaction != null ? player.Interaction.LookDirection : player.transform.forward;
+        var flat = new Vector3(look.x, 0f, look.z);
+        flat = flat.sqrMagnitude > 0.001f ? flat.normalized : player.transform.forward;
+        PlayerRef best = PlayerRef.None;
+        Player bestPlayer = null;
+        float bestScore = float.MaxValue;
+        foreach (var other in _alive)
+        {
+            if (other == Holder || !_playerSpawner.Players.TryGet(other, out var target) || target == null) continue;
+            var to = (target.transform.position - player.transform.position).WithY(0f);
+            float angle = Vector3.Angle(flat, to);
+            if (to.magnitude > _handReach || angle > 60f) continue;
+            float score = to.magnitude + angle / 30f;
+            if (score < bestScore) { bestScore = score; best = other; bestPlayer = target; }
+        }
+        if (bestPlayer == null) return true;   // nobody in reach: the click does nothing (no shove either)
+        PreviousHolder = Holder;
+        Holder = best;
+        PassCooldown = TickTimer.CreateFromSeconds(Runner, 0.6f);
+        NoPassBack = TickTimer.CreateFromSeconds(Runner, 1.5f);
+        RPC_Pass(bestPlayer.transform.position, best, false);
+        return true;
     }
 
     protected override void OnEliminated(PlayerRef player)

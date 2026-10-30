@@ -28,6 +28,7 @@ public class PlayerMovement : NetworkBehaviour
 
     [Header("Jump")]
     [SerializeField] private float _jumpHeight = 1.7f;
+    private const float SPRINT = 1.3f;
     [SerializeField] private float _gravity = 28f;
     [SerializeField, Tooltip("Gravity multiplier while falling, for a snappier arc")] private float _fallMultiplier = 1.6f;
     [SerializeField, Tooltip("Upward speed kept when Space is released early")] private float _shortHopCut = 0.5f;
@@ -114,6 +115,9 @@ public class PlayerMovement : NetworkBehaviour
         // Horizontal: accelerate toward the wanted velocity.
         Vector3 input = new Vector3(data.Direction.x, 0f, data.Direction.z);
         if (input.sqrMagnitude > 1f) input.Normalize();
+        // Shift: sprint (a bit faster, not while carrying - carry speed still applies on top).
+        if (data.Buttons.IsSet(InputButtons.Sprint))
+            speedScale *= SPRINT;
         float speed = _maxSpeed * speedScale;
         if (_interaction != null && _interaction.HeldObject != null && _interaction.HeldObject.TryGetComponent<GrabbableObject>(out var carried))
             speed *= carried.CarrySpeed;

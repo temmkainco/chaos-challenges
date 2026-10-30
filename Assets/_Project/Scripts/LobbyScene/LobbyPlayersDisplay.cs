@@ -22,6 +22,15 @@ public class LobbyPlayersDisplay : NetworkBehaviour
     private void Awake()
     {
         _items = _playersDisplayItemsParent.GetComponentsInChildren<LobbyPlayerDisplayItem>(true);
+        // Long nicknames shrink to fit instead of running off the TV.
+        foreach (var item in _items)
+            if (item != null && item.PlayerNickname_TMP != null)
+            {
+                item.PlayerNickname_TMP.fontSizeMax = item.PlayerNickname_TMP.fontSize;
+                item.PlayerNickname_TMP.fontSizeMin = 10f;
+                item.PlayerNickname_TMP.enableWordWrapping = false;
+                item.PlayerNickname_TMP.enableAutoSizing = true;
+            }
     }
 
     private void OnEnable()
@@ -91,6 +100,33 @@ public class LobbyPlayersDisplay : NetworkBehaviour
         {
             _items[i].PlayerNickname_TMP.text = _currentPlayers[i].Nickname;
             _items[i].PlayerAvatar_Image.gameObject.SetActive(true);
+        }
+    }
+
+    private float _nextReadySync;
+
+    /// <summary>The ready labels follow the replicated states (the change events alone missed late joiners and reorders).</summary>
+    private void Update()
+    {
+        if (_manager == null || _manager.Object == null || !_manager.Object.IsValid || Time.unscaledTime < _nextReadySync) return;
+        _nextReadySync = Time.unscaledTime + 0.25f;
+        for (int i = 0; i < _items.Length; i++)
+        {
+            var item = _items[i];
+            if (item == null || item.PlayerReady_TMP == null) continue;
+            var player = i < _currentPlayers.Count ? _currentPlayers[i] : null;
+            if (player == null || player.Object == null || !player.Object.IsValid)
+            {
+                if (item.PlayerReady_TMP.text.Length > 0) item.PlayerReady_TMP.text = "";
+                continue;
+            }
+            bool ready = _manager.ReadyStates.TryGet(player.Object.InputAuthority, out var value) && value;
+            string text = ready ? READY_TEXT : NOT_READY_TEXT;
+            if (item.PlayerReady_TMP.text != text)
+            {
+                item.PlayerReady_TMP.text = text;
+                item.PlayerReady_TMP.color = ready ? _readyTextColor : _notReadyTextColor;
+            }
         }
     }
 

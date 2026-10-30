@@ -4,35 +4,34 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Key Hunt: a needle in a haystack. The vault has many numbered doors and many more keys; every key opens exactly
-/// one door and nobody knows which. Carry a key (E) to any door and press E to try it. The right door opens and you
-/// escape; a wrong door leaves the key in your hand and tells you how close its real door is (the key turns
-/// cold / warm / hot), so searching is a skill. Keys cannot be thrown, and a key you hold is yours: shoves do not
-/// knock it loose. Escape order decides the placement; the last one inside (or everyone left when time runs out)
-/// places last.
+/// Key Hunt, musical chairs with keys: with N contestants only N-1 doors are open, each glowing in its own colour,
+/// and there is exactly one key per open door, in the same colour, hidden around the vault. Grab a key (E), run to
+/// the door of its colour and press E to escape; that door then shuts for good. Someone is always left without a
+/// key, so shoving a key-holder knocks the key out of their hands. Escape order decides the placement; the last one
+/// inside places last. (Playtesters found the old hidden-match version unreadable.)
 /// </summary>
 public class KeyLockMinigameController : MinigameController
 {
+    private const byte CLOSED = 255;
+
     [SerializeField] private NetworkPrefabRef _keyPrefab;
     [SerializeField] private Transform _keySpawnArea;
     [SerializeField] private float _keySpawnRadius = 15f;
-    [SerializeField, Tooltip("Keys per door")] private int _keysPerDoor = 4;
     [SerializeField] private float _tryRange = 2.6f;
     [SerializeField, Tooltip("Where escaped contestants wait")] private VaultDoor _door;
-    [SerializeField] private float _hotDistance = 10f;
-    [SerializeField] private float _warmDistance = 22f;
 
     [Networked] private int Escaped { get; set; }
+    /// <summary>Per door (index into the sorted doors): its key colour while open, <see cref="CLOSED"/> once shut or unused.</summary>
+    [Networked, Capacity(16)] private NetworkArray<byte> DoorColor { get; }
 
     private HuntDoor[] _doors = System.Array.Empty<HuntDoor>();
+    private readonly byte[] _shownColor = new byte[16];
     private readonly List<PlayerRef> _escapeOrder = new();
     private readonly List<Vector3> _spawnSpots = new();
 
-    public override bool ShoveDropsHeldItem => false;
-
     public override string TwistTitle => "MASTER KEY";
     public override string TwistKind => "BUFF";
-    public override string TwistDescription => "A big golden key that opens ANY door appears in the middle - for a few seconds.";
+    public override string TwistDescription => "A big golden key that opens ANY open door appears in the middle - for a few seconds.";
 
     protected override void OnChaosStarted(ChaosModifier modifier)
     {
@@ -59,35 +58,69 @@ public class KeyLockMinigameController : MinigameController
     {
         base.Spawned();
         _doors = FindObjectsByType<HuntDoor>(FindObjectsSortMode.None).OrderBy(d => d.Id).ToArray();
+        for (int i = 0; i < _shownColor.Length; i++) _shownColor[i] = 254;   // force the first refresh
+        if (HasStateAuthority)
+            for (int i = 0; i < _doors.Length && i < 16; i++) DoorColor.Set(i, CLOSED);
+    }
+
+    private int DoorIndex(HuntDoor door) => System.Array.IndexOf(_doors, door);
+
+    private int OpenDoors()
+    {
+        int open = 0;
+        for (int i = 0; i < _doors.Length && i < 16; i++) if (DoorColor[i] != CLOSED) open++;
+        return open;
     }
 
     public override string GetStatusText()
     {
-        int inside = PlayerCount - Escaped;
+        if (!IsGameActive) return null;
+        int open = OpenDoors();
         // What to do next, for the local contestant.
         var held = Player.Local != null && Player.Local.Interaction != null ? Player.Local.Interaction.HeldObject : null;
-        string todo = held != null && held.TryGetComponent<VaultKey>(out var key)
-            ? (key.IsMaster ? "MASTER KEY! Press <b>E</b> at any door"
-               : key.Heat == 3 ? "<color=#E03131>HOT</color>: its door is close - press <b>E</b> at doors nearby"
-               : key.Heat == 2 ? "<color=#E8590C>WARM</color>: its door is not far - keep trying"
-               : key.Heat == 1 ? "<color=#3A7BD5>COLD</color>: its door is far away"
-               : "Walk to any door and press <b>E</b> to try your key")
-            : "Grab a key with <b>E</b>, then try it on the doors";
-        return $"{todo}\n<size=80%>{Escaped} escaped, {inside} still inside</size>";
+        string todo;
+        if (held != null && held.TryGetComponent<VaultKey>(out var key))
+        {
+            if (key.IsMaster)
+                todo = "MASTER KEY! Press <b>E</b> at any open door";
+            else
+            {
+                int c = key.Variant % VaultKey.Colors.Length;
+                todo = $"Run to the <color=#{ColorUtility.ToHtmlStringRGB(VaultKey.Colors[c] * 0.8f)}><b>{VaultKey.Names[c]}</b></color> door and press <b>E</b>!";
+            }
+        }
+        else
+            todo = "Find a key (<b>E</b>) - or shove someone who has one!";
+        return $"{todo}\n<size=80%>{open} door{(open == 1 ? "" : "s")} left, {PlayerCount - Escaped} still inside</size>";
     }
 
+    /// <summary>Host. During the rules card: one door fewer than contestants (at least one), each in its own colour.</summary>
+    protected override void OnIntro()
+    {
+        base.OnIntro();
+        int doors = Mathf.Min(_doors.Length, 16);
+        int openDoors = Mathf.Clamp(ConnectedPlayers().Count() - 1, 1, Mathf.Min(doors, VaultKey.Colors.Length));
+        var order = Enumerable.Range(0, doors).OrderBy(_ => Random.value).ToList();
+        var colors = Enumerable.Range(0, VaultKey.Colors.Length).OrderBy(_ => Random.value).ToList();
+        for (int i = 0; i < doors; i++) DoorColor.Set(i, CLOSED);
+        for (int i = 0; i < openDoors; i++) DoorColor.Set(order[i], (byte)colors[i]);
+    }
+
+    /// <summary>Host. One key per open door, in its colour, hidden around the vault.</summary>
     protected override void StartGame()
     {
         base.StartGame();
         if (!HasStateAuthority) return;
 
-        int keyCount = _doors.Length * _keysPerDoor;
-        var spots = PickSpawnSpots(keyCount);
-        for (int i = 0; i < keyCount; i++)
+        int openDoors = OpenDoors();
+        var spots = PickSpawnSpots(openDoors);
+        int spot = 0;
+        for (int i = 0; i < _doors.Length && i < 16; i++)
         {
-            byte doorId = (byte)_doors[i % _doors.Length].Id;
-            byte variant = (byte)Random.Range(0, VaultKey.Colors.Length);
-            Runner.Spawn(_keyPrefab, spots[i], Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
+            if (DoorColor[i] == CLOSED) continue;
+            byte doorId = (byte)_doors[i].Id;
+            byte variant = DoorColor[i];
+            Runner.Spawn(_keyPrefab, spots[spot++], Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
                 (runner, spawned) =>
                 {
                     var key = spawned.GetComponent<VaultKey>();
@@ -95,7 +128,7 @@ public class KeyLockMinigameController : MinigameController
                     key.DoorId = doorId;
                 });
         }
-        Debug.Log($"[Keys] {_doors.Length} doors, {keyCount} keys");
+        Debug.Log($"[Keys] {openDoors} open doors and keys");
     }
 
     /// <summary>Random spots on any floor (ground and walkways) inside the vault, spread out.</summary>
@@ -112,7 +145,7 @@ public class KeyLockMinigameController : MinigameController
                 continue;
             if (hit.normal.y < 0.8f || hit.point.y < centre.y - 0.5f || hit.point.y > centre.y + 3.5f)
                 continue;
-            if (_doors.Any(d => Vector3.Distance(d.FrontPosition, hit.point) < 2.5f) || _spawnSpots.Any(s => Vector3.Distance(s, hit.point) < 1.6f))
+            if (_doors.Any(d => Vector3.Distance(d.FrontPosition, hit.point) < 2.5f) || _spawnSpots.Any(s => Vector3.Distance(s, hit.point) < 4f))
                 continue;
             _spawnSpots.Add(hit.point + Vector3.up * 0.5f);
         }
@@ -127,7 +160,7 @@ public class KeyLockMinigameController : MinigameController
         if (!HasStateAuthority || !IsGameActive || Runner.Tick % 30 != 0)
             return;
 
-        // Keys knocked off the walkways or out of the room come back, so no door ever runs out of keys.
+        // Keys knocked off the walkways or out of the room come back, so no door ever loses its key.
         foreach (var key in VaultKey.Active)
         {
             if (key.Grabbable.IsGrabbed || key.transform.position.y > _keySpawnArea.position.y - 4f)
@@ -137,6 +170,19 @@ public class KeyLockMinigameController : MinigameController
             var body = key.GetComponent<Fusion.Addons.Physics.NetworkRigidbody3D>();
             body.Teleport(_keySpawnArea.position + new Vector3(flat.x, 3f, flat.y));
             body.Rigidbody.linearVelocity = Vector3.zero;
+        }
+    }
+
+    public override void Render()
+    {
+        base.Render();
+        // Doors glow in their key's colour while open and go dark once shut.
+        for (int i = 0; i < _doors.Length && i < 16; i++)
+        {
+            byte color = DoorColor[i];
+            if (color == _shownColor[i]) continue;
+            _shownColor[i] = color;
+            _doors[i].ShowState(color == CLOSED ? (Color?)null : VaultKey.Colors[color % VaultKey.Colors.Length]);
         }
     }
 
@@ -178,27 +224,41 @@ public class KeyLockMinigameController : MinigameController
     private void TryKey(Player player, VaultKey key, HuntDoor door)
     {
         var who = player.Object.InputAuthority;
-        if (key.DoorId != door.Id && !key.IsMaster)
+        int index = DoorIndex(door);
+        bool open = index >= 0 && index < 16 && DoorColor[index] != CLOSED;
+        if (!open || (key.DoorId != door.Id && !key.IsMaster))
         {
-            // Wrong door: the key stays yours and tells you how close its own door is.
-            var target = _doors.FirstOrDefault(d => d.Id == key.DoorId);
-            float distance = target != null ? Vector3.Distance(target.transform.position, door.transform.position) : 99f;
-            key.Heat = (byte)(distance <= _hotDistance ? 3 : distance <= _warmDistance ? 2 : 1);
-            RPC_Tried(door.Id, key.Heat, false);
+            RPC_Tried(door.Id, open, false);
             return;
         }
 
+        // Through the door: it shuts for good, and a door opened by the master key takes its own key with it.
+        DoorColor.Set(index, CLOSED);
+        int doorId = door.Id;
         Runner.Despawn(key.Object);
+        for (int i = VaultKey.Active.Count - 1; i >= 0; i--)
+        {
+            var other = VaultKey.Active[i];
+            if (other != null && other != key && other.DoorId == doorId && other.Object != null)
+            {
+                if (other.Grabbable.IsGrabbed)
+                    foreach (var entry in _playerSpawner.Players)
+                        if (entry.Value != null && entry.Value.Interaction != null && entry.Value.Interaction.HeldObject == other.Object)
+                            entry.Value.Interaction.ForceDrop();
+                Runner.Despawn(other.Object);
+            }
+        }
+
         Escaped++;
         _escapeOrder.Add(who);
         Debug.Log($"[Keys] {who} escaped through door {door.Id} (#{_escapeOrder.Count})");
-        RPC_Tried(door.Id, 0, true);
+        RPC_Tried(door.Id, true, true);
 
         player.ControlsLocked = true;
         _playerSpawner.Teleport(player, _door.EscapePosition + Random.insideUnitSphere.WithY(0f) * 1.5f);
 
         var inside = ConnectedPlayers().Where(p => !_escapeOrder.Contains(p)).ToList();
-        if (inside.Count <= 1)
+        if (inside.Count <= 1 || OpenDoors() == 0)
             FinishRound(GetStandings(inside));
     }
 
@@ -223,26 +283,20 @@ public class KeyLockMinigameController : MinigameController
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_Tried(int doorId, byte heat, NetworkBool opened)
+    private void RPC_Tried(int doorId, NetworkBool doorOpen, NetworkBool escaped)
     {
         var door = _doors.FirstOrDefault(d => d.Id == doorId);
         if (door == null) return;
-        Sfx.Play(opened ? Sound.Escape : Sound.Nope);
+        Sfx.Play(escaped ? Sound.Escape : Sound.Nope);
         // In front of the door (its own position is inside the wall).
         var at = door.FrontPosition + Vector3.up * 2.4f;
-        if (opened)
+        if (escaped)
         {
             door.PlayOpen();
             WorldPopup.Show(at, "ESCAPED!", new Color(0.4f, 1f, 0.5f), 9f);
             return;
         }
         door.PlayReject();
-        var (text, color) = heat switch
-        {
-            3 => ("HOT!", new Color(1f, 0.25f, 0.2f)),
-            2 => ("WARM", new Color(1f, 0.6f, 0.2f)),
-            _ => ("COLD", new Color(0.4f, 0.7f, 1f)),
-        };
-        WorldPopup.Show(at, text, color, 8f);
+        WorldPopup.Show(at, doorOpen ? "WRONG COLOUR" : "SHUT", new Color(1f, 0.37f, 0.36f), 8f);
     }
 }

@@ -30,6 +30,9 @@ public class LeaderboardEntryUI : MonoBehaviour
         }
 
         _contentRoot.SetActive(true);
+        _nameText.enableWordWrapping = false;
+        _nameText.enableAutoSizing = true;
+        _nameText.fontSizeMin = 12f;
         _nameText.text = entry.PlayerName;
         _nameText.color = _normalColor;
         SetPanel(_rankPanelColor);
@@ -37,7 +40,8 @@ public class LeaderboardEntryUI : MonoBehaviour
         if (entry.RoundPodium)
         {
             _rankText.text = $"#{entry.Rank}";
-            _minigameScoreText.text = "";
+            // This round's points are shown; the match totals stay secret until the finale.
+            _minigameScoreText.text = entry.MinigameScore > 0 ? $"+{entry.MinigameScore}" : "";
             _totalScoreText.text = "";
             if (_badgeText != null)
             {

@@ -5,7 +5,7 @@ using UnityEngine;
 
 /// <summary>
 /// Cannon Barrage: cannons around the stage fire cannonballs straight across it, more and faster as time goes on.
-/// A hit knocks you flying; off the stage and you are out. Watch the cannons, they glow before they fire.
+/// A cannonball hit knocks you out (one shot); falling off the stage too. Watch the cannons, they glow before they fire.
 /// Last contestant standing wins; survivors tie at the bell.
 /// Chaos: METEOR SHOWER on top of the barrage, SLOW MOTION makes dodging harder; its own twist, BROADSIDE,
 /// fires every cannon but two at once.
@@ -26,6 +26,9 @@ public class CannonBarrageMinigameController : EliminationMinigameController
     public override string TwistDescription => "Every cannon but two fires at once - find the gap!";
 
     private readonly List<(int cannon, int tick)> _balls = new();
+    private readonly List<PlayerRef> _hit = new();
+    /// <summary>Cannons stand this far behind the stage edge, so their shots cross all of it (no safe corners).</summary>
+    private const float CANNON_SETBACK = 5f;
     private Transform[] _cannonModels;
     private readonly List<(Transform ball, int cannon, int tick)> _visualBalls = new();
 
@@ -40,7 +43,7 @@ public class CannonBarrageMinigameController : EliminationMinigameController
     private Vector3 CannonPosition(int i)
     {
         float angle = i / (float)_cannons * Mathf.PI * 2f;
-        return _centre.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * _arenaRadius + Vector3.up * 0.9f;
+        return _centre.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (_arenaRadius + CANNON_SETBACK) + Vector3.up * 0.9f;
     }
 
     /// <summary>
@@ -132,6 +135,7 @@ public class CannonBarrageMinigameController : EliminationMinigameController
         }
 
         float now = Runner.Tick * Runner.DeltaTime;
+        _hit.Clear();
         for (int b = _balls.Count - 1; b >= 0; b--)
         {
             var (cannon, tick) = _balls[b];
@@ -144,8 +148,11 @@ public class CannonBarrageMinigameController : EliminationMinigameController
                 if (offset.magnitude > BALL_RADIUS + 0.5f) continue;
                 if (player.TryGetComponent<PlayerMovement>(out var movement) && !movement.IsLaunched)
                     movement.Launch(Direction(cannon, tick) * 16f + Vector3.up * 7f);
+                if (!_hit.Contains(who)) _hit.Add(who);
             }
         }
+        foreach (var who in _hit)
+            Eliminate(who);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

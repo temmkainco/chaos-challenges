@@ -1,0 +1,62 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Knocked-out contestants (<see cref="Player.IsSpectator"/>) are drawn as see-through ghosts in their outfit colour,
+/// so everyone can tell at a glance who is still in. Swaps the renderers' materials for a transparent tint and back.
+/// </summary>
+public class SpectatorGhost : MonoBehaviour
+{
+    private Player _player;
+    private readonly List<(Renderer renderer, Material[] materials)> _originals = new();
+    private Material _ghost;
+    private bool _shown;
+
+    public static void Attach(Player player)
+    {
+        if (!player.TryGetComponent<SpectatorGhost>(out _))
+            player.gameObject.AddComponent<SpectatorGhost>()._player = player;
+    }
+
+    private void LateUpdate()
+    {
+        if (_player == null || _player.Object == null || !_player.Object.IsValid) return;
+        bool ghost = _player.IsSpectator && MinigameController.Current != null;
+        if (ghost == _shown) return;
+        _shown = ghost;
+        if (ghost) Apply();
+        else Restore();
+    }
+
+    private void Apply()
+    {
+        _originals.Clear();
+        if (_ghost == null)
+        {
+            // Sprites/Default (via the ThrowArc material) is transparent and unlit: a clean silhouette.
+            _ghost = new Material(Resources.Load<Material>("ThrowArc"));
+        }
+        var c = _player.OutfitColor;
+        _ghost.color = new Color(c.r, c.g, c.b, 0.3f);
+        foreach (var renderer in GetComponentsInChildren<Renderer>())
+        {
+            if (renderer is not (SkinnedMeshRenderer or MeshRenderer)) continue;
+            _originals.Add((renderer, renderer.sharedMaterials));
+            var mats = new Material[renderer.sharedMaterials.Length];
+            for (int i = 0; i < mats.Length; i++) mats[i] = _ghost;
+            renderer.sharedMaterials = mats;
+        }
+    }
+
+    private void Restore()
+    {
+        foreach (var (renderer, materials) in _originals)
+            if (renderer != null) renderer.sharedMaterials = materials;
+        _originals.Clear();
+    }
+
+    private void OnDestroy()
+    {
+        if (_ghost != null) Destroy(_ghost);
+    }
+}

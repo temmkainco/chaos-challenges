@@ -19,6 +19,8 @@ public class PlayerInteraction : NetworkBehaviour
     [Networked] public int ChargeStartTick { get; private set; }
     [Networked] private NetworkButtons PreviousButtons { get; set; }
     [Networked] private TickTimer ShoveCooldown { get; set; }
+    /// <summary>Tick of the last shove swing (predicted for the owner): drives the push animation on every peer.</summary>
+    [Networked] public int ShoveTick { get; private set; }
 
     public IInteractable CurrentTarget { get; private set; }
     public bool IsCharging => ChargeStartTick > 0 && HeldObject != null;
@@ -59,15 +61,63 @@ public class PlayerInteraction : NetworkBehaviour
 
     private void UpdateLocalTarget()
     {
-        if (HeldObject != null || _player.ControlsLocked)
+        if (HeldObject != null || _player.ControlsLocked || _player.IsSpectator)
         {
             _focusHighlighter.Clear();
             CurrentTarget = null;
+            HighlightShoveTarget(null);
             return;
         }
 
         CurrentTarget = FindTarget(Physics.defaultPhysicsScene, _player.Camera.transform.forward);
         _focusHighlighter.Highlight(CurrentTarget);
+        HighlightShoveTarget(CurrentTarget == null ? FindShoveTarget(_player.Camera.transform.forward) : null);
+    }
+
+    private Outline _shoveOutline;
+
+    /// <summary>Local player: the contestant your shove would hit gets a red outline (empty hands, shoving allowed).</summary>
+    private void HighlightShoveTarget(Player target)
+    {
+        var minigame = MinigameController.Current;
+        if (minigame == null || !minigame.IsGameActive || !minigame.AllowShove || _player.IsSpectator) target = null;
+        Outline outline = null;
+        if (target != null)
+        {
+            if (!target.TryGetComponent(out outline))
+            {
+                outline = target.gameObject.AddComponent<Outline>();
+                outline.OutlineMode = Outline.Mode.OutlineVisible;
+                outline.OutlineColor = new Color(1f, 0.37f, 0.36f);
+                outline.OutlineWidth = 5f;
+                outline.enabled = false;
+            }
+        }
+        if (outline == _shoveOutline) return;
+        if (_shoveOutline != null) _shoveOutline.enabled = false;
+        _shoveOutline = outline;
+        if (_shoveOutline != null) _shoveOutline.enabled = true;
+    }
+
+    /// <summary>Same pick as the host's shove: the closest contestant within reach in front.</summary>
+    private Player FindShoveTarget(Vector3 look)
+    {
+        var flat = new Vector3(look.x, 0f, look.z);
+        flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
+        int count = Physics.OverlapSphereNonAlloc(transform.position + flat * (_shoveRange * 0.6f) + Vector3.up, _shoveRange, _overlap, ~0, QueryTriggerInteraction.Ignore);
+        Player best = null;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < count; i++)
+        {
+            var other = _overlap[i].GetComponentInParent<Player>();
+            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator) continue;
+            var to = other.transform.position - transform.position;
+            to.y = 0f;
+            if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;
+            best = other;
+            bestDistance = to.magnitude;
+        }
+        return best;
     }
 
     /// <summary>
@@ -115,7 +165,8 @@ public class PlayerInteraction : NetworkBehaviour
             ClearStaleHeldObject();
 
         if (!GetInput(out NetworkInputData input)) return;
-        if (_player.ControlsLocked)
+        // Spectators (knocked out) can't grab, throw or shove anything.
+        if (_player.ControlsLocked || _player.IsSpectator)
             input.Buttons = default;
 
         bool interactPressed = input.Buttons.WasPressed(PreviousButtons, InputButtons.Interact);
@@ -130,7 +181,7 @@ public class PlayerInteraction : NetworkBehaviour
         if (HeldObject == null)
         {
             ChargeStartTick = 0;
-            if (throwPressed && HasStateAuthority)
+            if (throwPressed)
                 TryShove();
         }
         else if (throwPressed && (!HeldObject.TryGetComponent<GrabbableObject>(out var held) || held.CanThrow))
@@ -174,13 +225,22 @@ public class PlayerInteraction : NetworkBehaviour
             InteractWithTarget();
     }
 
-    /// <summary>Host only: empty-handed throw button shoves the closest contestant in front.</summary>
+    /// <summary>
+    /// Empty-handed throw button: a push with both arms (the swing is predicted for the owner so it animates
+    /// instantly); the host shoves the closest contestant in front. A minigame can use the button instead
+    /// (Hot Potato: the bomb holder hands the bomb over).
+    /// </summary>
     private void TryShove()
     {
         var minigame = MinigameController.Current;
+        if (HasStateAuthority && minigame != null && minigame.IsGameActive && minigame.HandleShove(_player))
+            return;
         if (!ShoveCooldown.ExpiredOrNotRunning(Runner) || (minigame != null && (!minigame.AllowShove || !minigame.IsGameActive)))
             return;
         ShoveCooldown = TickTimer.CreateFromSeconds(Runner, _shoveCooldown);
+        ShoveTick = Runner.Tick;
+        if (!HasStateAuthority)
+            return;
 
         var flat = new Vector3(LookDirection.x, 0f, LookDirection.z);
         flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
@@ -190,7 +250,7 @@ public class PlayerInteraction : NetworkBehaviour
         for (int i = 0; i < count; i++)
         {
             var other = _overlap[i].GetComponentInParent<Player>();
-            if (other == null || other == _player || other.Object == null || other.ControlsLocked) continue;
+            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator) continue;
             var to = other.transform.position - transform.position;
             to.y = 0f;
             if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;

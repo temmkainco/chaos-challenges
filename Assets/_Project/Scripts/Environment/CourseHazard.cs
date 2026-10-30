@@ -77,6 +77,7 @@ public class CourseHazard : MonoBehaviour
         {
             var player = _hits[i].GetComponentInParent<Player>();
             if (player == null || player.Object == null || player.ControlsLocked) continue;
+            if (mc is TilefallMinigameController tilefall && tilefall.IsProtected(player.Object.InputAuthority)) continue;   // just respawned
             if (_cooldown.TryGetValue(player, out var until) && Time.time < until) continue;
             _cooldown[player] = Time.time + 1f;
 

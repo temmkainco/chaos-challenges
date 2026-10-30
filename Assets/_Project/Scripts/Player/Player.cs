@@ -14,6 +14,8 @@ public class Player : NetworkBehaviour, ISpawned
     [Networked] public NetworkBool ControlsLocked { get; set; }
     /// <summary>Set by the host; the player cannot walk or jump but can still look around and interact (e.g. Pistol Round).</summary>
     [Networked] public NetworkBool MovementLocked { get; set; }
+    /// <summary>Knocked out of the current round: lives in the lounge, can't touch the game, drawn as a ghost.</summary>
+    [Networked] public NetworkBool IsSpectator { get; set; }
     /// <summary>Chosen look (see <see cref="CosmeticsCatalog"/>), sent by the owner whenever the player spawns.</summary>
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte BodyColor { get; private set; }
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte HandsColor { get; private set; }
@@ -55,11 +57,13 @@ public class Player : NetworkBehaviour, ISpawned
     {
         if (!TryGetComponent<EmotePlayer>(out _))
             gameObject.AddComponent<EmotePlayer>();
+        SpectatorGhost.Attach(this);
         OnLookChanged();
 
         if (Object.HasInputAuthority)
         {
             Local = this;
+            PredictionSmoother.Attach(this);
             _platformService = ProjectContext.Instance.Container.Resolve<IPlatformService>();
             LocalLook.Changed += SendLocalLook;
             InitializePlayer();

@@ -23,14 +23,15 @@ MonoBehaviour:
     it at a rival and blast them off the stage. Last contestant standing wins!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 481d60a0613826f4aafabeba97c1a827, type: 3}
   <Rules>k__BackingField:
-  - E grabs a bomb; hold left mouse to aim, release to throw; E drops it
-  - Thrown bombs explode on contact; lit ones explode on their own
-  - Fall off the stage and you are out
-  - Holding a bomb when it goes off? Bad idea
-  <Objective>k__BackingField: "Blast everyone else off the stage with bombs."
-  <Danger>k__BackingField: "Explosions launch you. Fall off the stage and you're out."
-  <Scoring>k__BackingField: "Last one standing wins; the order you fall decides the rest."
+  - Grab a bomb (E), hold left mouse to aim, release to throw
+  - The red ring under a lit bomb shows what its blast catches
+  - Don't hold a lit bomb for long!
+  <Objective>k__BackingField: Blast everyone else off the stage with bombs.
+  <Danger>k__BackingField: A bomb going off in your hands or inside its red ring
+    knocks you out; farther away it throws you.
+  <Scoring>k__BackingField: Last one standing wins; the order you fall decides the
+    rest.
   <Controls>k__BackingField:
-  - "E|Grab / drop a bomb"
-  - "Hold LMB|Aim, release to throw"
-  - "LMB (empty hands)|Shove"
+  - E|Grab / drop a bomb
+  - Hold LMB|Aim, release to throw
+  - LMB (empty hands)|Shove

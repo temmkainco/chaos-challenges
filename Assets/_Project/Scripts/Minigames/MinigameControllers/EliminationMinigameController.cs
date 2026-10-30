@@ -92,9 +92,7 @@ public abstract class EliminationMinigameController : MinigameController
     private void SendToLounge(PlayerRef who)
     {
         if (_lounge == null || !_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
-        _playerSpawner.Teleport(player, _lounge.Spot(_out.IndexOf(who)), _lounge.transform.rotation);
-        player.MovementLocked = false;
-        SetPlayerInput(who, true);
+        _lounge.Admit(player);
     }
 
     public override void HandlePlayerLeft(PlayerRef player)

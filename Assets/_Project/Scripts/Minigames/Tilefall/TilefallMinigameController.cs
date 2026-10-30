@@ -22,6 +22,10 @@ public class TilefallMinigameController : MinigameController
     private readonly Dictionary<PlayerRef, float> _bestProgress = new();
     private readonly Dictionary<PlayerRef, TickTimer> _pendingRespawns = new();
     private readonly List<Vector3> _standing = new();
+    private readonly Dictionary<PlayerRef, int> _protectedUntil = new();
+
+    /// <summary>Host only: just respawned, so hazards leave them alone for a moment.</summary>
+    public bool IsProtected(PlayerRef player) => _protectedUntil.TryGetValue(player, out int until) && Runner.Tick < until;
 
     public event Action<PlayerRef, int> OnPlayerFinished;
 
@@ -118,10 +122,12 @@ public class TilefallMinigameController : MinigameController
             _bestProgress.TryGetValue(player, out float best);
             int checkpoint = _course.CheckpointBehind(best);
             int lane = _course.LaneAt(playerObject.transform.position);
-            var position = checkpoint >= 0 ? _course.TilePosition(lane, checkpoint) + Vector3.up : _playerSpawner.GetSpawnPosition(player);
+            // Back on the last checkpoint row, or the start platform (never a generic spawn point over a gap).
+            var position = (checkpoint >= 0 ? _course.TilePosition(lane, checkpoint) : _course.StartPosition(lane)) + Vector3.up;
 
             _playerSpawner.Teleport(playerObject, position);
             playerObject.ControlsLocked = false;
+            _protectedUntil[player] = Runner.Tick + Mathf.CeilToInt(2f * Runner.TickRate);
         }
     }
 

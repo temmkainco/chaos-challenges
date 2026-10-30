@@ -7,9 +7,9 @@ using Zenject;
 public class LobbyHud : MonoBehaviour
 {
     private const string GUEST_HELP = "Everyone in? Press <b>E</b> on the big red button to get ready.\n" +
-                                      "<size=80%>The show starts when all contestants are ready. Hold <b>T</b> to emote.</size>";
+                                      "<size=80%>The show starts when all contestants are ready. Hold <b>T</b> to emote, <b>Tab</b> for players.</size>";
     private const string HOST_HELP = "Everyone in? Press <b>E</b> on the big red button to get ready.\n" +
-                                     "<size=80%>Hold <b>T</b> to emote. Press <b>G</b> to pick the game pack.</size>";
+                                     "<size=80%>Hold <b>T</b> to emote. <b>G</b>: game pack. <b>Tab</b>: players, kick, start now.</size>";
 
     [SerializeField] private TMP_Text _code;
     [SerializeField] private TMP_Text _help;
