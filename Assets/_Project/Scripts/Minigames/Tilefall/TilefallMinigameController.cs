@@ -25,6 +25,16 @@ public class TilefallMinigameController : MinigameController
 
     public event Action<PlayerRef, int> OnPlayerFinished;
 
+    public override string TwistTitle => "CROSSWIND";
+    public override string TwistDescription => "A gale blows across the course and flips direction every few seconds.";
+
+    /// <summary>Across the lanes, flipping every 4 seconds of the shared tick clock (same on host and predicting clients).</summary>
+    private int WindSign => (Runner.Tick / (Runner.TickRate * 4)) % 2 == 0 ? 1 : -1;
+    public override Vector3 ChaosWind => TwistActive ? _course.transform.right * (3.4f * WindSign) : Vector3.zero;
+
+    public override string GetStatusText() =>
+        IsGameActive && TwistActive ? (WindSign > 0 ? "Wind blowing to the RIGHT" : "Wind blowing to the LEFT") : null;
+
     protected override void StartGame()
     {
         base.StartGame();

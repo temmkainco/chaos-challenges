@@ -19,6 +19,8 @@ public enum ChaosModifier : byte
     SuperJump,
     MeteorShower,
     Blackout,
+    /// <summary>The running minigame's own twist (<see cref="MinigameController.TwistTitle"/>): broadsides, a master key...</summary>
+    Twist,
 }
 
 public enum ChaosLevel : byte
@@ -42,6 +44,7 @@ public static class ChaosInfo
         ChaosModifier.SuperJump => "SUPER JUMP",
         ChaosModifier.MeteorShower => "METEOR SHOWER",
         ChaosModifier.Blackout => "BLACKOUT",
+        ChaosModifier.Twist => MinigameController.Current != null ? MinigameController.Current.TwistTitle ?? "TWIST" : "TWIST",
         _ => "",
     };
 
@@ -50,6 +53,7 @@ public static class ChaosInfo
     {
         ChaosModifier.LowGravity or ChaosModifier.SpeedRush or ChaosModifier.SuperJump or ChaosModifier.Giants => "BUFF",
         ChaosModifier.MeteorShower => "HAZARD",
+        ChaosModifier.Twist => MinigameController.Current != null ? MinigameController.Current.TwistKind : "HAZARD",
         ChaosModifier.None => "",
         _ => "DEBUFF",
     };
@@ -61,7 +65,7 @@ public static class ChaosInfo
         _ => new Color(0.72f, 0.61f, 0.95f),
     };
 
-    public const int COUNT = 11;
+    public const int COUNT = 12;
 }
 
 /// <summary>

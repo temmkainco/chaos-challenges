@@ -5,7 +5,8 @@ using UnityEngine;
 /// Color Code: a floor of coloured tiles high above the studio. The show calls a colour; when the countdown ends,
 /// every other tile drops away. Find a tile of that colour in time (shoving others off it is allowed). The floor
 /// comes back reshuffled and every call gets faster. Last contestant standing wins; survivors tie at the bell.
-/// Chaos twist: BLACKOUT makes the colours hard to read, ICE FLOOR makes stopping on a tile tricky.
+/// Chaos: BLACKOUT makes the colours hard to read, ICE FLOOR makes stopping on a tile tricky; its own twist,
+/// MIND GAMES, writes the called colour in a different colour (go by the word).
 /// </summary>
 public class ColorCodeMinigameController : EliminationMinigameController
 {
@@ -27,6 +28,14 @@ public class ColorCodeMinigameController : EliminationMinigameController
     [Networked] public CallStage Stage { get; private set; }
     [Networked] private TickTimer StageTimer { get; set; }
     [Networked] private int Calls { get; set; }
+    /// <summary>Colour the call is written in (differs from <see cref="Target"/> during Mind Games).</summary>
+    [Networked] private byte Ink { get; set; }
+
+    public override string TwistTitle => "MIND GAMES";
+    public override string TwistKind => "DEBUFF";
+    public override string TwistDescription => "The called colour is written in the wrong colour. Read the word!";
+
+    private static string Hex(int color) => ColorUtility.ToHtmlStringRGB(Colors[color] * 0.85f);
 
     private Transform[] _tiles;
     private Collider[] _colliders;
@@ -50,7 +59,7 @@ public class ColorCodeMinigameController : EliminationMinigameController
     {
         if (!IsGameActive) return null;
         return Stage == CallStage.Calling
-            ? $"Stand on <color=#{ColorUtility.ToHtmlStringRGB(Colors[Target] * 0.85f)}><b>{Names[Target]}</b></color>! {Mathf.CeilToInt(StageTimer.RemainingTime(Runner) ?? 0f)}"
+            ? $"Stand on <color=#{Hex(Ink)}><b>{Names[Target]}</b></color>! {Mathf.CeilToInt(StageTimer.RemainingTime(Runner) ?? 0f)}"
             : "Get ready for the next call...";
     }
 
@@ -110,7 +119,8 @@ public class ColorCodeMinigameController : EliminationMinigameController
                 Stage = CallStage.Calling;
                 // Each call is faster: 5 s down to 2 s.
                 StageTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(2f, 5f - Calls * 0.4f));
-                Announce($"{Names[Target]}!");
+                Ink = TwistActive ? (byte)((Target + Random.Range(1, Colors.Length)) % Colors.Length) : Target;
+                Announce(Ink != Target ? $"<color=#{Hex(Ink)}>{Names[Target]}</color>!" : $"{Names[Target]}!");
                 break;
             case CallStage.Calling:
                 Stage = CallStage.Dropped;

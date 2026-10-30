@@ -24,6 +24,9 @@ public class VaultKey : NetworkBehaviour
     [Networked, OnChangedRender(nameof(ApplyColor))] public byte Variant { get; set; }
     /// <summary>The door this key opens (host only cares; not shown anywhere).</summary>
     [Networked] public byte DoorId { get; set; }
+    /// <summary><see cref="DoorId"/> of the Master Key twist: opens any door.</summary>
+    public const byte MASTER = 255;
+    public bool IsMaster => DoorId == MASTER;
     /// <summary>0 = untried, 1 = cold, 2 = warm, 3 = hot (its door is close to the last door tried).</summary>
     [Networked, OnChangedRender(nameof(ApplyColor))] public byte Heat { get; set; }
 
@@ -37,7 +40,10 @@ public class VaultKey : NetworkBehaviour
     private void Awake()
     {
         Grabbable = GetComponent<GrabbableObject>();
+        if (_visual != null) _visualScale = _visual.localScale;
     }
+
+    private Vector3 _visualScale = Vector3.one;
 
     public override void Spawned()
     {
@@ -45,6 +51,7 @@ public class VaultKey : NetworkBehaviour
         ApplyColor();
         if (_visual != null)
         {
+            _visual.localScale = _visualScale * (IsMaster ? 1.8f : 1f);   // pooled: reset every spawn
             // Idle bob so keys lying around catch the eye.
             _visual.DOLocalMoveY(_visual.localPosition.y + 0.15f, 0.8f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine).SetLink(gameObject);
         }
@@ -53,7 +60,7 @@ public class VaultKey : NetworkBehaviour
     private void ApplyColor()
     {
         var block = new MaterialPropertyBlock();
-        var color = Heat > 0 ? HeatColors[Mathf.Min(Heat, (byte)3)] : Colors[Variant % Colors.Length];
+        var color = IsMaster ? new Color(1f, 0.9f, 0.3f) : Heat > 0 ? HeatColors[Mathf.Min(Heat, (byte)3)] : Colors[Variant % Colors.Length];
         foreach (var r in _renderers)
         {
             if (r == null) continue;

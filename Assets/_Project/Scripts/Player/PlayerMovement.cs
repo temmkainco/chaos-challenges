@@ -98,8 +98,9 @@ public class PlayerMovement : NetworkBehaviour
         bool launched = IsLaunched;
 
         // Chaos modifiers are networked on the minigame, so prediction and the host apply the same rules.
-        var chaos = MinigameController.Current != null && MinigameController.Current.Object != null && MinigameController.Current.Object.IsValid
-            ? MinigameController.Current.ActiveChaos : ChaosModifier.None;
+        var minigame = MinigameController.Current != null && MinigameController.Current.Object != null && MinigameController.Current.Object.IsValid
+            ? MinigameController.Current : null;
+        var chaos = minigame != null ? minigame.ActiveChaos : ChaosModifier.None;
         float speedScale = chaos == ChaosModifier.SpeedRush ? 1.5f : chaos == ChaosModifier.SlowMotion ? 0.55f : chaos == ChaosModifier.Giants ? 1.15f : chaos == ChaosModifier.Tiny ? 0.85f : 1f;
         float gravityScale = chaos == ChaosModifier.LowGravity ? 0.4f : 1f;
         float jumpScale = chaos == ChaosModifier.SuperJump ? 1.9f : chaos == ChaosModifier.LowGravity ? 1.2f : 1f;
@@ -161,7 +162,9 @@ public class PlayerMovement : NetworkBehaviour
             velocity.y = -2f;   // keep the controller pressed onto slopes and steps
 
         velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
-        _unityController.Move(velocity * dt);
+        // A twist's wind drifts everyone (not stored in the velocity, so it stops the moment the twist ends).
+        var wind = minigame != null && !_player.ControlsLocked ? minigame.ChaosWind : Vector3.zero;
+        _unityController.Move((velocity + wind) * dt);
 
         bool grounded = _unityController.isGrounded && velocity.y <= 0.5f;
         if (grounded)

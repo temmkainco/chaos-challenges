@@ -21,7 +21,7 @@ MonoBehaviour:
   <DisplayName>k__BackingField: Hex Drop
   <Description>k__BackingField: Three floors of hexagon tiles, and every tile you
     touch falls away. Keep moving and be the last one up!
-  <PreviewImage>k__BackingField: {fileID: 0}
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 9a3908abd171bd84e9a9c116d27c1d24, type: 3}
   <Rules>k__BackingField:
   - Tiles crack red, then drop - keep moving
   - Drop to a lower floor on purpose to buy time

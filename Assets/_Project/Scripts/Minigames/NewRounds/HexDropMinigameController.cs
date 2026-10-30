@@ -5,7 +5,8 @@ using UnityEngine;
 /// <summary>
 /// Hex Drop: three stacked layers of hexagon tiles high above the studio floor. A tile you step on cracks and drops
 /// a moment later, so keep moving and plan your way down; fall through the bottom layer and you are out.
-/// Last contestant standing wins. Chaos twist: during ICE FLOOR or SPEED RUSH tiles drop faster.
+/// Last contestant standing wins. Chaos: during ICE FLOOR or SPEED RUSH tiles drop faster; its own twist,
+/// EARTHQUAKE, cracks random tiles on every floor.
 /// </summary>
 public class HexDropMinigameController : EliminationMinigameController
 {
@@ -90,12 +91,23 @@ public class HexDropMinigameController : EliminationMinigameController
         _renderers[i].SetPropertyBlock(_block);
     }
 
+    public override string TwistTitle => "EARTHQUAKE";
+    public override string TwistDescription => "Random tiles on every floor crack on their own.";
+
     private float Delay => ActiveChaos is ChaosModifier.IceFloor or ChaosModifier.SpeedRush ? _dropDelay * 0.6f : _dropDelay;
 
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
         if (!HasStateAuthority || !IsGameActive) return;
+
+        // Earthquake: four times a second one random intact tile per floor cracks.
+        if (TwistActive && Runner.Tick % Mathf.Max(1, Runner.TickRate / 4) == 0)
+            for (int layer = 0; layer < LAYERS; layer++)
+            {
+                int index = layer * PER_LAYER + Random.Range(0, PER_LAYER);
+                if (SteppedTick[index] == 0) SteppedTick.Set(index, Runner.Tick);
+            }
 
         // Mark the tile under every contestant still in the game.
         foreach (var entry in _playerSpawner.Players)

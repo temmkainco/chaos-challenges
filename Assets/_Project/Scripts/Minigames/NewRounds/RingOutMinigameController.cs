@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Ring Out: a sumo stage high above the studio floor that shrinks as the clock runs down. Shoves hit much harder
 /// here; knock rivals off the edge and stay on yourself. Last contestant standing wins; survivors tie at the bell.
-/// Chaos twist: GIANTS and ICE FLOOR turn it into a skating brawl.
+/// Chaos: GIANTS and ICE FLOOR turn it into a skating brawl; its own twist, SHRINK RAY, squeezes the ring for a while.
 /// </summary>
 public class RingOutMinigameController : EliminationMinigameController
 {
@@ -14,6 +14,16 @@ public class RingOutMinigameController : EliminationMinigameController
     [SerializeField] private float _endRadius = 4f;
 
     private Transform _ring, _rim;
+
+    [Fusion.Networked] private int TwistStartTick { get; set; }
+
+    public override string TwistTitle => "SHRINK RAY";
+    public override string TwistDescription => "The ring shrinks to half its size for a few seconds.";
+
+    protected override void OnChaosStarted(ChaosModifier modifier)
+    {
+        if (modifier == ChaosModifier.Twist) TwistStartTick = Runner.Tick;
+    }
 
     private Vector3 Top => _centre.position + Vector3.up * _height;
     protected override float OutHeight => Top.y - 3f;
@@ -33,7 +43,15 @@ public class RingOutMinigameController : EliminationMinigameController
             if (!IsGameActive || !IsTimeLimited) return _startRadius;
             float total = Definition.GameDuration * MatchSettings.LengthMultiplier;
             float t = 1f - Mathf.Clamp01(TimeRemaining / Mathf.Max(1f, total));
-            return Mathf.Lerp(_startRadius, _endRadius, Mathf.SmoothStep(0f, 1f, t));
+            float radius = Mathf.Lerp(_startRadius, _endRadius, Mathf.SmoothStep(0f, 1f, t));
+            if (TwistActive)
+            {
+                // Squeeze in over a second and grow back over the last second (from networked timers, same on every peer).
+                float since = (Runner.Tick - TwistStartTick) * Runner.DeltaTime;
+                float squeeze = Mathf.SmoothStep(0f, 1f, Mathf.Min(since, ChaosTimeRemaining));
+                radius = Mathf.Lerp(radius, Mathf.Max(3f, radius * 0.5f), squeeze);
+            }
+            return radius;
         }
     }
 

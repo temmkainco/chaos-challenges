@@ -48,8 +48,9 @@ public class MinigameController : NetworkBehaviour
     public static MinigameController Current { get; private set; }
 
     public bool IsGameActive => Phase == MinigamePhase.Playing;
-    public MinigameDefinitionSO Definition => _minigameDefinition;
-    public bool IsTimeLimited => _minigameDefinition.IsTimeLimited && _minigameDefinition.GameDuration > 0f;
+    /// <summary>Rules, timings and texts of the round (Console Round swaps in the cartridge being played).</summary>
+    public virtual MinigameDefinitionSO Definition => _minigameDefinition;
+    public bool IsTimeLimited => Definition.IsTimeLimited && Definition.GameDuration > 0f;
     public float TimeRemaining => PhaseTimer.RemainingTime(Runner) ?? 0f;
 
     protected NetworkGameManager GameManager => NetworkGameManager.Instance;
@@ -93,9 +94,9 @@ public class MinigameController : NetworkBehaviour
 
     private void BeginCountdown()
     {
-        if (_hasCountdown && _minigameDefinition.StartDelay > 0f)
+        if (_hasCountdown && Definition.StartDelay > 0f)
         {
-            SetPhase(MinigamePhase.Countdown, _minigameDefinition.StartDelay);
+            SetPhase(MinigamePhase.Countdown, Definition.StartDelay);
             return;
         }
         StartGame();
@@ -146,6 +147,16 @@ public class MinigameController : NetworkBehaviour
     /// <summary>Optional status line for the arena display (e.g. mines left, contestants left).</summary>
     public virtual string GetStatusText() => null;
 
+    /// <summary>Whether the rules card lists the usual WASD / SPACE controls (off for Console Round's gamepads).</summary>
+    public virtual bool UsesDefaultControls => true;
+
+    /// <summary>Optional intro camera instead of the orbit (e.g. a dolly along an indoor set).</summary>
+    public virtual bool TryGetIntroShot(float time, out Vector3 position, out Vector3 lookAt)
+    {
+        position = lookAt = default;
+        return false;
+    }
+
     /// <summary>
     /// A player touched the kill zone (called on every peer; only the host acts). Return true when the minigame
     /// handles it, false to send the player back to their spawn point.
@@ -156,7 +167,19 @@ public class MinigameController : NetworkBehaviour
     #region Chaos (buffs, debuffs, hazards for everyone; the future audience vote calls ChaosDirector.Request)
 
     /// <summary>Whether this minigame allows <paramref name="modifier"/> (override to veto ones that break the game).</summary>
-    public virtual bool SupportsChaos(ChaosModifier modifier) => modifier != ChaosModifier.None;
+    public virtual bool SupportsChaos(ChaosModifier modifier) =>
+        modifier != ChaosModifier.None && (modifier != ChaosModifier.Twist || TwistTitle != null);
+
+    /// <summary>This minigame's own chaos (<see cref="ChaosModifier.Twist"/>), e.g. "BROADSIDE"; null when it has none.</summary>
+    public virtual string TwistTitle => null;
+    /// <summary>One line for the rules card and the future vote page.</summary>
+    public virtual string TwistDescription => null;
+    /// <summary>"BUFF", "DEBUFF" or "HAZARD".</summary>
+    public virtual string TwistKind => "HAZARD";
+    public bool TwistActive => ActiveChaos == ChaosModifier.Twist;
+
+    /// <summary>Extra push on every contestant (Tilefall's crosswind). Must be a pure function of networked state.</summary>
+    public virtual Vector3 ChaosWind => Vector3.zero;
 
     /// <summary>Host only. Game-specific twist when a modifier starts (more bombs, faster cracks...).</summary>
     protected virtual void OnChaosStarted(ChaosModifier modifier) { }
@@ -205,9 +228,11 @@ public class MinigameController : NetworkBehaviour
             else if (NextRandomChaos.Expired(Runner))
             {
                 NextRandomChaos = TickTimer.CreateFromSeconds(Runner, ChaosDirector.Level == ChaosLevel.Wild ? Random.Range(10f, 16f) : Random.Range(20f, 32f));
-                for (int attempt = 0; attempt < 8; attempt++)
-                    if (StartChaos((ChaosModifier)Random.Range(1, ChaosInfo.COUNT), ChaosDirector.Level == ChaosLevel.Wild ? 12f : 10f))
-                        break;
+                // The game's own twist comes up about a third of the time; it is the most memorable chaos.
+                float seconds = ChaosDirector.Level == ChaosLevel.Wild ? 12f : 10f;
+                bool started = TwistTitle != null && Random.value < 0.35f && StartChaos(ChaosModifier.Twist, seconds);
+                for (int attempt = 0; attempt < 8 && !started; attempt++)
+                    started = StartChaos((ChaosModifier)Random.Range(1, ChaosInfo.COUNT), seconds);
             }
         }
 
@@ -261,10 +286,10 @@ public class MinigameController : NetworkBehaviour
 
     protected virtual void StartGame()
     {
-        SetPhase(MinigamePhase.Playing, IsTimeLimited ? _minigameDefinition.GameDuration * MatchSettings.LengthMultiplier : 0f);
+        SetPhase(MinigamePhase.Playing, IsTimeLimited ? Definition.GameDuration * MatchSettings.LengthMultiplier : 0f);
         SetPlayersInput(true);
 
-        Debug.Log($"Minigame {_minigameDefinition.Id} started!");
+        Debug.Log($"Minigame {Definition.Id} started!");
     }
 
     /// <summary>Host only. Ends the round; <paramref name="placements"/> is ordered best first, one player per place.</summary>
@@ -281,7 +306,7 @@ public class MinigameController : NetworkBehaviour
 
         SetPhase(MinigamePhase.Finished);
         SetPlayersInput(false);
-        Debug.Log($"Minigame {_minigameDefinition.Id} ended!");
+        Debug.Log($"Minigame {Definition.Id} ended!");
 
         GameManager.SubmitRoundResult(standings);
     }
@@ -311,7 +336,7 @@ public class MinigameController : NetworkBehaviour
                 StartGame();
                 break;
             case MinigamePhase.Playing:
-                Debug.Log($"Minigame {_minigameDefinition.Id}: time is up");
+                Debug.Log($"Minigame {Definition.Id}: time is up");
                 FinishRound(GetTimeUpStandings());
                 break;
         }

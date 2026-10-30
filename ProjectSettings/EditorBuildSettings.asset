@@ -50,5 +50,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Minigames/ColorCodeMinigame.unity
     guid: fd0603c2b1a509b469aed18a5e4898aa
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ConsoleRoundMinigame.unity
+    guid: 20d2e29c97c3c684096919562fc93437
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

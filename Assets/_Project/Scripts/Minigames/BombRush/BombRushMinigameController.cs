@@ -43,6 +43,9 @@ public class BombRushMinigameController : MinigameController
 
     private bool SuddenDeath => IsTimeLimited && IsGameActive && TimeRemaining <= _suddenDeathSeconds;
 
+    public override string TwistTitle => "BOMB BONANZA";
+    public override string TwistDescription => "The conveyors spit out bombs three times as fast.";
+
     public override string GetStatusText()
     {
         string alive = AliveCount == 1 ? "1 contestant left" : $"{AliveCount} contestants left";
@@ -70,10 +73,10 @@ public class BombRushMinigameController : MinigameController
         if (!SpawnTimer.Expired(Runner))
             return;
 
-        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f);
+        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f) * (TwistActive ? 0.33f : 1f);
         SpawnTimer = TickTimer.CreateFromSeconds(Runner, interval);
 
-        if (Bomb.Active.Count >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath ? 2 : 1))
+        if (Bomb.Active.Count >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath || TwistActive ? 2 : 1))
             return;
 
         int belt = _nextBelt++ % _belts.Length;

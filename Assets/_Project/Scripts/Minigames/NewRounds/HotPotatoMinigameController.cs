@@ -7,7 +7,7 @@ using UnityEngine;
 /// Hot Potato: one contestant carries a ticking bomb over their head. Touch a rival to pass it on (it cannot come
 /// straight back). When the fuse runs out the holder is blasted out and a new bomb goes to someone else; the fuse
 /// gets shorter as fewer remain. Last contestant standing wins. The holder runs a little faster.
-/// Chaos twist: SLOW MOTION and ICE FLOOR make passing harder; METEOR SHOWER still hits everyone.
+/// Chaos: SLOW MOTION and ICE FLOOR make passing harder; its own twist, BOMB HOP, moves the bomb on its own.
 /// </summary>
 public class HotPotatoMinigameController : EliminationMinigameController
 {
@@ -20,6 +20,10 @@ public class HotPotatoMinigameController : EliminationMinigameController
     [Networked] private TickTimer PassCooldown { get; set; }
     [Networked] private PlayerRef PreviousHolder { get; set; }
     [Networked] private TickTimer NoPassBack { get; set; }
+    [Networked] private TickTimer NextHop { get; set; }
+
+    public override string TwistTitle => "BOMB HOP";
+    public override string TwistDescription => "Every few seconds the bomb jumps to a random contestant.";
 
     private Transform _bomb;
     private float _blink;
@@ -71,6 +75,26 @@ public class HotPotatoMinigameController : EliminationMinigameController
             if (IsGameActive) NewBomb();
             return;
         }
+
+        // Bomb Hop: the bomb jumps to a random rival every 3 seconds.
+        if (TwistActive && _alive.Count > 1 && NextHop.ExpiredOrNotRunning(Runner))
+        {
+            if (NextHop.IsRunning)
+            {
+                var others = _alive.Where(p => p != Holder).ToList();
+                var next = others[Random.Range(0, others.Count)];
+                if (_playerSpawner.Players.TryGet(next, out var hopTo) && hopTo != null)
+                {
+                    PreviousHolder = PlayerRef.None;
+                    Holder = next;
+                    PassCooldown = TickTimer.CreateFromSeconds(Runner, 0.6f);
+                    RPC_Pass(hopTo.transform.position);
+                }
+            }
+            NextHop = TickTimer.CreateFromSeconds(Runner, 3f);
+            return;
+        }
+        if (!TwistActive) NextHop = TickTimer.None;
 
         if (PreviousHolder != PlayerRef.None && NoPassBack.ExpiredOrNotRunning(Runner))
             PreviousHolder = PlayerRef.None;

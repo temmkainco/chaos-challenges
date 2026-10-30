@@ -21,6 +21,10 @@ public class MinesMinigameController : TurnBasedMinigameController
     public bool IsLocalTurnOrHost => HasStateAuthority || CurrentTurn == Runner.LocalPlayer;
 
     private readonly List<(PlayerRef player, TickTimer timer)> _pendingBench = new();
+    private bool _firstPressDone;
+
+    public override string TwistTitle => "DOUBLE DARE";
+    public override string TwistDescription => "Every turn you have to press two plates.";
 
     public override void Spawned()
     {
@@ -43,7 +47,8 @@ public class MinesMinigameController : TurnBasedMinigameController
         if (_minefield.Object == null || !_minefield.Object.IsValid || _minefield.Size == 0)
             return null;
 
-        return _minefield.MinesLeft == 1 ? "1 mine left on the field" : $"{_minefield.MinesLeft} mines left on the field";
+        string mines = _minefield.MinesLeft == 1 ? "1 mine left on the field" : $"{_minefield.MinesLeft} mines left on the field";
+        return TwistActive ? $"<color=#E03131>Press TWO plates!</color> {mines}" : mines;
     }
 
     /// <summary>Host only.</summary>
@@ -52,16 +57,16 @@ public class MinesMinigameController : TurnBasedMinigameController
         if (!HasStateAuthority || !IsGameActive || player != CurrentTurn)
             return;
 
-        Resolve(index);
+        Resolve(index, false);
     }
 
     protected override void OnTurnTimedOut()
     {
         Debug.Log($"[Mines] {CurrentTurn} ran out of time; pressing a random plate");
-        Resolve(_minefield.PickRandomHiddenPlate());
+        Resolve(_minefield.PickRandomHiddenPlate(), true);
     }
 
-    private void Resolve(int index)
+    private void Resolve(int index, bool timedOut)
     {
         var result = _minefield.Reveal(index);
         if (result == PlateState.Hidden)
@@ -72,12 +77,20 @@ public class MinesMinigameController : TurnBasedMinigameController
         {
             Debug.Log($"[Mines] {player} hit a mine at plate {index}");
             BlowUp(player, _minefield.GetPlatePosition(index));
+            _firstPressDone = false;
             EliminatePlayer(player);
             if (!IsGameActive)
                 return;
         }
+        else if (TwistActive && !timedOut && !_firstPressDone)
+        {
+            // Double Dare: the same contestant presses again (the turn clock keeps running).
+            _firstPressDone = true;
+            Announce("ONE MORE!");
+        }
         else
         {
+            _firstPressDone = false;
             AdvanceTurn();
         }
 

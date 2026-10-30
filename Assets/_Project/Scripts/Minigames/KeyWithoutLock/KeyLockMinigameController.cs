@@ -30,6 +30,31 @@ public class KeyLockMinigameController : MinigameController
 
     public override bool ShoveDropsHeldItem => false;
 
+    public override string TwistTitle => "MASTER KEY";
+    public override string TwistKind => "BUFF";
+    public override string TwistDescription => "A big golden key that opens ANY door appears in the middle - for a few seconds.";
+
+    protected override void OnChaosStarted(ChaosModifier modifier)
+    {
+        if (modifier != ChaosModifier.Twist) return;
+        Runner.Spawn(_keyPrefab, _keySpawnArea.position + Vector3.up * 3f, Quaternion.identity, null,
+            (runner, spawned) =>
+            {
+                var key = spawned.GetComponent<VaultKey>();
+                key.Variant = 0;
+                key.DoorId = VaultKey.MASTER;
+            });
+    }
+
+    protected override void OnChaosEnded(ChaosModifier modifier)
+    {
+        if (modifier != ChaosModifier.Twist) return;
+        // The master key vanishes when the twist ends, even from someone's hands.
+        for (int i = VaultKey.Active.Count - 1; i >= 0; i--)
+            if (VaultKey.Active[i].IsMaster && VaultKey.Active[i].Object != null)
+                Runner.Despawn(VaultKey.Active[i].Object);
+    }
+
     public override void Spawned()
     {
         base.Spawned();
@@ -144,7 +169,7 @@ public class KeyLockMinigameController : MinigameController
     private void TryKey(Player player, VaultKey key, HuntDoor door)
     {
         var who = player.Object.InputAuthority;
-        if (key.DoorId != door.Id)
+        if (key.DoorId != door.Id && !key.IsMaster)
         {
             // Wrong door: the key stays yours and tells you how close its own door is.
             var target = _doors.FirstOrDefault(d => d.Id == key.DoorId);

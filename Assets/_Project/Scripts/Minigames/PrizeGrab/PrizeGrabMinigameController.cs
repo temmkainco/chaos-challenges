@@ -34,6 +34,10 @@ public class PrizeGrabMinigameController : MinigameController
 
     public int ScoreOf(PlayerRef player) => Scores.TryGet(player, out var s) ? s : 0;
 
+    public override string TwistTitle => "PRIZE STORM";
+    public override string TwistKind => "BUFF";
+    public override string TwistDescription => "Golden prizes pour down from the sky.";
+
     public override string GetStatusText()
     {
         if (!IsGameActive) return null;
@@ -91,10 +95,10 @@ public class PrizeGrabMinigameController : MinigameController
         int players = Mathf.Max(2, ConnectedPlayers().Count());
         if (RainTimer.ExpiredOrNotRunning(Runner))
         {
-            float interval = _rainInterval * 2f / players * (bonus ? 0.5f : 1f);
+            float interval = _rainInterval * 2f / players * (bonus ? 0.5f : 1f) * (TwistActive ? 0.3f : 1f);
             RainTimer = TickTimer.CreateFromSeconds(Runner, interval);
-            if (Prize.Active.Count < players * _maxPrizesPerPlayer)
-                DropPrize(bonus || Random.value < _goldenChance);
+            if (Prize.Active.Count < players * _maxPrizesPerPlayer * (TwistActive ? 2 : 1))
+                DropPrize(bonus || TwistActive || Random.value < _goldenChance);
         }
 
         // Prizes thrown or dropped onto a podium bank for that podium's owner.

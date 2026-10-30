@@ -305,6 +305,9 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
             Roster.Set(i, default);
     }
 
+    /// <summary>Editor/test only: play these minigame ids in this order instead of the random draw.</summary>
+    public static string[] ForcedRoundIds;
+
     /// <summary>Random order without repeats; when there are more rounds than minigames, reshuffle without back-to-back repeats.</summary>
     private void BuildRounds()
     {
@@ -320,6 +323,16 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
             if (order.Count > 0 && bag.Count > 1 && bag[0] == order[^1])
                 (bag[0], bag[1]) = (bag[1], bag[0]);
             order.AddRange(bag);
+        }
+
+        // Test hook: a fixed list of minigame ids (set by editor test scripts), e.g. { "console_round" }.
+        if (ForcedRoundIds != null && ForcedRoundIds.Length > 0)
+        {
+            order.Clear();
+            foreach (var id in ForcedRoundIds)
+                for (int m = 0; m < available; m++)
+                    if (_database.GetByIndex(m).Id == id) order.Add(m);
+            if (order.Count > 0) RoundCount = Mathf.Min(order.Count, MAX_ROUNDS);
         }
 
         for (int i = 0; i < RoundCount; i++)

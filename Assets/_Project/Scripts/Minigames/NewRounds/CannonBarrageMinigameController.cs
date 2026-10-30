@@ -7,7 +7,8 @@ using UnityEngine;
 /// Cannon Barrage: cannons around the stage fire cannonballs straight across it, more and faster as time goes on.
 /// A hit knocks you flying; off the stage and you are out. Watch the cannons, they glow before they fire.
 /// Last contestant standing wins; survivors tie at the bell.
-/// Chaos twist: METEOR SHOWER on top of the barrage, SLOW MOTION makes dodging harder.
+/// Chaos: METEOR SHOWER on top of the barrage, SLOW MOTION makes dodging harder; its own twist, BROADSIDE,
+/// fires every cannon but two at once.
 /// </summary>
 public class CannonBarrageMinigameController : EliminationMinigameController
 {
@@ -20,6 +21,9 @@ public class CannonBarrageMinigameController : EliminationMinigameController
     [SerializeField, Tooltip("Cannon model (Quaternius, CC0)")] private GameObject _cannonModel;
 
     [Networked] private TickTimer NextVolley { get; set; }
+
+    public override string TwistTitle => "BROADSIDE";
+    public override string TwistDescription => "Every cannon but two fires at once - find the gap!";
 
     private readonly List<(int cannon, int tick)> _balls = new();
     private Transform[] _cannonModels;
@@ -93,14 +97,28 @@ public class CannonBarrageMinigameController : EliminationMinigameController
         if (NextVolley.ExpiredOrNotRunning(Runner))
         {
             float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-            float interval = Mathf.Lerp(2.2f, 0.9f, Mathf.Clamp01(elapsed / 50f));
+            float interval = TwistActive ? 2.6f : Mathf.Lerp(2.2f, 0.9f, Mathf.Clamp01(elapsed / 50f));
             NextVolley = TickTimer.CreateFromSeconds(Runner, interval);
-            int shots = 1 + Mathf.Min(3, (int)(elapsed / 15f));
-            for (int s = 0; s < shots; s++)
+            if (TwistActive)
             {
-                int cannon = Random.Range(0, _cannons);
-                _balls.Add((cannon, Runner.Tick));
-                RPC_Fire(cannon, Runner.Tick);
+                // Broadside: all cannons except two neighbours (the gap to run for).
+                int gap = Random.Range(0, _cannons);
+                for (int cannon = 0; cannon < _cannons; cannon++)
+                {
+                    if (cannon == gap || cannon == (gap + 1) % _cannons) continue;
+                    _balls.Add((cannon, Runner.Tick));
+                    RPC_Fire(cannon, Runner.Tick);
+                }
+            }
+            else
+            {
+                int shots = 1 + Mathf.Min(3, (int)(elapsed / 15f));
+                for (int s = 0; s < shots; s++)
+                {
+                    int cannon = Random.Range(0, _cannons);
+                    _balls.Add((cannon, Runner.Tick));
+                    RPC_Fire(cannon, Runner.Tick);
+                }
             }
         }
 

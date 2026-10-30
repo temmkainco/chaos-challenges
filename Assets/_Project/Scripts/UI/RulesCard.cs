@@ -24,8 +24,9 @@ public class RulesCard : MonoBehaviour
     private Button _readyButton;
     private CinemachineCamera _orbit;
     private MinigameController _shownFor;
+    private MinigameDefinitionSO _shownDefinition;
     private bool _sentReady;
-    private float _orbitAngle;
+    private float _orbitAngle, _introTime;
     private Vector3 _orbitCentre;
     private readonly StringBuilder _sb = new();
     private int _lastReadyMask = -1, _lastSeconds = -1;
@@ -96,7 +97,7 @@ public class RulesCard : MonoBehaviour
         if (!intro)
             return;
 
-        if (controller != _shownFor)
+        if (controller != _shownFor || controller.Definition != _shownDefinition)
             Fill(controller);
 
         bool ready = controller.IsReady(controller.Runner.LocalPlayer) || _sentReady;
@@ -116,8 +117,9 @@ public class RulesCard : MonoBehaviour
 
     private void Fill(MinigameController controller)
     {
+        if (controller != _shownFor) _sentReady = false;
         _shownFor = controller;
-        _sentReady = false;
+        _shownDefinition = controller.Definition;
         _lastReadyMask = -1;
         var def = controller.Definition;
         var gm = NetworkGameManager.Instance;
@@ -130,8 +132,11 @@ public class RulesCard : MonoBehaviour
         _illustration.enabled = _illustration.sprite != null;
 
         _sb.Clear();
-        AppendKey("WASD", "Move");
-        AppendKey("SPACE", "Jump");
+        if (controller.UsesDefaultControls)
+        {
+            AppendKey("WASD", "Move");
+            AppendKey("SPACE", "Jump");
+        }
         if (def != null && def.Controls != null)
             foreach (var pair in def.Controls)
             {
@@ -199,6 +204,15 @@ public class RulesCard : MonoBehaviour
             _orbit.Priority = 40;
             _orbitCentre = Vector3.zero;
             _orbitAngle = 200f;
+            _introTime = 0f;
+        }
+        var controller = MinigameController.Current;
+        _introTime += Time.deltaTime;
+        if (controller != null && controller.TryGetIntroShot(_introTime, out var shotPosition, out var shotLookAt))
+        {
+            _orbit.transform.position = shotPosition;
+            _orbit.transform.LookAt(shotLookAt);
+            return;
         }
         // Players spawn a moment after the scene loads: snap to them once they exist, then follow smoothly.
         if (TryArenaCentre(out var centre))
