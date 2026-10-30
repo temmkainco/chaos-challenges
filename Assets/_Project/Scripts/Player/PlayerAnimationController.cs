@@ -17,7 +17,8 @@ public class PlayerAnimationController : NetworkBehaviour
 
     private void Update()
     {
-        float speed = movement.CurrentVelocity.magnitude;
+        var v = movement.CurrentVelocity;
+        float speed = new Vector2(v.x, v.z).magnitude;
 
         _animator.SetFloat(SpeedParam, speed);
         _animator.SetBool(JumpParam, !movement.IsGrounded);

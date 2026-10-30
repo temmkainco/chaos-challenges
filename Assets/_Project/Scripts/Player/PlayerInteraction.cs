@@ -18,6 +18,7 @@ public class PlayerInteraction : NetworkBehaviour
     /// <summary>Tick the current wind-up started on, 0 when not charging.</summary>
     [Networked] public int ChargeStartTick { get; private set; }
     [Networked] private NetworkButtons PreviousButtons { get; set; }
+    [Networked] private TickTimer ShoveCooldown { get; set; }
 
     public IInteractable CurrentTarget { get; private set; }
     public bool IsCharging => ChargeStartTick > 0 && HeldObject != null;
@@ -26,6 +27,11 @@ public class PlayerInteraction : NetworkBehaviour
     [SerializeField] private float _distance = 3f;
     [SerializeField, Tooltip("Radius of the grab zone in front of the player")] private float _reach = 1.6f;
     [SerializeField] private LayerMask _mask;
+    [Header("Shove")]
+    [SerializeField] private float _shoveRange = 1.8f;
+    [SerializeField] private float _shovePush = 9f;
+    [SerializeField] private float _shoveLift = 3.5f;
+    [SerializeField] private float _shoveCooldown = 0.9f;
     [SerializeField] private Transform _eyesPoint;
 
     private Player _player;
@@ -122,7 +128,11 @@ public class PlayerInteraction : NetworkBehaviour
 
         // Wind-up is predicted on the owner so the arc preview responds instantly.
         if (HeldObject == null)
+        {
             ChargeStartTick = 0;
+            if (throwPressed && HasStateAuthority)
+                TryShove();
+        }
         else if (throwPressed)
             ChargeStartTick = Runner.Tick;
 
@@ -162,6 +172,55 @@ public class PlayerInteraction : NetworkBehaviour
             ReleaseHeldObject();
         else
             InteractWithTarget();
+    }
+
+    /// <summary>Host only: empty-handed throw button shoves the closest contestant in front.</summary>
+    private void TryShove()
+    {
+        var minigame = MinigameController.Current;
+        if (!ShoveCooldown.ExpiredOrNotRunning(Runner) || (minigame != null && (!minigame.AllowShove || !minigame.IsGameActive)))
+            return;
+        ShoveCooldown = TickTimer.CreateFromSeconds(Runner, _shoveCooldown);
+
+        var flat = new Vector3(LookDirection.x, 0f, LookDirection.z);
+        flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
+        int count = Runner.GetPhysicsScene().OverlapSphere(transform.position + flat * (_shoveRange * 0.6f) + Vector3.up, _shoveRange, _overlap, ~0, QueryTriggerInteraction.Ignore);
+        Player best = null;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < count; i++)
+        {
+            var other = _overlap[i].GetComponentInParent<Player>();
+            if (other == null || other == _player || other.Object == null || other.ControlsLocked) continue;
+            var to = other.transform.position - transform.position;
+            to.y = 0f;
+            if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;
+            best = other;
+            bestDistance = to.magnitude;
+        }
+        if (best == null)
+            return;
+
+        var push = (best.transform.position - transform.position).WithY(0f).normalized;
+        if (best.TryGetComponent<PlayerMovement>(out var movement))
+            movement.Launch(push * _shovePush + Vector3.up * _shoveLift);
+        if ((minigame == null || minigame.ShoveDropsHeldItem) && best.Interaction != null)
+            best.Interaction.ForceDrop();
+        RPC_Shoved(best.transform.position);
+    }
+
+    /// <summary>Host only: let go of whatever is held (shoves, hits).</summary>
+    public void ForceDrop()
+    {
+        if (!HasStateAuthority || HeldObject == null) return;
+        ChargeStartTick = 0;
+        ReleaseHeldObject();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Shoved(Vector3 position)
+    {
+        Sfx.Play(Sound.Whoosh, 1f, 0.15f);
+        WorldPopup.Show(position + Vector3.up * 2.6f, "OOF!", new Color(1f, 0.79f, 0.24f), 6f);
     }
 
     private void TryLocalInteraction()

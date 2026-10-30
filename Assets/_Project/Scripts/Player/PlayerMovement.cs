@@ -1,37 +1,67 @@
 using Fusion;
 using UnityEngine;
 
+/// <summary>
+/// Shared contestant controller, simulated from networked input (predicted on the owner, authoritative on the host).
+/// Tuned for party-game feel: quick acceleration and braking, real air control, coyote time, jump buffering, short
+/// hops when Space is released early, a heavier fall, and physical knockbacks (<see cref="Launch"/>) that take control
+/// away until you land. While winding up a throw the contestant turns to face the aim.
+/// </summary>
 [RequireComponent(typeof(NetworkCharacterController))]
 public class PlayerMovement : NetworkBehaviour
 {
     [Networked] public Vector3 CurrentVelocity { get; private set; }
     [Networked] public bool IsGrounded { get; private set; } = true;
     [Networked] public NetworkButtons PreviousButtons { get; private set; }
-    /// <summary>Running while the player flies from a knockback; movement input is ignored meanwhile.</summary>
+    /// <summary>Running while the player flies from a knockback; steering is weak meanwhile.</summary>
     [Networked] private TickTimer LaunchTimer { get; set; }
+    [Networked] private int LastGroundedTick { get; set; }
+    [Networked] private int JumpPressedTick { get; set; }
+    [Networked] private NetworkBool JumpHeld { get; set; }
 
-    [SerializeField] private float _movementSpeed = 5f;
-    [SerializeField] private float _rotationSpeed = 10f;
+    [Header("Run")]
+    [SerializeField] private float _maxSpeed = 7f;
+    [SerializeField] private float _groundAcceleration = 70f;
+    [SerializeField] private float _groundDeceleration = 90f;
+    [SerializeField] private float _airAcceleration = 28f;
+    [SerializeField] private float _rotationSpeed = 16f;
+
+    [Header("Jump")]
+    [SerializeField] private float _jumpHeight = 1.7f;
+    [SerializeField] private float _gravity = 28f;
+    [SerializeField, Tooltip("Gravity multiplier while falling, for a snappier arc")] private float _fallMultiplier = 1.6f;
+    [SerializeField, Tooltip("Upward speed kept when Space is released early")] private float _shortHopCut = 0.5f;
+    [SerializeField] private float _coyoteTime = 0.12f;
+    [SerializeField] private float _jumpBufferTime = 0.15f;
+    [SerializeField] private float _maxFallSpeed = 32f;
+
+    [Header("Knockback")]
     [SerializeField] private float _launchDuration = 1.6f;
+    [SerializeField, Tooltip("Share of air control kept while flying from a hit")] private float _launchControl = 0.25f;
     [SerializeField, Tooltip("Horizontal speed lost per second while flying")] private float _airDrag = 0.6f;
 
     private NetworkCharacterController _characterController;
     private CharacterController _unityController;
     private Player _player;
+    private PlayerInteraction _interaction;
+
+    public bool IsLaunched => !LaunchTimer.ExpiredOrNotRunning(Runner);
 
     private void Awake()
     {
         _characterController = GetComponent<NetworkCharacterController>();
         _unityController = GetComponent<CharacterController>();
         _player = GetComponent<Player>();
+        _interaction = GetComponent<PlayerInteraction>();
     }
 
     /// <summary>
-    /// Host only. Throws the player (explosions, knockback). The flight is ballistic for a moment, because the
-    /// character controller's braking would otherwise cancel the push within a few ticks.
+    /// Host only. Throws the player (explosions, hammers, shoves). Control is weak until they land again, so the
+    /// hit reads clearly on every screen.
     /// </summary>
     public void Launch(Vector3 velocity)
     {
+        CurrentVelocity = velocity;
         _characterController.Velocity = velocity;
         _characterController.IsGrounded = false;
         IsGrounded = false;
@@ -40,85 +70,90 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        if (!LaunchTimer.ExpiredOrNotRunning(Runner))
-        {
-            Fly();
-            return;
-        }
-
-        if (!GetInput(out NetworkInputData data))
-        {
-            if (Object.HasStateAuthority)
-                CurrentVelocity = Vector3.zero;
-
-            return;
-        }
-
-        // Still run the controller so gravity applies, just without player intent.
-        if (_player.ControlsLocked || _player.MovementLocked)
+        float dt = Runner.DeltaTime;
+        NetworkInputData data = default;
+        bool hasInput = GetInput(out data);
+        if (!hasInput || _player.ControlsLocked || _player.MovementLocked)
         {
             data.Direction = Vector3.zero;
             data.Buttons = default;
         }
 
-        Vector3 inputDirection = new Vector3(data.Direction.x, 0f, data.Direction.z);
-        if (inputDirection.sqrMagnitude > 1f)
-            inputDirection.Normalize();
+        var velocity = CurrentVelocity;
+        bool launched = IsLaunched;
 
-        Quaternion flatCameraRotation = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f);
-        Vector3 targetDir = flatCameraRotation * inputDirection;
-        Vector3 velocity = targetDir * _movementSpeed;
+        // Horizontal: accelerate toward the wanted velocity.
+        Vector3 input = new Vector3(data.Direction.x, 0f, data.Direction.z);
+        if (input.sqrMagnitude > 1f) input.Normalize();
+        Vector3 wish = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f) * input * _maxSpeed;
+        Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
+        float accel;
+        if (launched) accel = _airAcceleration * _launchControl;
+        else if (IsGrounded) accel = wish.sqrMagnitude > 0.01f ? _groundAcceleration : _groundDeceleration;
+        else accel = _airAcceleration;
+        if (launched)
+            horizontal *= Mathf.Clamp01(1f - _airDrag * dt);
+        // In the air without input, keep momentum instead of braking.
+        if (launched || IsGrounded || wish.sqrMagnitude > 0.01f)
+            horizontal = Vector3.MoveTowards(horizontal, launched ? horizontal + wish * 0.3f : wish, accel * dt);
 
-        _characterController.Move(velocity);
-
-        if (targetDir.sqrMagnitude > 0.01f)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(targetDir);
-            _characterController.transform.rotation = Quaternion.Slerp(
-                _characterController.transform.rotation,
-                targetRotation,
-                _rotationSpeed * Runner.DeltaTime
-            );
-        }
-
+        // Jump: buffered press + coyote time.
         var pressed = data.Buttons.GetPressed(PreviousButtons);
-        if (pressed.WasPressed(PreviousButtons, InputButtons.Jump) && IsGrounded)
+        bool jumpDown = data.Buttons.IsSet(InputButtons.Jump);
+        if (pressed.IsSet(InputButtons.Jump))
+            JumpPressedTick = Runner.Tick;
+        PreviousButtons = data.Buttons;
+
+        bool buffered = JumpPressedTick > 0 && (Runner.Tick - JumpPressedTick) * dt <= _jumpBufferTime;
+        bool coyote = IsGrounded || (Runner.Tick - LastGroundedTick) * dt <= _coyoteTime;
+        if (buffered && coyote && !launched && velocity.y <= 0.5f)
         {
-            _characterController.Jump();
+            velocity.y = Mathf.Sqrt(2f * _gravity * _jumpHeight);
+            JumpPressedTick = 0;
+            LastGroundedTick = -1000;
+            JumpHeld = true;
             IsGrounded = false;
         }
 
-        if (!IsGrounded && _characterController.IsGrounded && _characterController.Velocity.y <= 0f)
+        // Variable height: releasing Space on the way up cuts the jump short.
+        if (JumpHeld && !jumpDown)
         {
-            IsGrounded = true;
+            JumpHeld = false;
+            if (velocity.y > 0f && !launched)
+                velocity.y *= _shortHopCut;
         }
 
-        PreviousButtons = data.Buttons;
+        // Gravity, heavier on the way down.
+        float g = _gravity * (velocity.y < 0f ? _fallMultiplier : 1f);
+        velocity.y = Mathf.Max(velocity.y - g * dt, -_maxFallSpeed);
+        if (IsGrounded && velocity.y < 0f)
+            velocity.y = -2f;   // keep the controller pressed onto slopes and steps
 
-        if (Object.HasStateAuthority)
-        {
-            CurrentVelocity = velocity;
-        }
-    }
-
-    private void Fly()
-    {
-        float dt = Runner.DeltaTime;
-        var velocity = _characterController.Velocity;
-        velocity.y += _characterController.gravity * dt;
-        float drag = Mathf.Clamp01(1f - _airDrag * dt);
-        velocity.x *= drag;
-        velocity.z *= drag;
-
+        velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
         _unityController.Move(velocity * dt);
-        _characterController.Velocity = velocity;
 
-        // Landed after the initial lift-off: hand control back.
-        float elapsed = _launchDuration - (LaunchTimer.RemainingTime(Runner) ?? 0f);
-        if (elapsed > 0.25f && _unityController.isGrounded && velocity.y <= 0f)
+        bool grounded = _unityController.isGrounded && velocity.y <= 0.5f;
+        if (grounded)
         {
-            LaunchTimer = TickTimer.None;
-            _characterController.Velocity = new Vector3(velocity.x, 0f, velocity.z);
+            LastGroundedTick = Runner.Tick;
+            if (velocity.y < 0f) velocity.y = -2f;
+            if (launched && LaunchTimer.RemainingTime(Runner) < _launchDuration - 0.25f)
+                LaunchTimer = TickTimer.None;
         }
+        else if (_unityController.collisionFlags.HasFlag(CollisionFlags.Above) && velocity.y > 0f)
+        {
+            velocity.y = 0f;   // bonked a ceiling
+        }
+        IsGrounded = grounded;
+
+        // Face the movement, or the aim while winding up a throw.
+        Vector3 face = _interaction != null && _interaction.IsCharging ? data.LookDirection : new Vector3(velocity.x, 0f, velocity.z);
+        face.y = 0f;
+        if (face.sqrMagnitude > 0.04f && !launched)
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(face), _rotationSpeed * dt);
+
+        CurrentVelocity = velocity;
+        _characterController.Velocity = velocity;
+        _characterController.IsGrounded = grounded;
     }
 }

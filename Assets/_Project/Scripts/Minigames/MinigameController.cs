@@ -98,6 +98,11 @@ public class MinigameController : NetworkBehaviour
     /// </summary>
     public virtual bool HandlePrimaryAction(Player player) => false;
 
+    /// <summary>Whether contestants can shove each other (empty hands + throw button) in this minigame.</summary>
+    public virtual bool AllowShove => true;
+    /// <summary>Whether a shove makes the target drop what they hold (off in Key Hunt: your key stays yours).</summary>
+    public virtual bool ShoveDropsHeldItem => true;
+
     /// <summary>Optional status line for the arena display (e.g. mines left, contestants left).</summary>
     public virtual string GetStatusText() => null;
 
