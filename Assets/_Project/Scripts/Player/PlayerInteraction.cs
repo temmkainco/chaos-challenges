@@ -74,29 +74,39 @@ public class PlayerInteraction : NetworkBehaviour
         HighlightShoveTarget(CurrentTarget == null ? FindShoveTarget(_player.Camera.transform.forward) : null);
     }
 
-    private Outline _shoveOutline;
+    private Transform _shoveMarker;
 
-    /// <summary>Local player: the contestant your shove would hit gets a red outline (empty hands, shoving allowed).</summary>
+    /// <summary>
+    /// Local player: a red ring at the feet of the contestant your shove would hit (empty hands, shoving allowed).
+    /// A ring rather than a mesh outline: outlining a character rewrites its shared mesh.
+    /// </summary>
     private void HighlightShoveTarget(Player target)
     {
         var minigame = MinigameController.Current;
         if (minigame == null || !minigame.IsGameActive || !minigame.AllowShove || _player.IsSpectator) target = null;
-        Outline outline = null;
-        if (target != null)
+        if (target == null)
         {
-            if (!target.TryGetComponent(out outline))
-            {
-                outline = target.gameObject.AddComponent<Outline>();
-                outline.OutlineMode = Outline.Mode.OutlineVisible;
-                outline.OutlineColor = new Color(1f, 0.37f, 0.36f);
-                outline.OutlineWidth = 5f;
-                outline.enabled = false;
-            }
+            if (_shoveMarker != null && _shoveMarker.gameObject.activeSelf) _shoveMarker.gameObject.SetActive(false);
+            return;
         }
-        if (outline == _shoveOutline) return;
-        if (_shoveOutline != null) _shoveOutline.enabled = false;
-        _shoveOutline = outline;
-        if (_shoveOutline != null) _shoveOutline.enabled = true;
+        if (_shoveMarker == null)
+        {
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Destroy(ring.GetComponent<Collider>());
+            ring.name = "ShoveTarget";
+            _shoveMarker = ring.transform;
+            _shoveMarker.localScale = new Vector3(1.3f, 0.01f, 1.3f);
+            var renderer = ring.GetComponent<Renderer>();
+            renderer.material = new Material(Resources.Load<Material>("ThrowArc")) { color = new Color(1f, 0.3f, 0.28f, 0.55f) };
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+        if (!_shoveMarker.gameObject.activeSelf) _shoveMarker.gameObject.SetActive(true);
+        _shoveMarker.position = target.transform.position + Vector3.up * 0.05f;
+    }
+
+    private void OnDestroy()
+    {
+        if (_shoveMarker != null) Destroy(_shoveMarker.gameObject);
     }
 
     /// <summary>Same pick as the host's shove: the closest contestant within reach in front.</summary>
