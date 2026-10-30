@@ -7,7 +7,7 @@ A party game show for 2–6 players online. One match = every minigame once, in 
 1. **Main menu** — *Customize* your contestant (body, hands and head colour, hat; saved and used in every match), adjust *Settings*, then *Host* (public/private, max players 2–6), *Join By Code*, or *Join Random*.
 2. **Lobby** — the room code is in the top-right corner. Invite Steam friends through the Steam overlay (Shift+Tab); friends can also use "Join Game" from your profile. Press **E** on the big red button when everyone is in.
 3. **Intermission** — the TV explains the next minigame. Press *Ready*; the round starts by itself after 30 s.
-4. **Results** — after each round you only see that it is over; the totals are revealed, last place to first, after the final round. Then everyone is back in the lobby for a rematch.
+4. **Results** — after each round the board shows every contestant with a "?" badge; the totals are revealed, last place to first, after the final round. Then everyone is back in the lobby for a rematch.
 
 **Controls:** WASD move · Mouse look · Space jump · E interact / grab / throw / fire · Esc pause (Resume, Settings, Leave match).
 

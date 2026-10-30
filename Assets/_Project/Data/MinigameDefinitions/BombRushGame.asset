@@ -21,7 +21,7 @@ MonoBehaviour:
   <DisplayName>k__BackingField: Bomb Rush
   <Description>k__BackingField: Conveyors keep the bombs coming. Grab one, throw
     it at a rival and blast them off the stage. Last contestant standing wins!
-  <PreviewImage>k__BackingField: {fileID: 0}
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 481d60a0613826f4aafabeba97c1a827, type: 3}
   <Rules>k__BackingField:
   - E grabs a bomb, E again throws it
   - Thrown bombs explode on contact; lit ones explode on their own

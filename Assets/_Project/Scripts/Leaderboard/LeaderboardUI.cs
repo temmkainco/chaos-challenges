@@ -77,18 +77,18 @@ public class LeaderboardUI : MonoBehaviour
         Sfx.Play(isFinal ? Sound.Fanfare : Sound.RoundOver, 1f, 0f);
 
         if (_titleText != null)
-            _titleText.text = _isFinal ? "Final Results!" : "Round Over! Results stay secret...";
+            _titleText.text = _isFinal ? "FINAL RESULTS!" : "ROUND OVER!\n<size=55%>Results stay secret until the finale...</size>";
 
-        int shownCount = entries.Count(e => !e.IsEmpty);
+        // Only real contestants get a card; empty slots would just leave blank cards on screen.
+        entries = entries.Where(e => !e.IsEmpty).ToList();
+        int shownCount = entries.Count;
         for (int i = 0; i < entries.Count; i++)
         {
             var ui = Instantiate(_entryPrefab, _entriesContainer);
             ui.Populate(entries[i]);
 
             // The final reveal builds suspense: last place appears first, the winner last.
-            float delay = entries[i].IsEmpty ? 0f
-                : _isFinal ? (shownCount - 1 - i) * _finalRevealStagger
-                : i * _entryStaggerDelay;
+            float delay = _isFinal ? (shownCount - 1 - i) * _finalRevealStagger : i * _entryStaggerDelay;
             ui.AnimateIn(delay);
             _spawnedEntries.Add(ui);
         }

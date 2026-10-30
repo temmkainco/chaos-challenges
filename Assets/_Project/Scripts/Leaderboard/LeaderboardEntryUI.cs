@@ -1,6 +1,7 @@
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class LeaderboardEntryUI : MonoBehaviour
 {
@@ -8,14 +9,17 @@ public class LeaderboardEntryUI : MonoBehaviour
     [SerializeField] private TMP_Text _nameText;
     [SerializeField] private TMP_Text _minigameScoreText;
     [SerializeField] private TMP_Text _totalScoreText;
-    [SerializeField] private TMP_Text _badgeText;       
+    [SerializeField] private TMP_Text _badgeText;
     [SerializeField] private CanvasGroup _canvasGroup;
-    [SerializeField] private GameObject _contentRoot;   
+    [SerializeField] private GameObject _contentRoot;
+    [SerializeField] private Image _rankPanel;
 
     [Header("Colors")]
     [SerializeField] private Color _normalColor = Color.white;
     [SerializeField] private Color _overallWinnerColor = new Color(1f, 0.84f, 0f);
     [SerializeField] private Color _minigameWinnerColor = new Color(1f, 0.84f, 0f);
+    [SerializeField] private Color _rankPanelColor = new Color(1f, 0.54f, 0.24f);
+    [SerializeField] private Color _winnerPanelColor = new Color(1f, 0.79f, 0.24f);
 
     public void Populate(LeaderboardEntry entry)
     {
@@ -26,48 +30,41 @@ public class LeaderboardEntryUI : MonoBehaviour
         }
 
         _contentRoot.SetActive(true);
+        _nameText.text = entry.PlayerName;
+        _nameText.color = _normalColor;
+        SetPanel(_rankPanelColor);
 
         if (entry.HideScores)
         {
             _rankText.text = "?";
-            _nameText.text = entry.PlayerName;
             _minigameScoreText.text = "";
             _totalScoreText.text = "??? pts";
-            _nameText.color = _normalColor;
-            _rankText.color = _normalColor;
             if (_badgeText != null)
                 _badgeText.gameObject.SetActive(false);
             return;
         }
 
         _rankText.text = $"#{entry.Rank}";
-        _nameText.text = entry.PlayerName;
         _minigameScoreText.text = $"+{entry.MinigameScore}";
         _totalScoreText.text = $"{entry.TotalScore} pts";
 
+        bool winner = entry.IsOverallWinner || entry.IsMinigameWinner;
         if (_badgeText != null)
         {
-            if (entry.IsOverallWinner)
-            {
-                _badgeText.gameObject.SetActive(true);
-                _badgeText.text = "Overall Winner";
-                _nameText.color = _overallWinnerColor;
-                _rankText.color = _overallWinnerColor;
-            }
-            else if (entry.IsMinigameWinner)
-            {
-                _badgeText.gameObject.SetActive(true);
-                _badgeText.text = "Round Winner";
-                _nameText.color = _minigameWinnerColor;
-                _rankText.color = _minigameWinnerColor;
-            }
-            else
-            {
-                _badgeText.gameObject.SetActive(false);
-                _nameText.color = _normalColor;
-                _rankText.color = _normalColor;
-            }
+            _badgeText.gameObject.SetActive(winner);
+            _badgeText.text = entry.IsOverallWinner ? "WINNER!" : "ROUND WINNER";
         }
+        if (winner)
+        {
+            _nameText.color = entry.IsOverallWinner ? _overallWinnerColor : _minigameWinnerColor;
+            SetPanel(_winnerPanelColor);
+        }
+    }
+
+    private void SetPanel(Color color)
+    {
+        if (_rankPanel != null)
+            _rankPanel.color = color;
     }
 
     public void AnimateIn(float delay)

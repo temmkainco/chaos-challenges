@@ -46,7 +46,7 @@ public class BombRushMinigameController : MinigameController
     public override string GetStatusText()
     {
         string alive = AliveCount == 1 ? "1 contestant left" : $"{AliveCount} contestants left";
-        return SuddenDeath ? $"<color=#FF6A50>SUDDEN DEATH!</color> {alive}" : alive;
+        return SuddenDeath ? $"<color=#E03131>SUDDEN DEATH!</color> {alive}" : alive;
     }
 
     protected override void StartGame()

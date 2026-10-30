@@ -21,7 +21,7 @@ MonoBehaviour:
   <DisplayName>k__BackingField: Pistol Round
   <Description>k__BackingField: Six chambers, one live round. On your turn, aim at
     a rival and pull the trigger. Click... or BANG! Last contestant standing wins!
-  <PreviewImage>k__BackingField: {fileID: 0}
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 511eb1d60c074004283542e88bf4c6a4, type: 3}
   <Rules>k__BackingField:
   - Look at a rival and press E on your turn
   - Every blank makes the next pull more dangerous

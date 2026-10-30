@@ -24,6 +24,6 @@ public class LobbyHud : MonoBehaviour
         }
 
         string code = _networkRunner?.CurrentLobbyCode;
-        _code.text = string.IsNullOrEmpty(code) ? "" : $"<size=60%>ROOM CODE</size>\n{code}";
+        _code.text = string.IsNullOrEmpty(code) ? "" : $"<size=55%>ROOM CODE</size>\n<color=#E8590C>{code}</color>";
     }
 }

@@ -88,7 +88,7 @@ public class CustomizePanel : PanelBase
         _camera.nearClipPlane = 0.1f;
         _camera.farClipPlane = 15f;
         _camera.clearFlags = CameraClearFlags.SolidColor;
-        _camera.backgroundColor = new Color(0.22f, 0.15f, 0.36f, 1f);
+        _camera.backgroundColor = new Color(0.91f, 0.87f, 0.98f, 1f);
         _camera.targetTexture = _texture;
 
         var lightGo = new GameObject("CustomizeLight");

@@ -31,7 +31,7 @@ public class MinigameHud : MonoBehaviour
         var gameManager = NetworkGameManager.Instance;
         string title = definition != null ? definition.DisplayName.ToUpperInvariant() : "";
         if (gameManager != null && gameManager.RoundCount > 0)
-            title += $"  <size=70%><color=#FFFFFFAA>ROUND {gameManager.RoundIndex + 1}/{gameManager.RoundCount}</color></size>";
+            title += $"  <size=70%><color=#2E1A47AA>ROUND {gameManager.RoundIndex + 1}/{gameManager.RoundCount}</color></size>";
         Set(_title, title, ref _lastTitle);
 
         string timer = "";
@@ -39,7 +39,7 @@ public class MinigameHud : MonoBehaviour
         {
             int seconds = Mathf.CeilToInt(controller.TimeRemaining);
             timer = $"{seconds / 60}:{seconds % 60:00}";
-            if (seconds <= URGENT_SECONDS) timer = $"<color=#FF6A50>{timer}</color>";
+            if (seconds <= URGENT_SECONDS) timer = $"<color=#E03131>{timer}</color>";
         }
         Set(_timer, timer, ref _lastTimer);
 
@@ -47,7 +47,7 @@ public class MinigameHud : MonoBehaviour
         if (controller.IsGameActive && controller is TurnBasedMinigameController turnBased && turnBased.CurrentTurn != PlayerRef.None)
         {
             bool mine = turnBased.CurrentTurn == controller.Runner.LocalPlayer;
-            string turn = mine ? "<color=#FFD54A>YOUR TURN!</color>" : $"{Nickname(turnBased.CurrentTurn)}'s turn";
+            string turn = mine ? "<color=#E8590C>YOUR TURN!</color>" : $"{Nickname(turnBased.CurrentTurn)}'s turn";
             if (turnBased.HasTurnTimer)
                 turn += $"  {Mathf.CeilToInt(turnBased.TurnTimeRemaining)}s";
             status = string.IsNullOrEmpty(status) ? turn : $"{turn}\n<size=75%>{status}</size>";
@@ -62,7 +62,7 @@ public class MinigameHud : MonoBehaviour
     {
         var spawner = FindFirstObjectByType<BasePlayerSpawner>();
         if (spawner != null && spawner.Object != null && spawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname))
-            return $"<color=#{ColorUtility.ToHtmlStringRGB(p.OutfitColor)}>{p.Nickname}</color>";
+            return $"<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(p.OutfitColor, new Color(0.18f, 0.1f, 0.28f), 0.35f))}>{p.Nickname}</color>";
         return $"Player {player.PlayerId}";
     }
 

@@ -88,7 +88,20 @@ Rewrite of `NetworkGameManager` / `LobbyManager` flow.
 - **Bomb Rush:** conveyors deliver bombs, grab and throw them, fuse timer, explosion knocks back / eliminates, last one standing wins.
 - **Pistol Round:** turn-based; the current holder aims at another player and fires. Possible twist to discuss: a revolver chamber with blanks so every shot is a gamble.
 
+## Demo pass (done)
+- **Key Without Lock** as the fifth minigame; arena themes (Scrapyard, Desert, Vault); spawns spread by player count.
+- Character customizer in the main menu (body, hands, head colour, hat), synced to every match.
+- Settings (audio, sensitivity, invert Y, fullscreen), Esc pause menu, synthesized SFX; Steam invites through the overlay only.
+
+## UI rework (done)
+Cartoon style to match the characters: bright palette with an ink outline instead of dark purple, rounded shapes instead of squares.
+- Palette: ink `#2E1A47`, cream `#FFF6E3`, lavender `#E8DDFB`, yellow `#FFC93C`, orange `#FF8A3D`, sky `#5BC0EB`, mint `#4FD1A1`, pink `#FF7EB6`, tomato `#FF5E5B`, grape `#B79CF2`.
+- Generated 9-slice sprites in `Sprites/UI`: `ui_panel` (rounded card), `ui_button` (pill with a bottom lip), `ui_frame` (rounded picture frame), `ui_circle`, `ui_track`, `ui_knob`, `ui_arrow`.
+- Comic Relief Bold everywhere; ink-outlined text through shared materials (`ComicRelief-Bold SDF Outline Thin/Thick`).
+- `ButtonJuice`: buttons grow on hover and squash on press.
+- Main menu panels are modal cards over a dimmed menu; intermission TV uses a cream rules card and framed preview; the results board is a screen overlay with one card per contestant.
+
 ## Later
-- Announcer (text + voice hooks, holographic UI icon), in-game HUD, final reveal show.
-- Key Without Lock, Console Round.
-- Streamer Mode (web voting for Chaos Modifiers), cosmetics, stats, achievements.
+- Announcer (text + voice hooks, holographic UI icon), final reveal show.
+- Console Round.
+- Streamer Mode (web voting for Chaos Modifiers), stats, achievements.

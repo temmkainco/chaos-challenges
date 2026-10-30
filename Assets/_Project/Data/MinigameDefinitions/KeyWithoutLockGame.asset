@@ -21,7 +21,7 @@ MonoBehaviour:
   <DisplayName>k__BackingField: Key Without Lock
   <Description>k__BackingField: Keys everywhere, one vault door, and only a few keys
     fit. Grab one, run to the door and try your luck. Escape before the others!
-  <PreviewImage>k__BackingField: {fileID: 0}
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: e4fecb9172fee5c48bcdedbf6fb21de6, type: 3}
   <Rules>k__BackingField:
   - E grabs a key, E again throws it
   - Press E at the vault door while holding a key to try it
