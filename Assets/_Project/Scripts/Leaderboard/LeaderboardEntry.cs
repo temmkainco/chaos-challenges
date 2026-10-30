@@ -12,4 +12,6 @@ public class LeaderboardEntry
     public bool IsOverallWinner;
     /// <summary>Round results are secret until the final reveal.</summary>
     public bool HideScores;
+    /// <summary>Round podium: the place in this round is shown, points and totals stay secret.</summary>
+    public bool RoundPodium;
 }

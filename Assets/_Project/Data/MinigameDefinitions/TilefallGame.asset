@@ -27,3 +27,8 @@ MonoBehaviour:
   - Tiles crack while you stand on them; crowds break them faster
   - Fall and you restart from the last white checkpoint row
   - Jump into a rival's lane to drop their tiles
+  <Objective>k__BackingField: "Race across the tile lanes to the GOAL arch."
+  <Danger>k__BackingField: "Tiles crack under you and fall faster when crowded. Fall and you restart at the last checkpoint."
+  <Scoring>k__BackingField: "Your finish order decides your place."
+  <Controls>k__BackingField:
+  - "LMB|Shove a rival"

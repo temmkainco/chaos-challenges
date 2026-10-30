@@ -4,10 +4,10 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Minimal screen HUD shared by every minigame. The name, round and rules live on the intermission TV, so during
-/// play the HUD only shows what changes: a small chip with the time left and the minigame's one status line
-/// (hidden when both are empty), a controls hint for the first seconds, and a big banner that pops in and gets out of
-/// the way for "YOUR TURN!" and for the announcer's lines (<see cref="MinigameController.Announcement"/>). Reads replicated state every frame.
+/// Minimal screen HUD shared by every minigame, styled like a TV broadcast: a compact "LIVE" chip in the top-right
+/// corner with the time left and the minigame's one status line (hidden when both are empty), a round-name splash
+/// that slides in at the countdown and animates out, a controls hint for the first seconds, and a big banner for
+/// "YOUR TURN!" and the announcer's lines (<see cref="MinigameController.Announcement"/>). Reads replicated state every frame.
 /// </summary>
 public class MinigameHud : MonoBehaviour
 {
@@ -22,7 +22,7 @@ public class MinigameHud : MonoBehaviour
 
     private string _lastTimer, _lastStatus;
     private CanvasGroup _chip, _hintGroup;
-    private TMP_Text _banner;
+    private TMP_Text _banner, _splash;
     private float _playingTime;
     private PlayerRef _lastTurn = PlayerRef.None;
     private MinigameController _shownFor;
@@ -32,10 +32,38 @@ public class MinigameHud : MonoBehaviour
     {
         if (_title != null)
             _title.gameObject.SetActive(false);
-        _timer.fontSize = Mathf.Min(_timer.fontSize, 56f);
+        _timer.fontSize = 40f;
+        _status.fontSize = 26f;
+        // Broadcast-style corner chip instead of a top-centre panel.
+        var chipRect = (RectTransform)_timer.transform.parent;
+        chipRect.anchorMin = chipRect.anchorMax = chipRect.pivot = new Vector2(1f, 1f);
+        chipRect.anchoredPosition = new Vector2(-24f, -20f);
+        chipRect.sizeDelta = new Vector2(360f, chipRect.sizeDelta.y);
         _chip = Group(_timer.transform.parent);
         _hintGroup = Group(_hint.transform.parent);
         _banner = CreateBanner();
+        CreateRulesCard();
+        _splash = CreateBanner();
+        _splash.name = "RoundSplash";
+        _splash.fontSize = 96f;
+        var splashRect = (RectTransform)_splash.transform;
+        splashRect.anchorMin = splashRect.anchorMax = new Vector2(0.5f, 0.8f);
+    }
+
+    /// <summary>The rules card gets its own overlay canvas: this HUD is hidden during the intro.</summary>
+    private void CreateRulesCard()
+    {
+        var go = new GameObject("RulesCardCanvas", typeof(RectTransform));
+        UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, gameObject.scene);
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 30;
+        var scaler = go.AddComponent<UnityEngine.UI.CanvasScaler>();
+        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.matchWidthOrHeight = 0.5f;
+        go.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+        go.AddComponent<RulesCard>();
     }
 
     private static CanvasGroup Group(Transform t)
@@ -81,6 +109,7 @@ public class MinigameHud : MonoBehaviour
             _lastTurn = PlayerRef.None;
             _hint.text = "";
             _lastAnnouncement = controller.AnnouncementId;
+            ShowRoundSplash(controller);
         }
 
         if (controller.AnnouncementId != _lastAnnouncement)
@@ -99,6 +128,7 @@ public class MinigameHud : MonoBehaviour
             int seconds = Mathf.CeilToInt(controller.TimeRemaining);
             timer = $"{seconds / 60}:{seconds % 60:00}";
             if (seconds <= URGENT_SECONDS) timer = $"<color=#E03131>{timer}</color>";
+            timer = $"<size=55%><color=#E03131><size=180%>●</size></color> LIVE</size>  {timer}";
         }
         Set(_timer, timer, ref _lastTimer);
 
@@ -125,8 +155,27 @@ public class MinigameHud : MonoBehaviour
 
         if (_hint.text.Length == 0 && definition != null && definition.Rules != null && definition.Rules.Length > 0)
             _hint.text = definition.Rules[0];
-        bool showHint = _playingTime < HINT_SECONDS;
+        bool showHint = controller.IsGameActive && _playingTime < HINT_SECONDS;
         _hintGroup.alpha = Mathf.MoveTowards(_hintGroup.alpha, showHint ? 1f : 0f, Time.deltaTime * 2f);
+    }
+
+    /// <summary>"ROUND 2 · BOMB RUSH" slides in from the left at the countdown and slides away again.</summary>
+    private void ShowRoundSplash(MinigameController controller)
+    {
+        var gameManager = NetworkGameManager.Instance;
+        string name = controller.Definition != null ? controller.Definition.DisplayName.ToUpperInvariant() : "";
+        string round = gameManager != null && gameManager.RoundCount > 0 ? $"<size=55%>ROUND {gameManager.RoundIndex + 1} OF {gameManager.RoundCount}</size>\n" : "";
+        _splash.text = round + name;
+        var t = (RectTransform)_splash.transform;
+        t.DOKill();
+        _splash.gameObject.SetActive(true);
+        t.anchoredPosition = new Vector2(-1400f, 0f);
+        DOTween.Sequence()
+            .Append(t.DOAnchorPosX(0f, 0.4f).SetEase(Ease.OutBack))
+            .AppendInterval(1.3f)
+            .Append(t.DOAnchorPosX(1400f, 0.35f).SetEase(Ease.InBack))
+            .OnComplete(() => _splash.gameObject.SetActive(false))
+            .SetLink(_splash.gameObject);
     }
 
     private void PopBanner(string text)

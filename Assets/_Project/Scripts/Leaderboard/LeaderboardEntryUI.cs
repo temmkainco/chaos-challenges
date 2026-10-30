@@ -34,6 +34,18 @@ public class LeaderboardEntryUI : MonoBehaviour
         _nameText.color = _normalColor;
         SetPanel(_rankPanelColor);
 
+        if (entry.RoundPodium)
+        {
+            _rankText.text = $"#{entry.Rank}";
+            _minigameScoreText.text = "";
+            _totalScoreText.text = entry.Rank == 1 ? "ROUND WIN!" : "";
+            if (_badgeText != null)
+                _badgeText.gameObject.SetActive(false);
+            if (entry.Rank == 1)
+                SetPanel(_winnerPanelColor);
+            return;
+        }
+
         if (entry.HideScores)
         {
             _rankText.text = "?";

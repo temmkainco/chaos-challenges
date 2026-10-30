@@ -88,17 +88,18 @@ public class LeaderboardUI : MonoBehaviour
             _titleText.rectTransform.anchoredPosition = new Vector2(0f, isFinal ? 380f : 200f);
         }
 
+        // Only real contestants get a card. The final reveal builds suspense from last place to the winner;
+        // a round podium (top three of this round) pops in quickly under the banner.
+        entries = entries.Where(e => !e.IsEmpty).ToList();
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var ui = Instantiate(_entryPrefab, _entriesContainer);
+            ui.Populate(entries[i]);
+            ui.AnimateIn(isFinal ? (entries.Count - 1 - i) * _finalRevealStagger : 0.3f + i * 0.15f);
+            _spawnedEntries.Add(ui);
+        }
         if (isFinal)
         {
-            // Only real contestants get a card; the reveal builds suspense from last place to the winner.
-            entries = entries.Where(e => !e.IsEmpty).ToList();
-            for (int i = 0; i < entries.Count; i++)
-            {
-                var ui = Instantiate(_entryPrefab, _entriesContainer);
-                ui.Populate(entries[i]);
-                ui.AnimateIn((entries.Count - 1 - i) * _finalRevealStagger);
-                _spawnedEntries.Add(ui);
-            }
             _focusedCamera.Priority = 20;
             _canvasGroup.blocksRaycasts = true;
         }

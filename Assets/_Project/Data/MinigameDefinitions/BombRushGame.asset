@@ -27,3 +27,10 @@ MonoBehaviour:
   - Thrown bombs explode on contact; lit ones explode on their own
   - Fall off the stage and you are out
   - Holding a bomb when it goes off? Bad idea
+  <Objective>k__BackingField: "Blast everyone else off the stage with bombs."
+  <Danger>k__BackingField: "Explosions launch you. Fall off the stage and you're out."
+  <Scoring>k__BackingField: "Last one standing wins; the order you fall decides the rest."
+  <Controls>k__BackingField:
+  - "E|Grab / drop a bomb"
+  - "Hold LMB|Aim, release to throw"
+  - "LMB (empty hands)|Shove"

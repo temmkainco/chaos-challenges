@@ -27,3 +27,9 @@ MonoBehaviour:
   - Too slow? The show presses one for you
   - Safe plates show how many mines touch them
   - When only mines are left, a new field is dealt
+  <Objective>k__BackingField: "Be the last contestant standing on the stage."
+  <Danger>k__BackingField: "Step on a mine and you're blown off the stage. Too slow? The show presses a plate for you."
+  <Scoring>k__BackingField: "Last one standing wins; the earlier you blow up, the lower you place."
+  <Controls>k__BackingField:
+  - "E|Press the plate you stand at"
+  - "Numbers|Mines touching that plate"

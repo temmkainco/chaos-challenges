@@ -11,6 +11,8 @@ public enum MinigamePhase : byte
     Countdown,
     Playing,
     Finished,
+    /// <summary>Rules card and arena fly-over; everyone readies up (or the timer runs out), then the countdown.</summary>
+    Intro,
 }
 
 /// <summary>
@@ -29,6 +31,10 @@ public class MinigameController : NetworkBehaviour
     /// <summary>The announcer's latest one-liner ("DRAW!"), shown as a big banner; the id bumps on every call.</summary>
     [Networked] public NetworkString<_32> Announcement { get; private set; }
     [Networked] public int AnnouncementId { get; private set; }
+    /// <summary>Bit per <see cref="PlayerRef.PlayerId"/>: ready on the rules card.</summary>
+    [Networked] public int ReadyMask { get; private set; }
+
+    public const float INTRO_SECONDS = 15f;
 
     /// <summary>The minigame of the loaded scene, on every peer.</summary>
     public static MinigameController Current { get; private set; }
@@ -69,13 +75,33 @@ public class MinigameController : NetworkBehaviour
             return;
 
         SetPlayersInput(false);
+        ReadyMask = 0;
+        SetPhase(MinigamePhase.Intro, INTRO_SECONDS);
+    }
 
+    private void BeginCountdown()
+    {
         if (_hasCountdown && _minigameDefinition.StartDelay > 0f)
         {
             SetPhase(MinigamePhase.Countdown, _minigameDefinition.StartDelay);
             return;
         }
         StartGame();
+    }
+
+    public bool IsReady(PlayerRef player) => (ReadyMask & (1 << player.PlayerId)) != 0;
+    public int ReadyCount => ConnectedPlayers().Count(IsReady);
+    public int PlayerCount => ConnectedPlayers().Count();
+
+    /// <summary>Sent by each player's rules card (controls are locked during the intro, so this is not gameplay input).</summary>
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    public void RPC_Ready(RpcInfo info = default)
+    {
+        if (Phase != MinigamePhase.Intro) return;
+        var player = info.Source == PlayerRef.None ? Runner.LocalPlayer : info.Source;
+        ReadyMask |= 1 << player.PlayerId;
+        if (ConnectedPlayers().All(IsReady))
+            BeginCountdown();
     }
 
     public override void Spawned()
@@ -155,6 +181,9 @@ public class MinigameController : NetworkBehaviour
 
         switch (Phase)
         {
+            case MinigamePhase.Intro:
+                BeginCountdown();
+                break;
             case MinigamePhase.Countdown:
                 StartGame();
                 break;

@@ -27,3 +27,9 @@ MonoBehaviour:
   - Press E at the vault door while holding a key to try it
   - Only keys in the lock's colour fit; others shatter
   - The last contestant locked inside loses
+  <Objective>k__BackingField: "Find a key that fits the vault lock and escape."
+  <Danger>k__BackingField: "Keys in the wrong colour shatter at the door. The last one locked inside loses."
+  <Scoring>k__BackingField: "Escape order decides your place."
+  <Controls>k__BackingField:
+  - "E|Grab a key / try it at the door"
+  - "Hold LMB|Throw a key"

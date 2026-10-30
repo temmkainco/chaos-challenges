@@ -142,7 +142,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         SetSessionOpen(false);
 
         Debug.Log($"[Match] Starting: {RosterCount} players, {RoundCount} rounds");
-        GoToIntermission();
+        LoadRound();
     }
 
     public void ProceedFromIntermission()
@@ -227,7 +227,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         {
             case MatchPhase.RoundOver:
                 RoundIndex++;
-                GoToIntermission();
+                LoadRound();
                 break;
             case MatchPhase.FinalReveal:
                 ReturnToLobby();
@@ -323,6 +323,16 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
             RoundMinigames.Set(i, order[i]);
 
         RoundIndex = 0;
+    }
+
+    /// <summary>
+    /// Straight into the next round's arena: one scene load per round, covered by the show curtain. The rules card and
+    /// ready-up happen inside the arena (<see cref="MinigamePhase.Intro"/>), so there is no separate intermission scene.
+    /// </summary>
+    private void LoadRound()
+    {
+        SetPhase(MatchPhase.Playing);
+        LoadScene(CurrentMinigame.SceneBuildIndex);
     }
 
     private void GoToIntermission()
