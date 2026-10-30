@@ -26,7 +26,7 @@ public class ThrowPreview : MonoBehaviour
         var go = new GameObject("ThrowArc");
         _line = go.AddComponent<LineRenderer>();
         _line.material = new Material(template);
-        _line.widthCurve = AnimationCurve.Linear(0f, 0.09f, 1f, 0.04f);
+        _line.widthCurve = AnimationCurve.Linear(0f, 0.14f, 1f, 0.07f);
         _line.numCapVertices = 4;
         _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         _line.receiveShadows = false;
@@ -35,7 +35,7 @@ public class ThrowPreview : MonoBehaviour
         var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         Destroy(ring.GetComponent<Collider>());
         ring.name = "ThrowTarget";
-        ring.transform.localScale = new Vector3(0.7f, 0.01f, 0.7f);
+        ring.transform.localScale = new Vector3(1.2f, 0.01f, 1.2f);
         var renderer = ring.GetComponent<Renderer>();
         renderer.material = new Material(template);
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

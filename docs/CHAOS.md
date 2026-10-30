@@ -23,7 +23,7 @@ ChaosDirector.Request(ChaosModifier modifier, float seconds = 12f); // returns f
 | Blackout | debuff | The lights go out |
 | MeteorShower | hazard | Rocks fall near contestants |
 
-Console Round turns down Giants, Tiny and MeteorShower, because contestants are seated. It applies the other modifiers to the pixel game: speed, gravity, jump, icy controls, reversed controls, and blackout as TV static.
+Console Round only takes chaos the pixel game can feel: SpeedRush, SlowMotion, ReversedControls and Blackout (TV static) in every cartridge, plus LowGravity and SuperJump in the cartridges that jump (Flap Dash, Pixel Runner, Sky Hopper). Body chaos (meteors, giants, tiny, ice) is off because everyone is seated.
 
 ## Twists (`ChaosModifier.Twist`, one per round)
 

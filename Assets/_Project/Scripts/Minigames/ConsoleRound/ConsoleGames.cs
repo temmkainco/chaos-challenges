@@ -8,11 +8,10 @@ public struct ConsoleInput
     public bool APressed, UpPressed;
 }
 
-/// <summary>Chaos applied to a console game (low gravity, super jump, icy controls).</summary>
+/// <summary>Chaos applied to a console game (low gravity, super jump).</summary>
 public struct ConsoleTuning
 {
     public float Gravity, Jump;
-    public bool Slippery;
 
     public static ConsoleTuning Normal => new() { Gravity = 1f, Jump = 1f };
 }
@@ -46,6 +45,9 @@ public abstract class ConsoleGame
     };
 
     public abstract string Title { get; }
+
+    /// <summary>Whether the cartridge has gravity and jumps (Flap Dash, Pixel Runner, Sky Hopper), for chaos.</summary>
+    public static bool HasGravity(int cartridge) => cartridge is 1 or 2 or 4;
 
     public void Begin(int seed)
     {
@@ -448,7 +450,7 @@ public sealed class BrickGame : ConsoleGame
 
     private readonly bool[] _bricks = new bool[ROWS * COLS];
     private int _left, _wall;
-    private float _px, _pvx, _bx, _by, _vx, _vy;
+    private float _px, _bx, _by, _vx, _vy;
     private bool _launched;
 
     private static readonly Color32[] RowColors = { C(255, 94, 91), C(255, 160, 70), C(255, 202, 61), C(79, 209, 160), C(92, 191, 235) };
@@ -460,7 +462,6 @@ public sealed class BrickGame : ConsoleGame
         _wall = 0;
         NewWall();
         _px = W / 2f - PW / 2f;
-        _pvx = 0f;
         _launched = false;
     }
 
@@ -475,9 +476,7 @@ public sealed class BrickGame : ConsoleGame
 
     protected override void Update(float dt, in ConsoleInput input)
     {
-        float target = input.X * 125f;
-        _pvx = Tune.Slippery ? Mathf.MoveTowards(_pvx, target, 240f * dt) : target;
-        _px = Mathf.Clamp(_px + _pvx * dt, 1f, W - 1f - PW);
+        _px = Mathf.Clamp(_px + input.X * 125f * dt, 1f, W - 1f - PW);
 
         if (!_launched)
         {
@@ -594,8 +593,7 @@ public sealed class HopperGame : ConsoleGame
 
     protected override void Update(float dt, in ConsoleInput input)
     {
-        float target = input.X * 78f;
-        _vx = Tune.Slippery ? Mathf.MoveTowards(_vx, target, 180f * dt) : target;
+        _vx = input.X * 78f;
         if (input.X != 0) _facingLeft = input.X < 0;
         _x += _vx * dt;
         if (_x < -4f) _x += W;

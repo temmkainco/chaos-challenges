@@ -51,7 +51,7 @@ public class PauseMenu : MonoBehaviour
     {
         bool messageOpen = _messagePanel != null && _messagePanel.gameObject.activeSelf;
         bool playing = Player.Local != null && !IsOpen && !messageOpen && Application.isFocused && !SteamInviteListener.OverlayActive
-                       && SceneManager.GetActiveScene().path != GameScenes.Intermission;
+                       && SceneManager.GetActiveScene().path != GameScenes.Intermission && !RulesCard.WantsCursor && !GamePackPanel.IsOpen;
         var lockState = playing ? CursorLockMode.Locked : CursorLockMode.None;
         if (Cursor.lockState != lockState) Cursor.lockState = lockState;
         if (Cursor.visible == playing) Cursor.visible = !playing;

@@ -39,6 +39,9 @@ public class PooledObjectProvider : NetworkObjectProviderDefault
                 var reused = pool.Pop();
                 if (reused == null) continue;   // destroyed with an unloaded scene
                 reused.transform.SetParent(null, false);
+                // Unparenting keeps it in the DontDestroyOnLoad scene; it must belong to the round's scene so it goes
+                // away with it (otherwise bombs leak into the next round).
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(reused.gameObject, UnityEngine.SceneManagement.SceneManager.GetActiveScene());
                 Restore(reused);
                 reused.gameObject.SetActive(true);
                 return reused;

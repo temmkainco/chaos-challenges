@@ -72,9 +72,21 @@ public class ConsoleRoundMinigameController : MinigameController
     public override string TwistKind => "DEBUFF";
     public override string TwistDescription => "Every screen flips left to right.";
 
-    /// <summary>Meteors, giants and tiny would knock contestants off their seats; the rest all bend the console game.</summary>
-    public override bool SupportsChaos(ChaosModifier modifier) =>
-        modifier is not (ChaosModifier.MeteorShower or ChaosModifier.Giants or ChaosModifier.Tiny) && base.SupportsChaos(modifier);
+    /// <summary>
+    /// Only chaos the console game can feel: speed, reversed controls, blackout (static) and the twist everywhere;
+    /// low gravity and super jump only in cartridges with jumping. Body chaos (meteors, giants, tiny, ice) is out:
+    /// everyone is seated.
+    /// </summary>
+    public override bool SupportsChaos(ChaosModifier modifier)
+    {
+        if (!base.SupportsChaos(modifier)) return false;
+        return modifier switch
+        {
+            ChaosModifier.SpeedRush or ChaosModifier.SlowMotion or ChaosModifier.ReversedControls or ChaosModifier.Blackout or ChaosModifier.Twist => true,
+            ChaosModifier.LowGravity or ChaosModifier.SuperJump => ConsoleGame.HasGravity(Cartridge),
+            _ => false,
+        };
+    }
 
     public int BestOf(PlayerRef player) => Best.TryGet(player, out var v) ? v : 0;
 
@@ -298,13 +310,13 @@ public class ConsoleRoundMinigameController : MinigameController
                 {
                     Gravity = chaos == ChaosModifier.LowGravity ? 0.5f : 1f,
                     Jump = chaos == ChaosModifier.SuperJump ? 1.3f : chaos == ChaosModifier.LowGravity ? 0.8f : 1f,
-                    Slippery = chaos == ChaosModifier.IceFloor,
                 };
                 var input = _input;
                 if (chaos == ChaosModifier.ReversedControls) { input.X = -input.X; input.Y = -input.Y; }
 
                 if (_game.Over)
                 {
+                    _input.APressed = _input.UpPressed = false;   // taps during GAME OVER don't carry into the next run
                     _restartTimer -= Time.deltaTime;
                     if (_restartTimer <= 0f) StartRun();
                 }
@@ -315,7 +327,9 @@ public class ConsoleRoundMinigameController : MinigameController
                     {
                         _accumulator -= STEP;
                         _game.Step(STEP, input, tuning);
+                        // A press is consumed by one step: one tap is one flap / jump (frames without a step keep it).
                         input.APressed = input.UpPressed = false;
+                        _input.APressed = _input.UpPressed = false;
                         if (_game.Over)
                         {
                             _restartTimer = RESTART_SECONDS;

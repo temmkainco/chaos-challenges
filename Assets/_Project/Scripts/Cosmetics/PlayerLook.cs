@@ -42,6 +42,12 @@ public class PlayerLook : MonoBehaviour
                 _hatInstance.transform.localPosition = option.LocalPosition;
                 _hatInstance.transform.localRotation = Quaternion.Euler(option.LocalEuler);
                 _hatInstance.transform.localScale = Vector3.one * (option.Scale > 0f ? option.Scale : 1f);
+                // Hats come from prop packs with physics: a leftover Rigidbody would drop the hat off the head.
+                foreach (var rigidbody in _hatInstance.GetComponentsInChildren<Rigidbody>(true))
+                {
+                    rigidbody.isKinematic = true;
+                    DestroyObject(rigidbody);
+                }
                 foreach (var c in _hatInstance.GetComponentsInChildren<Collider>(true))
                     DestroyObject(c);
                 SetLayerRecursively(_hatInstance, _body != null ? _body.gameObject.layer : gameObject.layer);

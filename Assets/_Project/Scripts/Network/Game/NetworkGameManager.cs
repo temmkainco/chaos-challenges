@@ -209,7 +209,10 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         if (_waitingForLoad)
         {
             bool timedOut = _loadTimeout.Expired(Runner);
-            if (AllPlayersLoaded() || timedOut)
+            // Reloading the same arena (a one-game pack) leaves the old scene active for a moment: wait for the new
+            // round's controller, not the finished one.
+            bool arenaReady = Phase != MatchPhase.Playing || FreshController() != null;
+            if ((AllPlayersLoaded() && arenaReady) || timedOut)
             {
                 if (timedOut)
                     Debug.LogWarning("[Match] Scene load timed out; continuing without the slow players.");
@@ -305,6 +308,8 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
             Roster.Set(i, default);
     }
 
+    public MinigameSceneDatabaseSO Database => _database;
+
     /// <summary>Editor/test only: play these minigame ids in this order instead of the random draw.</summary>
     public static string[] ForcedRoundIds;
 
@@ -312,14 +317,16 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     private void BuildRounds()
     {
         int available = _database.Count;
-        // Host's choice (MatchSettings, default 3), drawn at random from all minigames without repeats.
+        // Host's choice (MatchSettings, default 3), drawn at random without repeats from the host's game pack.
         int wanted = _roundsPerMatch > 0 ? _roundsPerMatch : MatchSettings.Rounds;
         RoundCount = Mathf.Clamp(wanted, 1, MAX_ROUNDS);
+        var pack = Enumerable.Range(0, available).Where(i => MatchSettings.IsMinigameEnabled(_database.GetByIndex(i).Id)).ToList();
+        if (pack.Count == 0) pack = Enumerable.Range(0, available).ToList();
 
         var order = new List<int>(RoundCount + available);
         while (order.Count < RoundCount)
         {
-            var bag = Enumerable.Range(0, available).OrderBy(_ => UnityEngine.Random.value).ToList();
+            var bag = pack.OrderBy(_ => UnityEngine.Random.value).ToList();
             if (order.Count > 0 && bag.Count > 1 && bag[0] == order[^1])
                 (bag[0], bag[1]) = (bag[1], bag[0]);
             order.AddRange(bag);
@@ -386,7 +393,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         switch (Phase)
         {
             case MatchPhase.Playing:
-                var controller = FindFirstObjectByType<MinigameController>();
+                var controller = FreshController() ?? FindFirstObjectByType<MinigameController>();
                 if (controller == null)
                 {
                     Debug.LogError($"[Match] No MinigameController in scene {PendingSceneIndex}; skipping round.");
@@ -400,6 +407,12 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
                 SetSessionOpen(true);
                 break;
         }
+    }
+
+    private static MinigameController FreshController()
+    {
+        var controller = MinigameController.Current;
+        return controller != null && controller.Object != null && controller.Object.IsValid && controller.Phase == MinigamePhase.Waiting ? controller : null;
     }
 
     private bool AllPlayersLoaded()

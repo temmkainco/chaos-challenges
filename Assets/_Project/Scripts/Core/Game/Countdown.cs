@@ -19,12 +19,12 @@ public class Countdown : MonoBehaviour
         _countdownContainer.SetActive(true);
 
         _countdownPanel.alpha = 0;
-        _countdownPanel.DOFade(1f, 0.1f);
+        _countdownPanel.DOFade(1f, 0.1f).SetLink(_countdownPanel.gameObject);
     }
 
     protected virtual void HideCountdown()
     {
-        _countdownPanel.DOFade(0f, 0.1f).OnComplete(() => {
+        _countdownPanel.DOFade(0f, 0.1f).SetLink(_countdownPanel.gameObject).OnComplete(() => {
             _countdownContainer.SetActive(false);
         });
     }

@@ -23,6 +23,9 @@ public class RulesCard : MonoBehaviour
     private Image _illustration;
     private Button _readyButton;
     private CinemachineCamera _orbit;
+    /// <summary>The card is waiting for the local player: the pause menu frees the mouse so READY can be clicked.</summary>
+    public static bool WantsCursor { get; private set; }
+
     private MinigameController _shownFor;
     private MinigameDefinitionSO _shownDefinition;
     private bool _sentReady;
@@ -73,13 +76,13 @@ public class RulesCard : MonoBehaviour
 
         var strip = MakeImage(card.transform, "ReadyStrip", kit.Panel, UiKit.Lavender);
         strip.type = Image.Type.Sliced;
-        Place(strip.rectTransform, -140f, -300f, 960f, 110f);
-        _readyList = MakeText(strip.transform, "Ready", 30f, UiKit.Ink, false, 0f, 14f, 920f, 46f);
-        _readyHint = MakeText(strip.transform, "Hint", 24f, UiKit.Ink, false, 0f, -28f, 920f, 36f);
+        Place(strip.rectTransform, -175f, -300f, 890f, 110f);
+        _readyList = MakeText(strip.transform, "Ready", 30f, UiKit.Ink, false, 0f, 14f, 850f, 46f);
+        _readyHint = MakeText(strip.transform, "Hint", 24f, UiKit.Ink, false, 0f, -28f, 850f, 36f);
 
         var button = MakeImage(card.transform, "ReadyButton", kit.Button, UiKit.Yellow);
         button.type = Image.Type.Sliced;
-        Place(button.rectTransform, 470f, -300f, 280f, 96f);
+        Place(button.rectTransform, 465f, -300f, 290f, 100f);
         _readyButton = button.gameObject.AddComponent<Button>();
         _readyButton.targetGraphic = button;
         _readyButton.onClick.AddListener(SendReady);
@@ -95,13 +98,17 @@ public class RulesCard : MonoBehaviour
         _group.blocksRaycasts = intro;
         UpdateOrbit(intro);
         if (!intro)
+        {
+            WantsCursor = false;
             return;
+        }
 
         if (controller != _shownFor || controller.Definition != _shownDefinition)
             Fill(controller);
 
         bool ready = controller.IsReady(controller.Runner.LocalPlayer) || _sentReady;
         _readyButton.interactable = !ready;
+        WantsCursor = !ready;
         if (!ready && !PauseMenu.IsOpen && Keyboard.current != null
             && (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame))
             SendReady();
@@ -114,6 +121,8 @@ public class RulesCard : MonoBehaviour
             RefreshReady(controller, ready, seconds);
         }
     }
+
+    private void OnDestroy() => WantsCursor = false;
 
     private void Fill(MinigameController controller)
     {
@@ -177,7 +186,7 @@ public class RulesCard : MonoBehaviour
         _readyList.text = _sb.ToString();
         _readyHint.text = localReady
             ? $"Waiting for the others - starting in {seconds}s"
-            : $"Press <b>E</b> when you're ready - starting in {seconds}s";
+            : $"Click READY or press <b>E</b> - starting in {seconds}s";
     }
 
     private void SendReady()

@@ -104,7 +104,7 @@ public class LeaderboardUI : MonoBehaviour
             _canvasGroup.blocksRaycasts = true;
         }
 
-        _canvasGroup.DOFade(1f, _fadeInDuration).SetEase(Ease.OutSine);
+        _canvasGroup.DOFade(1f, _fadeInDuration).SetEase(Ease.OutSine).SetLink(_canvasGroup.gameObject);
         if (!isFinal && _titleText != null)
         {
             var title = _titleText.transform;
@@ -123,6 +123,7 @@ public class LeaderboardUI : MonoBehaviour
         _canvasGroup
             .DOFade(0f, _fadeOutDuration)
             .SetEase(Ease.InSine)
+            .SetLink(_canvasGroup.gameObject)
             .OnComplete(() => _canvasGroup.blocksRaycasts = false);
     }
 

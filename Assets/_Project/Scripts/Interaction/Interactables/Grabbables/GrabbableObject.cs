@@ -12,8 +12,12 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
 {
     public const float MIN_THROW_SPEED = 6f;
     public const float MAX_THROW_SPEED = 19f;
-    /// <summary>Throws leave a little above the camera's aim so a level aim still arcs.</summary>
-    public const float THROW_PITCH_BONUS = 10f;
+    /// <summary>
+    /// The follow camera looks down at the contestant (about 17 degrees at rest), so its aim is lifted by this much:
+    /// the resting camera throws a little upward, looking up lobs higher and farther, looking down throws flat.
+    /// </summary>
+    public const float AIM_LIFT = 30f;
+    public const float MIN_ELEVATION = 6f, MAX_ELEVATION = 60f;
 
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
     public NetworkBool IsGrabbed { get; private set; }
@@ -54,6 +58,14 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         _interpolationTarget = FindInterpolationTarget();
         if (_collider != null)
             _halfSize = Mathf.Max(_collider.bounds.extents.x, _collider.bounds.extents.z);
+        // Models from prop packs can carry their own Rigidbody: it would drop the model out of the item (tiny falling bombs).
+        foreach (var body in GetComponentsInChildren<Rigidbody>(true))
+            if (body.gameObject != gameObject)
+            {
+                body.isKinematic = true;
+                Destroy(body);
+            }
+
         Outline = GetComponent<Outline>();
         if (Outline == null)
         {
@@ -194,9 +206,11 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         var flat = new Vector3(aim.x, 0f, aim.z);
         if (flat.sqrMagnitude < 0.0001f)
             flat = Vector3.forward;
-        // Raise the aim around the horizontal axis that is perpendicular to it.
+        // Launch angle from the camera pitch (see AIM_LIFT), around the horizontal axis perpendicular to the aim.
+        float pitch = Mathf.Asin(Mathf.Clamp(aim.y, -1f, 1f)) * Mathf.Rad2Deg;
+        float elevation = Mathf.Clamp(pitch + AIM_LIFT, MIN_ELEVATION, MAX_ELEVATION);
         var axis = Vector3.Cross(Vector3.up, flat.normalized);
-        var dir = Quaternion.AngleAxis(-THROW_PITCH_BONUS, axis) * aim;
+        var dir = Quaternion.AngleAxis(-elevation, axis) * flat.normalized;
         return dir.normalized * Mathf.Lerp(MIN_THROW_SPEED, MAX_THROW_SPEED, Mathf.Clamp01(charge));
     }
 

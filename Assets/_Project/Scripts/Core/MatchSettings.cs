@@ -32,6 +32,30 @@ public static class MatchSettings
         set { PlayerPrefs.SetInt("match.chaos", (int)value); PlayerPrefs.Save(); }
     }
 
+    /// <summary>
+    /// The host's game pack: minigame ids left out of the draw (stored as a comma list; empty = every game). Picked in
+    /// the lobby (<see cref="GamePackPanel"/>).
+    /// </summary>
+    public static bool IsMinigameEnabled(string id) => System.Array.IndexOf(DisabledIds, id) < 0;
+
+    public static void SetMinigameEnabled(string id, bool enabled)
+    {
+        var ids = new System.Collections.Generic.List<string>(DisabledIds);
+        ids.Remove(id);
+        if (!enabled) ids.Add(id);
+        PlayerPrefs.SetString("match.disabled", string.Join(",", ids));
+        PlayerPrefs.Save();
+    }
+
+    private static string[] DisabledIds
+    {
+        get
+        {
+            string raw = PlayerPrefs.GetString("match.disabled", "");
+            return raw.Length == 0 ? System.Array.Empty<string>() : raw.Split(',');
+        }
+    }
+
     public static bool Shoving
     {
         get => PlayerPrefs.GetInt("match.shove", 1) == 1;
