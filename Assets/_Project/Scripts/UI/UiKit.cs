@@ -18,6 +18,8 @@ public class UiKit : ScriptableObject
     public Sprite Panel;
     public Sprite Button;
     public Sprite Circle;
+    /// <summary>Hollow rounded frame (drawn over pictures).</summary>
+    public Sprite Frame;
     public TMP_FontAsset Font;
     public Material OutlineThick;
     public Material OutlineThin;

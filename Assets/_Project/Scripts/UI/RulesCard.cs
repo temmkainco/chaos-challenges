@@ -50,12 +50,19 @@ public class RulesCard : MonoBehaviour
         _round = MakeText(card.transform, "Round", 30f, UiKit.Ink, false, 0f, 330f, 1200f, 40f);
         _title = MakeText(card.transform, "Title", 84f, UiKit.Orange, true, 0f, 262f, 1200f, 100f);
 
-        var frame = MakeImage(card.transform, "IllustrationFrame", kit.Panel, UiKit.Ink);
+        // Picture clipped inside the frame, with the rounded frame drawn on top so nothing pokes over its edge.
+        var back = MakeImage(card.transform, "IllustrationBack", kit.Panel, UiKit.Ink);
+        back.type = Image.Type.Sliced;
+        Place(back.rectTransform, -300f, 40f, 640f, 340f);
+        var clip = new GameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
+        clip.transform.SetParent(card.transform, false);
+        Place((RectTransform)clip.transform, -300f, 40f, 612f, 312f);
+        _illustration = MakeImage(clip.transform, "Illustration", null, Color.white);
+        Place(_illustration.rectTransform, 0f, 0f, 612f, 312f);
+        var frame = MakeImage(card.transform, "IllustrationFrame", kit.Frame != null ? kit.Frame : kit.Panel, UiKit.Ink);
         frame.type = Image.Type.Sliced;
-        Place(frame.rectTransform, -300f, 40f, 640f, 340f);
-        _illustration = MakeImage(frame.transform, "Illustration", null, Color.white);
-        _illustration.preserveAspect = true;
-        Place(_illustration.rectTransform, 0f, 0f, 620f, 320f);
+        frame.pixelsPerUnitMultiplier = 2.2f;
+        Place(frame.rectTransform, -300f, 40f, 644f, 344f);
 
         _objective = Row(card.transform, "GOAL", UiKit.Mint, 330f, 150f);
         _danger = Row(card.transform, "WATCH OUT", UiKit.Tomato, 330f, 40f);

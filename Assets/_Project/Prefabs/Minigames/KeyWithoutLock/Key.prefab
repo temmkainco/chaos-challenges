@@ -236,6 +236,7 @@ MonoBehaviour:
   _IsGrabbed:
     _value: 0
   _HolderObject: {fileID: 0}
+  _holdStyle: 1
   _handOffset: {x: 0.05, y: -0.05, z: 0.18}
   _handEuler: {x: 0, y: 0, z: 0}
   _canThrow: 0

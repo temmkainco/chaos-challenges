@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
+  m_Name: HotPotatoGame
+  m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
+  <Id>k__BackingField: hot_potato
+  <SceneBuildIndex>k__BackingField: 11
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: 120
+  <IsTimeLimited>k__BackingField: 1
+  <StartDelay>k__BackingField: 3
+  <DisplayName>k__BackingField: Hot Potato
+  <Description>k__BackingField: Someone is carrying a ticking bomb! Touch a rival
+    to pass it on before it blows.
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 4b1310a22146e83469914083c0b8612b, type: 3}
+  <Rules>k__BackingField:
+  - Touch a rival to pass the bomb
+  - The holder runs a little faster
+  - The bomb pulses faster before it blows
+  <Objective>k__BackingField: Don't be holding the bomb when it explodes.
+  <Danger>k__BackingField: The bomb blasts its holder out. It can't be passed straight
+    back.
+  <Scoring>k__BackingField: Last one standing wins; the order of explosions decides
+    the rest.
+  <Controls>k__BackingField:
+  - Touch|Pass the bomb
+  - LMB|Shove

@@ -15,6 +15,7 @@ MonoBehaviour:
   Panel: {fileID: 21300000, guid: 2e42d218eccdda24d8b355cbd4eca313, type: 3}
   Button: {fileID: 21300000, guid: 38d5df26c1544c346896edb448494eb7, type: 3}
   Circle: {fileID: 21300000, guid: f53ab5a38ca083f4eb86b3644c66074a, type: 3}
+  Frame: {fileID: 21300000, guid: 184075e446b8f4d459c31264be687f24, type: 3}
   Font: {fileID: 11400000, guid: 283b8f278d4e2954cb7ede17c73c80df, type: 2}
   OutlineThick: {fileID: 2100000, guid: 41a7f6ae0e7cce741ac7476c4f89388a, type: 2}
   OutlineThin: {fileID: 2100000, guid: fae37642cfc07d4438cfa6bf69ce0722, type: 2}

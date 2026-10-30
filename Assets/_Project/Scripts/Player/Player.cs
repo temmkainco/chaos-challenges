@@ -38,8 +38,23 @@ public class Player : NetworkBehaviour, ISpawned
         _platformService = platformService;
     }
 
+    /// <summary>Current emote (see <see cref="EmotePlayer"/>); 0 = none. Replicated so everyone sees it.</summary>
+    [Networked] public byte EmoteId { get; private set; }
+    [Networked] public int EmoteTick { get; private set; }
+
+    /// <summary>Sent by the owner's emote wheel.</summary>
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_Emote(byte emote)
+    {
+        if (emote >= EmotePlayer.COUNT) return;
+        EmoteId = emote;
+        EmoteTick = Runner.Tick;
+    }
+
     public override void Spawned()
     {
+        if (!TryGetComponent<EmotePlayer>(out _))
+            gameObject.AddComponent<EmotePlayer>();
         OnLookChanged();
 
         if (Object.HasInputAuthority)

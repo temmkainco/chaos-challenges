@@ -18,18 +18,15 @@ MonoBehaviour:
   <GameDuration>k__BackingField: 90
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
-  <DisplayName>k__BackingField: Key Without Lock
-  <Description>k__BackingField: Keys everywhere and one vault door. Check the lock's
-    colour, grab a matching key and escape before the others!
+  <DisplayName>k__BackingField: Key Hunt
+  <Description>k__BackingField: 12 numbered doors, 48 keys, and every key opens exactly one door. Find yours and escape first!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: e4fecb9172fee5c48bcdedbf6fb21de6, type: 3}
   <Rules>k__BackingField:
-  - E grabs a key, E drops it; hold left mouse to aim and throw
-  - Press E at the vault door while holding a key to try it
-  - Only keys in the lock's colour fit; others shatter
-  - The last contestant locked inside loses
-  <Objective>k__BackingField: "Find a key that fits the vault lock and escape."
-  <Danger>k__BackingField: "Keys in the wrong colour shatter at the door. The last one locked inside loses."
+  - E grabs a key; E at a door tries it
+  - A wrong door tells you if its real door is COLD, WARM or HOT
+  - Keys cannot be thrown or knocked out of your hands
+  <Objective>k__BackingField: "Find the door your key opens and escape first."
+  <Danger>k__BackingField: "Wrong doors waste time. The last one still inside loses."
   <Scoring>k__BackingField: "Escape order decides your place."
   <Controls>k__BackingField:
-  - "E|Grab a key / try it at the door"
-  - "Hold LMB|Throw a key"
+  - "E|Grab a key / try it at a door"

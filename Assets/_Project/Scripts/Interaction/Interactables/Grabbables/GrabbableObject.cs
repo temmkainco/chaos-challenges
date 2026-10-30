@@ -24,7 +24,11 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Networked] public PlayerRef CurrentHolder { get; private set; }
     [Networked] public NetworkObject HolderObject { get; private set; }
 
+    public enum HoldStyle { Front, Hand }
+
     [Header("Hold Settings")]
+    [SerializeField, Tooltip("Front: carried in front of the chest, clear of the body (bombs, prizes). Hand: in the right hand (keys).")]
+    private HoldStyle _holdStyle = HoldStyle.Front;
     [SerializeField, Tooltip("Offset from the right hand bone, in the holder's space (x right, y up, z forward)")] private Vector3 _handOffset = new Vector3(0.05f, -0.05f, 0.18f);
     [SerializeField] private Vector3 _handEuler;
     [SerializeField, Tooltip("Off for items that may only be carried and dropped (Key Hunt keys)")] private bool _canThrow = true;
@@ -32,11 +36,15 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [SerializeField, Range(0.3f, 1f), Tooltip("Holder's speed multiplier while carrying this (heavy prizes slow you down)")] private float _carrySpeed = 1f;
 
     public bool CanThrow => _canThrow;
+
+    /// <summary>Live grabbables on this peer; players never collide with them (see <see cref="IgnorePlayers"/>).</summary>
+    public static readonly System.Collections.Generic.List<GrabbableObject> Active = new();
     public float CarrySpeed => _carrySpeed;
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;
     private Transform _interpolationTarget;
+    private float _halfSize = 0.4f;
 
 
     private void Awake()
@@ -44,6 +52,8 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
         _nrb = GetComponent<NetworkRigidbody3D>();
         _collider = GetComponent<Collider>();
         _interpolationTarget = FindInterpolationTarget();
+        if (_collider != null)
+            _halfSize = Mathf.Max(_collider.bounds.extents.x, _collider.bounds.extents.z);
         Outline = GetComponent<Outline>();
         if (Outline == null)
         {
@@ -57,7 +67,26 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
 
     public override void Spawned()
     {
+        if (!Active.Contains(this)) Active.Add(this);
+        IgnorePlayers();
         ApplyHeldState();
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        Active.Remove(this);
+    }
+
+    /// <summary>
+    /// Items never push, block or trap contestants: players walk through them, and a released or thrown item can
+    /// never wedge inside its holder. Grabbing uses overlap queries, so it is unaffected.
+    /// </summary>
+    public void IgnorePlayers()
+    {
+        if (_collider == null) return;
+        foreach (var controller in PlayerMovement.Controllers)
+            if (controller != null)
+                Physics.IgnoreCollision(_collider, controller, true);
     }
 
     private void OnGrabbedChanged()
@@ -176,6 +205,15 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
 
     private void GetHoldPose(out Vector3 position, out Quaternion rotation)
     {
+        var holder = HolderObject.transform;
+        if (_holdStyle == HoldStyle.Front)
+        {
+            // In front of the chest, far enough out for the item's own size so it never clips the body.
+            float reach = 0.45f + _halfSize;
+            position = holder.position + Vector3.up * 1.1f + holder.forward * reach;
+            rotation = holder.rotation;
+            return;
+        }
         var hand = PlayerRig.For(HolderObject.gameObject).RightHand;
         if (hand != null)
         {

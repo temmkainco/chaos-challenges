@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Zenject;
+using Random = UnityEngine.Random;
 
 public enum MinigamePhase : byte
 {
@@ -35,6 +36,13 @@ public class MinigameController : NetworkBehaviour
     [Networked] public int ReadyMask { get; private set; }
 
     public const float INTRO_SECONDS = 15f;
+
+    /// <summary>The chaos modifier in effect (see <see cref="ChaosDirector"/>); every peer applies it from this state.</summary>
+    [Networked] public ChaosModifier ActiveChaos { get; private set; }
+    [Networked] private TickTimer ChaosTimer { get; set; }
+    public float ChaosTimeRemaining => ChaosTimer.RemainingTime(Runner) ?? 0f;
+    [Networked] private TickTimer NextRandomChaos { get; set; }
+    [Networked] private TickTimer NextMeteor { get; set; }
 
     /// <summary>The minigame of the loaded scene, on every peer.</summary>
     public static MinigameController Current { get; private set; }
@@ -77,7 +85,11 @@ public class MinigameController : NetworkBehaviour
         SetPlayersInput(false);
         ReadyMask = 0;
         SetPhase(MinigamePhase.Intro, INTRO_SECONDS);
+        OnIntro();
     }
+
+    /// <summary>Host only. The rules card is up and players are frozen: place them on the arena here.</summary>
+    protected virtual void OnIntro() { }
 
     private void BeginCountdown()
     {
@@ -125,9 +137,11 @@ public class MinigameController : NetworkBehaviour
     public virtual bool HandlePrimaryAction(Player player) => false;
 
     /// <summary>Whether contestants can shove each other (empty hands + throw button) in this minigame.</summary>
-    public virtual bool AllowShove => true;
+    public virtual bool AllowShove => MatchSettings.Shoving;
     /// <summary>Whether a shove makes the target drop what they hold (off in Key Hunt: your key stays yours).</summary>
     public virtual bool ShoveDropsHeldItem => true;
+    /// <summary>Multiplier on shove knockback (Ring Out makes shoves the main weapon).</summary>
+    public virtual float ShoveStrength => 1f;
 
     /// <summary>Optional status line for the arena display (e.g. mines left, contestants left).</summary>
     public virtual string GetStatusText() => null;
@@ -139,9 +153,115 @@ public class MinigameController : NetworkBehaviour
     public virtual bool HandlePlayerFell(Player player) => false;
 
     /// <summary>Host only. Opens the round: players can move. Overrides call the base first.</summary>
+    #region Chaos (buffs, debuffs, hazards for everyone; the future audience vote calls ChaosDirector.Request)
+
+    /// <summary>Whether this minigame allows <paramref name="modifier"/> (override to veto ones that break the game).</summary>
+    public virtual bool SupportsChaos(ChaosModifier modifier) => modifier != ChaosModifier.None;
+
+    /// <summary>Host only. Game-specific twist when a modifier starts (more bombs, faster cracks...).</summary>
+    protected virtual void OnChaosStarted(ChaosModifier modifier) { }
+    protected virtual void OnChaosEnded(ChaosModifier modifier) { }
+
+    /// <summary>Host only; see <see cref="ChaosDirector.Request"/>.</summary>
+    public bool StartChaos(ChaosModifier modifier, float seconds)
+    {
+        if (!HasStateAuthority || !IsGameActive || !SupportsChaos(modifier))
+            return false;
+        if (ActiveChaos != ChaosModifier.None)
+            EndChaos();
+        ActiveChaos = modifier;
+        ChaosTimer = TickTimer.CreateFromSeconds(Runner, seconds);
+        NextMeteor = TickTimer.CreateFromSeconds(Runner, 1f);
+        Announce($"{ChaosInfo.Kind(modifier)}: {ChaosInfo.Title(modifier)}!");
+        Debug.Log($"[Chaos] {modifier} for {seconds:0}s");
+        OnChaosStarted(modifier);
+        return true;
+    }
+
+    private void EndChaos()
+    {
+        var ended = ActiveChaos;
+        ActiveChaos = ChaosModifier.None;
+        ChaosTimer = TickTimer.None;
+        OnChaosEnded(ended);
+    }
+
+    private void TickChaos()
+    {
+        if (!IsGameActive)
+        {
+            if (ActiveChaos != ChaosModifier.None) EndChaos();
+            return;
+        }
+
+        if (ActiveChaos != ChaosModifier.None && ChaosTimer.Expired(Runner))
+            EndChaos();
+
+        // Random director until the audience vote exists.
+        if (ChaosDirector.Level != ChaosLevel.Off && ActiveChaos == ChaosModifier.None)
+        {
+            if (!NextRandomChaos.IsRunning)
+                NextRandomChaos = TickTimer.CreateFromSeconds(Runner, ChaosDirector.Level == ChaosLevel.Wild ? 8f : 18f);
+            else if (NextRandomChaos.Expired(Runner))
+            {
+                NextRandomChaos = TickTimer.CreateFromSeconds(Runner, ChaosDirector.Level == ChaosLevel.Wild ? Random.Range(10f, 16f) : Random.Range(20f, 32f));
+                for (int attempt = 0; attempt < 8; attempt++)
+                    if (StartChaos((ChaosModifier)Random.Range(1, ChaosInfo.COUNT), ChaosDirector.Level == ChaosLevel.Wild ? 12f : 10f))
+                        break;
+            }
+        }
+
+        // Meteor shower: the host picks impact points near contestants, every peer shows the warning and the rock.
+        if (ActiveChaos == ChaosModifier.MeteorShower && NextMeteor.ExpiredOrNotRunning(Runner))
+        {
+            NextMeteor = TickTimer.CreateFromSeconds(Runner, 0.7f);
+            var targets = new List<Player>();
+            foreach (var entry in _playerSpawner.Players)
+                if (entry.Value != null && !entry.Value.ControlsLocked) targets.Add(entry.Value);
+            if (targets.Count > 0)
+            {
+                var target = targets[Random.Range(0, targets.Count)];
+                var flat = Random.insideUnitCircle * 4f;
+                var point = target.transform.position + new Vector3(flat.x, 0f, flat.y);
+                if (Runner.GetPhysicsScene().Raycast(point + Vector3.up * 6f, Vector3.down, out var hit, 20f, ~0, QueryTriggerInteraction.Ignore))
+                    point = hit.point;
+                _pendingMeteors.Add((point, TickTimer.CreateFromSeconds(Runner, METEOR_WARNING)));
+                RPC_Meteor(point);
+            }
+        }
+        for (int i = _pendingMeteors.Count - 1; i >= 0; i--)
+        {
+            if (!_pendingMeteors[i].timer.Expired(Runner)) continue;
+            var impact = _pendingMeteors[i].point;
+            _pendingMeteors.RemoveAt(i);
+            foreach (var entry in _playerSpawner.Players)
+            {
+                var player = entry.Value;
+                if (player == null || player.ControlsLocked) continue;
+                var away = player.transform.position - impact;
+                if (away.magnitude > 2.6f) continue;
+                away.y = 0f;
+                if (away.sqrMagnitude < 0.01f) away = Vector3.forward;
+                if (player.TryGetComponent<PlayerMovement>(out var movement))
+                    movement.Launch(away.normalized * 10f + Vector3.up * 8f);
+            }
+        }
+    }
+
+    public const float METEOR_WARNING = 1.2f;
+    private readonly List<(Vector3 point, TickTimer timer)> _pendingMeteors = new();
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Meteor(Vector3 point)
+    {
+        ChaosEffects.Meteor(point, METEOR_WARNING);
+    }
+
+    #endregion
+
     protected virtual void StartGame()
     {
-        SetPhase(MinigamePhase.Playing, IsTimeLimited ? _minigameDefinition.GameDuration : 0f);
+        SetPhase(MinigamePhase.Playing, IsTimeLimited ? _minigameDefinition.GameDuration * MatchSettings.LengthMultiplier : 0f);
         SetPlayersInput(true);
 
         Debug.Log($"Minigame {_minigameDefinition.Id} started!");
@@ -176,6 +296,9 @@ public class MinigameController : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        if (HasStateAuthority)
+            TickChaos();
+
         if (!HasStateAuthority || !PhaseTimer.Expired(Runner))
             return;
 

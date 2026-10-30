@@ -47,6 +47,21 @@ public class PlayerMovement : NetworkBehaviour
 
     public bool IsLaunched => !LaunchTimer.ExpiredOrNotRunning(Runner);
 
+    /// <summary>Every contestant's controller on this peer; grabbable items ignore collisions with all of them.</summary>
+    public static readonly System.Collections.Generic.List<CharacterController> Controllers = new();
+
+    public override void Spawned()
+    {
+        if (!Controllers.Contains(_unityController)) Controllers.Add(_unityController);
+        foreach (var item in GrabbableObject.Active)
+            if (item != null) item.IgnorePlayers();
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        Controllers.Remove(_unityController);
+    }
+
     private void Awake()
     {
         _characterController = GetComponent<NetworkCharacterController>();
@@ -82,17 +97,30 @@ public class PlayerMovement : NetworkBehaviour
         var velocity = CurrentVelocity;
         bool launched = IsLaunched;
 
+        // Chaos modifiers are networked on the minigame, so prediction and the host apply the same rules.
+        var chaos = MinigameController.Current != null && MinigameController.Current.Object != null && MinigameController.Current.Object.IsValid
+            ? MinigameController.Current.ActiveChaos : ChaosModifier.None;
+        float speedScale = chaos == ChaosModifier.SpeedRush ? 1.5f : chaos == ChaosModifier.SlowMotion ? 0.55f : chaos == ChaosModifier.Giants ? 1.15f : chaos == ChaosModifier.Tiny ? 0.85f : 1f;
+        float gravityScale = chaos == ChaosModifier.LowGravity ? 0.4f : 1f;
+        float jumpScale = chaos == ChaosModifier.SuperJump ? 1.9f : chaos == ChaosModifier.LowGravity ? 1.2f : 1f;
+        bool ice = chaos == ChaosModifier.IceFloor;
+        // Hot Potato: whoever carries the bomb runs a little faster, so passing it is a chase.
+        if (MinigameController.Current is HotPotatoMinigameController potato && potato.Object != null && potato.Object.IsValid && potato.Holder == Object.InputAuthority)
+            speedScale *= 1.12f;
+        if (chaos == ChaosModifier.ReversedControls)
+            data.Direction = -data.Direction;
+
         // Horizontal: accelerate toward the wanted velocity.
         Vector3 input = new Vector3(data.Direction.x, 0f, data.Direction.z);
         if (input.sqrMagnitude > 1f) input.Normalize();
-        float speed = _maxSpeed;
+        float speed = _maxSpeed * speedScale;
         if (_interaction != null && _interaction.HeldObject != null && _interaction.HeldObject.TryGetComponent<GrabbableObject>(out var carried))
             speed *= carried.CarrySpeed;
         Vector3 wish = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f) * input * speed;
         Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
         float accel;
         if (launched) accel = _airAcceleration * _launchControl;
-        else if (IsGrounded) accel = wish.sqrMagnitude > 0.01f ? _groundAcceleration : _groundDeceleration;
+        else if (IsGrounded) accel = ice ? 9f : wish.sqrMagnitude > 0.01f ? _groundAcceleration : _groundDeceleration;
         else accel = _airAcceleration;
         if (launched)
             horizontal *= Mathf.Clamp01(1f - _airDrag * dt);
@@ -111,7 +139,7 @@ public class PlayerMovement : NetworkBehaviour
         bool coyote = IsGrounded || (Runner.Tick - LastGroundedTick) * dt <= _coyoteTime;
         if (buffered && coyote && !launched && velocity.y <= 0.5f)
         {
-            velocity.y = Mathf.Sqrt(2f * _gravity * _jumpHeight);
+            velocity.y = Mathf.Sqrt(2f * _gravity * gravityScale * _jumpHeight * jumpScale);
             JumpPressedTick = 0;
             LastGroundedTick = -1000;
             JumpHeld = true;
@@ -127,7 +155,7 @@ public class PlayerMovement : NetworkBehaviour
         }
 
         // Gravity, heavier on the way down.
-        float g = _gravity * (velocity.y < 0f ? _fallMultiplier : 1f);
+        float g = _gravity * gravityScale * (velocity.y < 0f ? _fallMultiplier : 1f);
         velocity.y = Mathf.Max(velocity.y - g * dt, -_maxFallSpeed);
         if (IsGrounded && velocity.y < 0f)
             velocity.y = -2f;   // keep the controller pressed onto slopes and steps

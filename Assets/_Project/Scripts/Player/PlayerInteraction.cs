@@ -202,7 +202,10 @@ public class PlayerInteraction : NetworkBehaviour
 
         var push = (best.transform.position - transform.position).WithY(0f).normalized;
         if (best.TryGetComponent<PlayerMovement>(out var movement))
-            movement.Launch(push * _shovePush + Vector3.up * _shoveLift);
+        {
+            float strength = minigame != null ? minigame.ShoveStrength : 1f;
+            movement.Launch(push * _shovePush * strength + Vector3.up * _shoveLift);
+        }
         if ((minigame == null || minigame.ShoveDropsHeldItem) && best.Interaction != null)
             best.Interaction.ForceDrop();
         RPC_Shoved(best.transform.position);

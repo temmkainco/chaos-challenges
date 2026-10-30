@@ -28,6 +28,7 @@ public class MinigameHud : MonoBehaviour
     private MinigameController _shownFor;
     private int _lastAnnouncement;
     private int _lastTimerSeconds = -1;
+    private bool _chipVisible;
     private float _nextStatus;
     private static BasePlayerSpawner _spawner;
 
@@ -46,6 +47,7 @@ public class MinigameHud : MonoBehaviour
         _hintGroup = Group(_hint.transform.parent);
         _banner = CreateBanner();
         CreateRulesCard();
+        gameObject.AddComponent<ChaosEffects>();
         _splash = CreateBanner();
         _splash.name = "RoundSplash";
         _splash.fontSize = 96f;
@@ -159,15 +161,22 @@ public class MinigameHud : MonoBehaviour
                     PopBanner("YOUR TURN!");
             }
         }
+        // Active chaos (buff / debuff / hazard) on top of the status line, with its countdown.
+        if (controller.ActiveChaos != ChaosModifier.None)
+        {
+            string chaos = $"<color=#{ColorUtility.ToHtmlStringRGB(ChaosInfo.KindColor(controller.ActiveChaos) * 0.8f)}><b>{ChaosInfo.Title(controller.ActiveChaos)}</b> {Mathf.CeilToInt(controller.ChaosTimeRemaining)}s</color>";
+            status = string.IsNullOrEmpty(status) ? chaos : $"{chaos}\n{status}";
+        }
         Set(_status, status, ref _lastStatus);
         _status.gameObject.SetActive(status.Length > 0);
         _timer.gameObject.SetActive(timer.Length > 0);
-        _chip.alpha = Mathf.MoveTowards(_chip.alpha, timer.Length + status.Length > 0 ? 1f : 0f, Time.deltaTime * 5f);
+        _chipVisible = timer.Length + status.Length > 0;
 
     Hint:
+        _chip.alpha = Mathf.MoveTowards(_chip.alpha, _chipVisible ? 1f : 0f, Time.deltaTime * 5f);
         if (_hint.text.Length == 0 && definition != null && definition.Rules != null && definition.Rules.Length > 0)
             _hint.text = definition.Rules[0];
-        bool showHint = controller.IsGameActive && _playingTime < HINT_SECONDS;
+        bool showHint = GameSettings.ShowHints && controller.IsGameActive && _playingTime < HINT_SECONDS;
         _hintGroup.alpha = Mathf.MoveTowards(_hintGroup.alpha, showHint ? 1f : 0f, Time.deltaTime * 2f);
     }
 

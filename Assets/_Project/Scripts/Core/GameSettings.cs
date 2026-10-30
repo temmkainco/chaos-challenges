@@ -13,6 +13,8 @@ public static class GameSettings
     public static float MouseSensitivity { get => Get("set.sens", 1f); set => Set("set.sens", Mathf.Clamp(value, 0.2f, 3f)); }
     public static bool InvertY { get => Get("set.invert", 0f) > 0.5f; set => Set("set.invert", value ? 1f : 0f); }
     public static bool Fullscreen { get => Get("set.fullscreen", 1f) > 0.5f; set => Set("set.fullscreen", value ? 1f : 0f); }
+    /// <summary>Controls hints and help lines on the HUD and in the lobby.</summary>
+    public static bool ShowHints { get => Get("set.hints", 1f) > 0.5f; set => Set("set.hints", value ? 1f : 0f); }
     public static bool VSync { get => Get("set.vsync", 1f) > 0.5f; set => Set("set.vsync", value ? 1f : 0f); }
     public static int Quality { get => (int)Get("set.quality", QualitySettings.GetQualityLevel()); set => Set("set.quality", Mathf.Clamp(value, 0, QualitySettings.names.Length - 1)); }
 

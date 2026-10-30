@@ -15,8 +15,12 @@ public class LobbyHud : MonoBehaviour
 
     private void Update()
     {
-        string help = "Everyone in? Press <b>E</b> on the big red button to get ready.\n" +
-                      "<size=80%>The show starts when all contestants are ready. Invite friends through the Steam overlay (Shift+Tab).</size>";
+        bool showHelp = GameSettings.ShowHints;
+        var helpPanel = _help.transform.parent.gameObject;
+        if (helpPanel.activeSelf != showHelp)
+            helpPanel.SetActive(showHelp);
+        const string help = "Everyone in? Press <b>E</b> on the big red button to get ready.\n" +
+                            "<size=80%>The show starts when all contestants are ready. Hold <b>T</b> to emote.</size>";
         if (help != _last)
         {
             _last = help;

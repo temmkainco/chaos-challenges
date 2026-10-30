@@ -12,6 +12,7 @@ public class SettingsPanel : PanelBase
     [SerializeField] private Toggle _invertY;
     [SerializeField] private Toggle _fullscreen;
     [SerializeField] private Toggle _vsync;
+    [SerializeField] private Toggle _hints;
     [SerializeField] private Button _qualityPrevious;
     [SerializeField] private Button _qualityNext;
     [SerializeField] private TMP_Text _quality;
@@ -35,6 +36,7 @@ public class SettingsPanel : PanelBase
         _invertY.onValueChanged.AddListener(v => { if (!_refreshing) GameSettings.InvertY = v; });
         _fullscreen.onValueChanged.AddListener(v => { if (!_refreshing) GameSettings.Fullscreen = v; });
         _vsync.onValueChanged.AddListener(v => { if (!_refreshing) GameSettings.VSync = v; });
+        if (_hints != null) _hints.onValueChanged.AddListener(v => { if (!_refreshing) GameSettings.ShowHints = v; });
         _qualityPrevious.onClick.AddListener(() => StepQuality(-1));
         _qualityNext.onClick.AddListener(() => StepQuality(1));
         _resolutionPrevious.onClick.AddListener(() => StepResolution(-1));
@@ -69,6 +71,7 @@ public class SettingsPanel : PanelBase
         _sensitivity.value = GameSettings.MouseSensitivity;
         _invertY.isOn = GameSettings.InvertY;
         _fullscreen.isOn = GameSettings.Fullscreen;
+        if (_hints != null) _hints.isOn = GameSettings.ShowHints;
         _vsync.isOn = GameSettings.VSync;
         _quality.text = QualitySettings.names[Mathf.Clamp(GameSettings.Quality, 0, QualitySettings.names.Length - 1)];
 

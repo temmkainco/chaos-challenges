@@ -18,7 +18,10 @@ public class TurnDisplay : MonoBehaviour
 
     private void Update()
     {
-        if (_controller.Object == null || !_controller.Object.IsValid)
+        // Scenes built from another minigame may still point at the old controller: use the scene's current one.
+        if (_controller == null)
+            _controller = MinigameController.Current;
+        if (_controller == null || _controller.Object == null || !_controller.Object.IsValid)
             return;
 
         if (!_controller.IsGameActive)

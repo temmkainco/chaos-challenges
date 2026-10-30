@@ -35,5 +35,20 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Minigames/PrizeGrabMinigame.unity
     guid: 8e46d5718554f1645b17a29fc0d4b2da
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/HexDropMinigame.unity
+    guid: 802a803e8d74f204eb309e0fc4631e8f
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/HotPotatoMinigame.unity
+    guid: 94d567d10793db44c8a10fcaa9d631d1
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/RingOutMinigame.unity
+    guid: ade863c18f037374a8da558abf6ce6db
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/CannonBarrageMinigame.unity
+    guid: e329d16ff7e8ff7409426508c6ed5219
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ColorCodeMinigame.unity
+    guid: fd0603c2b1a509b469aed18a5e4898aa
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

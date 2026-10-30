@@ -139,6 +139,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
 
         BuildRoster();
         BuildRounds();
+        ChaosDirector.Level = MatchSettings.Chaos;
         SetSessionOpen(false);
 
         Debug.Log($"[Match] Starting: {RosterCount} players, {RoundCount} rounds");
@@ -308,7 +309,9 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     private void BuildRounds()
     {
         int available = _database.Count;
-        RoundCount = Mathf.Clamp(_roundsPerMatch > 0 ? _roundsPerMatch : available, 1, MAX_ROUNDS);
+        // Host's choice (MatchSettings, default 3), drawn at random from all minigames without repeats.
+        int wanted = _roundsPerMatch > 0 ? _roundsPerMatch : MatchSettings.Rounds;
+        RoundCount = Mathf.Clamp(wanted, 1, MAX_ROUNDS);
 
         var order = new List<int>(RoundCount + available);
         while (order.Count < RoundCount)
