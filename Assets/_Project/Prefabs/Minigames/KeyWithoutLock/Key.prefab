@@ -236,9 +236,9 @@ MonoBehaviour:
   _IsGrabbed:
     _value: 0
   _HolderObject: {fileID: 0}
-  _holdPositionOffset: {x: 0.3, y: 1.3, z: 0.8}
-  _throwForce: 9
-  _throwLift: 3
+  _handOffset: {x: 0.05, y: -0.05, z: 0.18}
+  _handEuler: {x: 0, y: 0, z: 0}
+  _canThrow: 0
 --- !u!114 &1404686675135013186
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -270,6 +270,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaultKey
   _Variant: 0
+  _DoorId: 0
+  _Heat: 0
   _renderers:
   - {fileID: 8460293545227680651}
   - {fileID: 5344277020332102135}

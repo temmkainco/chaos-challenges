@@ -27,6 +27,12 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Header("Hold Settings")]
     [SerializeField, Tooltip("Offset from the right hand bone, in the holder's space (x right, y up, z forward)")] private Vector3 _handOffset = new Vector3(0.05f, -0.05f, 0.18f);
     [SerializeField] private Vector3 _handEuler;
+    [SerializeField, Tooltip("Off for items that may only be carried and dropped (Key Hunt keys)")] private bool _canThrow = true;
+
+    [SerializeField, Range(0.3f, 1f), Tooltip("Holder's speed multiplier while carrying this (heavy prizes slow you down)")] private float _carrySpeed = 1f;
+
+    public bool CanThrow => _canThrow;
+    public float CarrySpeed => _carrySpeed;
 
     private NetworkRigidbody3D _nrb;
     private Collider _collider;

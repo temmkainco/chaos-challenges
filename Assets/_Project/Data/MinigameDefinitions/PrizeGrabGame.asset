@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
+  m_Name: PrizeGrabGame
+  m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
+  <Id>k__BackingField: prize_grab
+  <SceneBuildIndex>k__BackingField: 9
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: 75
+  <IsTimeLimited>k__BackingField: 1
+  <StartDelay>k__BackingField: 3
+  <DisplayName>k__BackingField: Prize Grab
+  <Description>k__BackingField: Prizes rain onto the stage! Grab them, carry them
+    to your podium and bank them before the others steal the show.
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 4bd84816b4e37034d9691ec76a164fe7, type: 3}
+  <Rules>k__BackingField:
+  - E grabs a prize; E at your podium banks it
+  - Hold left mouse to throw - straight into your podium works too
+  - 'Empty hands: left mouse shoves a rival'
+  <Objective>k__BackingField: Bank the most prizes on your own podium.
+  <Danger>k__BackingField: Carrying slows you down, and a shove knocks the prize
+    out of your hands.
+  <Scoring>k__BackingField: Gift box 1 point, golden chest 3. Most points when time
+    runs out wins.
+  <Controls>k__BackingField:
+  - E|Grab / bank at your podium
+  - Hold LMB|Throw
+  - LMB (empty hands)|Shove

@@ -85,7 +85,10 @@ public class PlayerMovement : NetworkBehaviour
         // Horizontal: accelerate toward the wanted velocity.
         Vector3 input = new Vector3(data.Direction.x, 0f, data.Direction.z);
         if (input.sqrMagnitude > 1f) input.Normalize();
-        Vector3 wish = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f) * input * _maxSpeed;
+        float speed = _maxSpeed;
+        if (_interaction != null && _interaction.HeldObject != null && _interaction.HeldObject.TryGetComponent<GrabbableObject>(out var carried))
+            speed *= carried.CarrySpeed;
+        Vector3 wish = Quaternion.Euler(0f, data.CameraRotation.eulerAngles.y, 0f) * input * speed;
         Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
         float accel;
         if (launched) accel = _airAcceleration * _launchControl;

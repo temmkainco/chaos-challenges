@@ -133,7 +133,7 @@ public class PlayerInteraction : NetworkBehaviour
             if (throwPressed && HasStateAuthority)
                 TryShove();
         }
-        else if (throwPressed)
+        else if (throwPressed && (!HeldObject.TryGetComponent<GrabbableObject>(out var held) || held.CanThrow))
             ChargeStartTick = Runner.Tick;
 
         if (throwReleased && IsCharging)

@@ -23203,12 +23203,12 @@ MonoBehaviour:
   _hasCountdown: 1
   _bombPrefab:
     RawGuidValue: f0cd254441570a84eba4dabea60ee5b5
-  _spawnInterval: 3
-  _maxBombsPerPlayer: 2
-  _suddenDeathSeconds: 40
-  _blastRadius: 5
-  _blastLaunch: 16
-  _blastLift: 9
+  _spawnInterval: 2.2
+  _maxBombsPerPlayer: 3
+  _suddenDeathSeconds: 25
+  _blastRadius: 4.5
+  _blastLaunch: 14
+  _blastLift: 10
   _effectMaterial: {fileID: 2100000, guid: 2d0ce77f4c01b4c4b9f01473511fb993, type: 2}
   _bench: {fileID: 73006885}
 --- !u!1001 &1922509358

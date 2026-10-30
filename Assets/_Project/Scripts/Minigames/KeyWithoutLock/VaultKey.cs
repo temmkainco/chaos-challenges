@@ -3,8 +3,9 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// A key for the vault door. Grabbed and thrown with <see cref="GrabbableObject"/>; whether it fits is known
-/// only to the host (<see cref="KeyLockMinigameController"/>). Keys come in a few colours that mean nothing.
+/// A Key Hunt key. Carried with <see cref="GrabbableObject"/> (keys cannot be thrown). Which door it opens
+/// (<see cref="DoorId"/>) is set by the host and never shown; after a wrong try the key remembers how close its
+/// door was (<see cref="Heat"/>) and glows cold blue, warm orange or hot red.
 /// </summary>
 [RequireComponent(typeof(GrabbableObject))]
 public class VaultKey : NetworkBehaviour
@@ -17,6 +18,12 @@ public class VaultKey : NetworkBehaviour
     };
 
     [Networked, OnChangedRender(nameof(ApplyColor))] public byte Variant { get; set; }
+    /// <summary>The door this key opens (host only cares; not shown anywhere).</summary>
+    [Networked] public byte DoorId { get; set; }
+    /// <summary>0 = untried, 1 = cold, 2 = warm, 3 = hot (its door is close to the last door tried).</summary>
+    [Networked, OnChangedRender(nameof(ApplyColor))] public byte Heat { get; set; }
+
+    private static readonly Color[] HeatColors = { Color.white, new(0.35f, 0.65f, 1f), new(1f, 0.6f, 0.2f), new(1f, 0.2f, 0.15f) };
 
     [SerializeField] private Renderer[] _renderers;
     [SerializeField] private Transform _visual;
@@ -41,7 +48,7 @@ public class VaultKey : NetworkBehaviour
     private void ApplyColor()
     {
         var block = new MaterialPropertyBlock();
-        var color = Colors[Variant % Colors.Length];
+        var color = Heat > 0 ? HeatColors[Mathf.Min(Heat, (byte)3)] : Colors[Variant % Colors.Length];
         foreach (var r in _renderers)
         {
             if (r == null) continue;

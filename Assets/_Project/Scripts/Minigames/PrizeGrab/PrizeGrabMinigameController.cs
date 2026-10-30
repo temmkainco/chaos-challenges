@@ -1,0 +1,247 @@
+using Fusion;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEngine;
+
+/// <summary>
+/// Prize Grab: prizes rain onto the studio stage. Grab one (E), carry it to your own podium and press E there, or
+/// throw it in, to bank it. Carrying slows you down and a shove knocks the prize out of your hands, so the stage is
+/// always busy. Gift boxes are worth 1, golden chests 3; the last seconds are a bonus rain of golden chests.
+/// Most points when time runs out wins. Podiums sit on a ring around the stage, one per contestant.
+/// </summary>
+public class PrizeGrabMinigameController : MinigameController
+{
+    public const int MAX_PLAYERS = 8;
+
+    [SerializeField] private NetworkPrefabRef _prizePrefab;
+    [SerializeField, Tooltip("Centre of the stage")] private Transform _stageCentre;
+    [SerializeField] private float _rainRadius = 11f;
+    [SerializeField] private float _podiumRadius = 15f;
+    [SerializeField] private float _bankRange = 2.4f;
+    [SerializeField, Tooltip("Seconds between prizes with 2 players; more players get them faster")] private float _rainInterval = 1.6f;
+    [SerializeField] private int _maxPrizesPerPlayer = 2;
+    [SerializeField, Range(0f, 1f)] private float _goldenChance = 0.15f;
+    [SerializeField] private float _bonusSeconds = 15f;
+
+    [Networked, Capacity(MAX_PLAYERS)] private NetworkDictionary<PlayerRef, int> Scores => default;
+    [Networked] private TickTimer RainTimer { get; set; }
+    [Networked] private NetworkBool BonusAnnounced { get; set; }
+
+    private readonly List<PlayerRef> _order = new();
+    private readonly Dictionary<PlayerRef, Transform> _podiums = new();
+    private Transform _podiumRoot;
+
+    public int ScoreOf(PlayerRef player) => Scores.TryGet(player, out var s) ? s : 0;
+
+    public override string GetStatusText()
+    {
+        if (!IsGameActive) return null;
+        int mine = ScoreOf(Runner.LocalPlayer);
+        int best = 0;
+        foreach (var pair in Scores) best = Mathf.Max(best, pair.Value);
+        return $"You banked <b>{mine}</b>   <size=80%>best on stage: {best}</size>";
+    }
+
+    protected override void StartGame()
+    {
+        base.StartGame();
+        if (!HasStateAuthority) return;
+        foreach (var p in ConnectedPlayers())
+            Scores.Set(p, 0);
+        RainTimer = TickTimer.CreateFromSeconds(Runner, 0.5f);
+    }
+
+    /// <summary>Podium position for a contestant: evenly spaced by join order, so every peer agrees.</summary>
+    public Vector3 PodiumPosition(PlayerRef player)
+    {
+        var players = SortedPlayers();
+        return PodiumPosition(players.IndexOf(player), players.Count);
+    }
+
+    private Vector3 PodiumPosition(int slot, int count)
+    {
+        count = Mathf.Max(1, count);
+        float angle = (slot + 0.5f) / count * Mathf.PI * 2f;
+        return _stageCentre.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * _podiumRadius;
+    }
+
+    private List<PlayerRef> SortedPlayers()
+    {
+        _order.Clear();
+        foreach (var entry in _playerSpawner.Players)
+            if (entry.Value != null) _order.Add(entry.Key);
+        _order.Sort((a, b) => a.PlayerId.CompareTo(b.PlayerId));
+        return _order;
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        base.FixedUpdateNetwork();
+        if (!HasStateAuthority || !IsGameActive)
+            return;
+
+        bool bonus = IsTimeLimited && TimeRemaining <= _bonusSeconds;
+        if (bonus && !BonusAnnounced)
+        {
+            BonusAnnounced = true;
+            Announce("GOLDEN RAIN!");
+        }
+
+        int players = Mathf.Max(2, ConnectedPlayers().Count());
+        if (RainTimer.ExpiredOrNotRunning(Runner))
+        {
+            float interval = _rainInterval * 2f / players * (bonus ? 0.5f : 1f);
+            RainTimer = TickTimer.CreateFromSeconds(Runner, interval);
+            if (FindObjectsByType<Prize>(FindObjectsSortMode.None).Length < players * _maxPrizesPerPlayer)
+                DropPrize(bonus || Random.value < _goldenChance);
+        }
+
+        // Prizes thrown or dropped onto a podium bank for that podium's owner.
+        if (Runner.Tick % 6 == 0)
+            foreach (var prize in FindObjectsByType<Prize>(FindObjectsSortMode.None))
+            {
+                if (prize.Object == null || !prize.Object.IsValid || prize.Grabbable.IsGrabbed) continue;
+            {
+                var owners = SortedPlayers();
+                for (int i = 0; i < owners.Count; i++)
+                {
+                    var flat = prize.transform.position - PodiumPosition(i, owners.Count);
+                    if (Mathf.Abs(flat.y) < 2.5f && new Vector2(flat.x, flat.z).magnitude < _bankRange * 0.8f)
+                    {
+                        Bank(owners[i], prize);
+                        break;
+                    }
+                }
+            }
+            }
+
+        // Prizes that fall off the stage come back down from the sky.
+        if (Runner.Tick % 30 == 0)
+            foreach (var prize in FindObjectsByType<Prize>(FindObjectsSortMode.None))
+                if (!prize.Grabbable.IsGrabbed && prize.transform.position.y < _stageCentre.position.y - 6f)
+                    Runner.Despawn(prize.Object);
+    }
+
+    private void DropPrize(bool golden)
+    {
+        var flat = Random.insideUnitCircle * _rainRadius;
+        var position = _stageCentre.position + new Vector3(flat.x, 12f, flat.y);
+        Runner.Spawn(_prizePrefab, position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
+            (runner, spawned) => spawned.GetComponent<Prize>().Value = (byte)(golden ? 3 : 1));
+    }
+
+    public override bool HandlePrimaryAction(Player player)
+    {
+        if (!IsGameActive) return false;
+        var held = player.Interaction != null ? player.Interaction.HeldObject : null;
+        if (held == null || !held.TryGetComponent<Prize>(out var prize)) return false;
+
+        var who = player.Object.InputAuthority;
+        var to = PodiumPosition(who) - player.transform.position;
+        to.y = 0f;
+        if (to.magnitude > _bankRange) return false;   // not at your podium: E drops it as usual
+
+        Bank(who, prize);
+        return true;
+    }
+
+    private void Bank(PlayerRef player, Prize prize)
+    {
+        int value = prize.Value;
+        Scores.Set(player, ScoreOf(player) + value);
+        Runner.Despawn(prize.Object);
+        RPC_Banked(player, value);
+    }
+
+    protected override IReadOnlyList<IReadOnlyList<PlayerRef>> GetTimeUpStandings()
+    {
+        // Highest score first; equal scores tie.
+        return ConnectedPlayers()
+            .GroupBy(ScoreOf)
+            .OrderByDescending(g => g.Key)
+            .Select(g => (IReadOnlyList<PlayerRef>)g.ToList())
+            .ToList();
+    }
+
+    public override void HandlePlayerLeft(PlayerRef player)
+    {
+        if (IsGameActive && ConnectedPlayers().Count() <= 1)
+            FinishRound(GetTimeUpStandings());
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Banked(PlayerRef player, int value)
+    {
+        Sfx.Play(value > 1 ? Sound.Fanfare : Sound.Safe, 0.8f, 0.1f);
+        WorldPopup.Show(PodiumPosition(player) + Vector3.up * 3f, $"+{value}", value > 1 ? new Color(1f, 0.8f, 0.2f) : new Color(0.4f, 1f, 0.6f), value > 1 ? 9f : 7f);
+    }
+
+    #region Podium visuals (local)
+
+    public override void Render()
+    {
+        base.Render();
+        if (_stageCentre == null) return;
+        if (_podiumRoot == null)
+            _podiumRoot = new GameObject("Podiums").transform;
+
+        var players = SortedPlayers();
+        for (int i = 0; i < players.Count; i++)
+        {
+            var player = players[i];
+            if (!_podiums.TryGetValue(player, out var podium) || podium == null)
+                _podiums[player] = podium = BuildPodium(player);
+            podium.position = PodiumPosition(i, players.Count);
+        }
+    }
+
+    private Transform BuildPodium(PlayerRef player)
+    {
+        var root = new GameObject("Podium " + player.PlayerId).transform;
+        root.SetParent(_podiumRoot, false);
+        var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(pad.GetComponent<Collider>());
+        pad.transform.SetParent(root, false);
+        pad.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+        pad.transform.localScale = new Vector3(_bankRange * 1.6f, 0.08f, _bankRange * 1.6f);
+        var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(ring.GetComponent<Collider>());
+        ring.transform.SetParent(root, false);
+        ring.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+        ring.transform.localScale = new Vector3(_bankRange * 1.9f, 0.05f, _bankRange * 1.9f);
+
+        Color color = Color.white;
+        string name = "";
+        if (_playerSpawner.Players.TryGet(player, out var p) && p != null)
+        {
+            color = p.OutfitColor;
+            name = p.Nickname;
+        }
+        var mat = Resources.Load<Material>("ThrowArc");
+        var padMat = new Material(mat) { color = new Color(color.r, color.g, color.b, 0.85f) };
+        pad.GetComponent<Renderer>().material = padMat;
+        ring.GetComponent<Renderer>().material = new Material(mat) { color = new Color(1f, 1f, 1f, 0.9f) };
+
+        var label = new GameObject("Name");
+        label.transform.SetParent(root, false);
+        label.transform.localPosition = new Vector3(0f, 2.6f, 0f);
+        var text = label.AddComponent<TextMeshPro>();
+        text.text = name;
+        text.fontSize = 5f;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = color;
+        text.outlineWidth = 0.25f;
+        text.outlineColor = new Color32(46, 26, 71, 255);
+        label.AddComponent<Billboard>();
+        return root;
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        base.Despawned(runner, hasState);
+        if (_podiumRoot != null) Destroy(_podiumRoot.gameObject);
+    }
+
+    #endregion
+}

@@ -18596,7 +18596,6 @@ MonoBehaviour:
   _focusedCamera: {fileID: 1864927953}
   _fadeInDuration: 0.4
   _fadeOutDuration: 0.4
-  _entryStaggerDelay: 0.1
   _finalRevealStagger: 1.2
 --- !u!1 &1775562464
 GameObject:
@@ -20668,6 +20667,7 @@ MonoBehaviour:
     _data:
       Data: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   _AnnouncementId: 0
+  _ReadyMask: 0
   _minigameDefinition: {fileID: 11400000, guid: d701c60a94211e84db245011db98ef7a, type: 2}
   _hasCountdown: 0
   _turnDuration: 12
@@ -21723,8 +21723,8 @@ GameObject:
   m_Component:
   - component: {fileID: 2001498018}
   - component: {fileID: 2001498021}
-  - component: {fileID: 2001498020}
   - component: {fileID: 2001498019}
+  - component: {fileID: 2001498022}
   m_Layer: 0
   m_Name: Stage
   m_TagString: Untagged
@@ -21796,8 +21796,16 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!136 &2001498020
-CapsuleCollider:
+--- !u!33 &2001498021
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001498017}
+  m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!64 &2001498022
+MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -21814,18 +21822,9 @@ CapsuleCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!33 &2001498021
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001498017}
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
   m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &2006129113
 GameObject:
