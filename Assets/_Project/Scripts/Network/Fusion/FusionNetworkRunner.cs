@@ -26,6 +26,8 @@ namespace Networking
         public IReadOnlyList<SessionInfo> Sessions => _sessions;
         public string LastError { get; private set; }
         public bool CanInviteFriends => IsConnected && _steam.IsInLobby;
+        /// <summary>The current session's runner (null between sessions); diagnostics only.</summary>
+        public NetworkRunner Runner => _runner;
 
         public event Action<IReadOnlyList<SessionInfo>> SessionsUpdated;
         public event Action<string> Disconnected;
@@ -42,6 +44,11 @@ namespace Networking
         private const string STEAM_LOBBY_PROPERTY = "steamLobby";
 
         private int PlayerCount => IsConnected ? _runner.ActivePlayers.Count() : 1;
+
+        private void Awake()
+        {
+            if (!TryGetComponent<NetStatsOverlay>(out _)) gameObject.AddComponent<NetStatsOverlay>();
+        }
 
         public async UniTask InitAsync()
         {
@@ -332,6 +339,7 @@ namespace Networking
 
             _runner = null;
 
+            Debug.Log($"[Session] Shutdown: {shutdownReason} (leaving={_isLeaving}, was {(runner.IsServer ? "host" : "client")})");
             if (_isLeaving || shutdownReason == ShutdownReason.Ok)
                 return;
 
@@ -362,10 +370,21 @@ namespace Networking
             _ => $"Disconnected ({reason}).",
         };
 
-        public void OnPlayerJoined(NetworkRunner runner, PlayerRef player) => _steam.UpdatePresence(PlayerCount);
-        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) => _steam.UpdatePresence(PlayerCount);
+        public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+        {
+            Debug.Log($"[Session] Player {player.PlayerId} joined ({runner.ActivePlayers.Count()} in session)");
+            _steam.UpdatePresence(PlayerCount);
+        }
+
+        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+        {
+            Debug.Log($"[Session] Player {player.PlayerId} left ({runner.ActivePlayers.Count()} in session)");
+            _steam.UpdatePresence(PlayerCount);
+        }
+
         public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-        public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+        public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) =>
+            Debug.LogWarning($"[Session] Connect failed: {reason}");
         public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
         public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
         public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
@@ -377,6 +396,7 @@ namespace Networking
         public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
         public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
         public void OnConnectedToServer(NetworkRunner runner) { }
-        public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+        public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) =>
+            Debug.LogWarning($"[Session] Disconnected from host: {reason}");
     }
 }
