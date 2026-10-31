@@ -12,7 +12,7 @@ using UnityEngine.UI;
 /// </summary>
 public class GamePackPanel : MonoBehaviour
 {
-    private static readonly string[] ActionPack = { "tilefall", "bomb_rush", "hot_potato", "ring_out", "cannon_barrage", "hex_drop", "prize_grab",
+    private static readonly string[] ActionPack = { "tilefall", "bomb_rush", "hot_potato", "ring_out", "hex_drop", "prize_grab",
         "spin_sweep", "block_party", "log_roll", "lava_rise", "door_dash", "kart_kup" };
     private static readonly string[] BrainPack = { "mines", "key_without_lock", "color_code", "console_round", "prize_grab", "paint_party", "king_of_the_hill" };
     private static readonly string[] NewPack = { "spin_sweep", "block_party", "log_roll", "lava_rise", "king_of_the_hill", "paint_party", "tail_tag",

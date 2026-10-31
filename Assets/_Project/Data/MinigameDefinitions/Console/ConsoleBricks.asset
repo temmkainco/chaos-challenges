@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ConsoleBricks
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: console_bricks
-  <SceneBuildIndex>k__BackingField: 15
+  <SceneBuildIndex>k__BackingField: 14
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 75
   <IsTimeLimited>k__BackingField: 1

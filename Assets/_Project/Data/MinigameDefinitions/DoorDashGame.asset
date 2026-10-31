@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: DoorDashGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: door_dash
-  <SceneBuildIndex>k__BackingField: 23
+  <SceneBuildIndex>k__BackingField: 22
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 90
   <IsTimeLimited>k__BackingField: 1

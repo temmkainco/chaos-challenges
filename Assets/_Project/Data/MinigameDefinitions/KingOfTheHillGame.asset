@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: KingOfTheHillGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: king_of_the_hill
-  <SceneBuildIndex>k__BackingField: 20
+  <SceneBuildIndex>k__BackingField: 19
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 75
   <IsTimeLimited>k__BackingField: 1

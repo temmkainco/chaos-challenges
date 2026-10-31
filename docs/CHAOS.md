@@ -39,7 +39,6 @@ Console Round only takes chaos the pixel game can feel: SpeedRush, SlowMotion, R
 | Hex Drop | EARTHQUAKE | hazard | Random tiles on every floor crack by themselves |
 | Hot Potato | BOMB HOP | hazard | The bomb jumps to a random contestant every 3 s |
 | Ring Out | SHRINK RAY | hazard | The ring shrinks to half its size, then grows back |
-| Cannon Barrage | BROADSIDE | hazard | All cannons but two fire at once |
 | Color Code | MIND GAMES | debuff | The called colour is written in another colour (read the word) |
 | Console Round | MIRROR MODE | debuff | The TV picture flips left to right |
 

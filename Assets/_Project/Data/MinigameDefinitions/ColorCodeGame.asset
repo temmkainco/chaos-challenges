@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ColorCodeGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: color_code
-  <SceneBuildIndex>k__BackingField: 14
+  <SceneBuildIndex>k__BackingField: 13
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 120
   <IsTimeLimited>k__BackingField: 1

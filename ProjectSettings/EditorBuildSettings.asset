@@ -45,9 +45,6 @@ EditorBuildSettings:
     path: Assets/_Project/Scenes/Minigames/RingOutMinigame.unity
     guid: ade863c18f037374a8da558abf6ce6db
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/CannonBarrageMinigame.unity
-    guid: e329d16ff7e8ff7409426508c6ed5219
-  - enabled: 1
     path: Assets/_Project/Scenes/Minigames/ColorCodeMinigame.unity
     guid: fd0603c2b1a509b469aed18a5e4898aa
   - enabled: 1

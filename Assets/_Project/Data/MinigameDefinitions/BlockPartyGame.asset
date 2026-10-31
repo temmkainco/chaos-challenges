@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: BlockPartyGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: block_party
-  <SceneBuildIndex>k__BackingField: 17
+  <SceneBuildIndex>k__BackingField: 16
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 90
   <IsTimeLimited>k__BackingField: 1

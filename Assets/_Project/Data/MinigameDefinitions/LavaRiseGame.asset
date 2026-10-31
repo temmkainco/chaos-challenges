@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LavaRiseGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: lava_rise
-  <SceneBuildIndex>k__BackingField: 19
+  <SceneBuildIndex>k__BackingField: 18
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 90
   <IsTimeLimited>k__BackingField: 1

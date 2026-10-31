@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SkyRingsGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: sky_rings
-  <SceneBuildIndex>k__BackingField: 25
+  <SceneBuildIndex>k__BackingField: 24
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 75
   <IsTimeLimited>k__BackingField: 1

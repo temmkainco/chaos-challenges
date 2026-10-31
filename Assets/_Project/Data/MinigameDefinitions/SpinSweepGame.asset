@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SpinSweepGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: spin_sweep
-  <SceneBuildIndex>k__BackingField: 16
+  <SceneBuildIndex>k__BackingField: 15
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 90
   <IsTimeLimited>k__BackingField: 1

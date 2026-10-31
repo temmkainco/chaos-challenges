@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TailTagGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: tail_tag
-  <SceneBuildIndex>k__BackingField: 22
+  <SceneBuildIndex>k__BackingField: 21
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 75
   <IsTimeLimited>k__BackingField: 1

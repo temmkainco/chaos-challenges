@@ -33,7 +33,6 @@ public static class ArenaTheme
         ["SpinSweepMinigame"] = new[] { ArenaThemeKind.Colosseum, ArenaThemeKind.Winter, ArenaThemeKind.Graveyard },
         ["TailTagMinigame"] = new[] { ArenaThemeKind.Forest, ArenaThemeKind.Town, ArenaThemeKind.Graveyard },
         ["BombRushMinigame"] = new[] { ArenaThemeKind.Islands },
-        ["CannonBarrageMinigame"] = new[] { ArenaThemeKind.Islands, ArenaThemeKind.Castle, ArenaThemeKind.Volcano },
         ["KeyWithoutLockMinigame"] = new[] { ArenaThemeKind.Prison },
     };
 

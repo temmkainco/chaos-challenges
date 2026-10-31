@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: PaintPartyGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: paint_party
-  <SceneBuildIndex>k__BackingField: 21
+  <SceneBuildIndex>k__BackingField: 20
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 75
   <IsTimeLimited>k__BackingField: 1

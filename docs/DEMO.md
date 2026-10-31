@@ -30,7 +30,6 @@ Each round draws one layout for its arena (shown on the rules card as **MAP** an
 | Hex Drop | Classic Stack · Tall Tower (4 smaller floors) · Twin Peaks (two islands, crossed floors) · Donut |
 | Color Code | Square · Cross · Islands (hop between quarters) · Diamond |
 | Ring Out | Classic Ring · Square Ring · Pillars |
-| Cannon Barrage | Full Circle · Crossfire (two batteries) · Firing Line (one side) |
 | Hot Potato | Open Stage · Pillars · Crossroads (low walls) |
 | Tilefall | Classic · Swiss Cheese (more holes) · Stepping Stones (checkerboard) |
 | Bomb Rush | Islands · Close Islands · Crate Islands (island wars: everyone on their own island) |

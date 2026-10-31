@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LogRollGame
   m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
   <Id>k__BackingField: log_roll
-  <SceneBuildIndex>k__BackingField: 18
+  <SceneBuildIndex>k__BackingField: 17
   <GameType>k__BackingField: 2
   <GameDuration>k__BackingField: 90
   <IsTimeLimited>k__BackingField: 1
