@@ -16,7 +16,10 @@ public class LavaRiseMinigameController : EliminationMinigameController
 
     [SerializeField] private Transform _centre;
 
-    [Networked] private float LavaY { get; set; }
+    /// <summary>Lava surface height, rising at a networked rate (smooth on every screen).</summary>
+    [Networked] private NetMotion Lava { get; set; }
+    private float LavaTop => Base.y + PLATFORMS * STEP + 2f;
+    private float LavaY => Mathf.Min(Lava.AtTick(Runner), LavaTop);
 
     public override string[] Variants => new[] { "Spiral", "Twin Spirals", "Scatter" };
     public override string TwistTitle => "LAVA SURGE";
@@ -48,7 +51,7 @@ public class LavaRiseMinigameController : EliminationMinigameController
     public override void Spawned()
     {
         base.Spawned();
-        if (HasStateAuthority) LavaY = Base.y - 4f;
+        if (HasStateAuthority) Lava = NetMotion.Still(Runner, Base.y - 4f);
         Build();
     }
 
@@ -135,7 +138,9 @@ public class LavaRiseMinigameController : EliminationMinigameController
         if (!HasStateAuthority || !IsGameActive) return;
         float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
         float speed = (0.16f + 0.011f * elapsed) * (TwistActive ? 3f : 1f);
-        LavaY = Mathf.Min(LavaY + speed * Runner.DeltaTime, Base.y + PLATFORMS * STEP + 2f);
+        if (LavaY >= LavaTop) speed = 0f;
+        // The rate creeps up over the round: re-anchored every half second rather than every tick.
+        if (Runner.Tick % (Runner.TickRate / 2) == 0 || speed == 0f && Lava.Rate != 0f) Lava = Lava.Retarget(Runner, speed);
 
         foreach (var who in _alive)
         {
@@ -161,7 +166,7 @@ public class LavaRiseMinigameController : EliminationMinigameController
     {
         base.Render();
         if (_lava == null) return;
-        _lava.position = new Vector3(Base.x, LavaY - 0.5f, Base.z);
+        _lava.position = new Vector3(Base.x, Mathf.Min(Lava.Render(Runner), LavaTop) - 0.5f, Base.z);
         float glow = 0.5f + 0.5f * Mathf.Sin(Time.time * 3f);
         _block.SetColor("_BaseColor", Color.Lerp(new Color(1f, 0.32f, 0.08f), new Color(1f, 0.62f, 0.12f), glow));
         _lavaRenderer.SetPropertyBlock(_block);

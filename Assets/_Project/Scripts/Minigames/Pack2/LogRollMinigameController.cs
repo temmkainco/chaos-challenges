@@ -15,9 +15,11 @@ public class LogRollMinigameController : EliminationMinigameController
     [SerializeField] private Transform _centre;
     [SerializeField] private float _height = 7f;
 
-    /// <summary>Log rotation (degrees) and spin speed (radians per second, sign = direction) for the first log.</summary>
-    [Networked] private float Angle { get; set; }
-    [Networked] private float Spin { get; set; }
+    /// <summary>The first log's roll (degrees; rate in degrees per second, sign = direction), evaluated per tick and per frame.</summary>
+    [Networked] private NetMotion Roll { get; set; }
+    /// <summary>Spin speed in radians per second (sign = direction).</summary>
+    private float Spin => Roll.Rate * Mathf.Deg2Rad;
+    private void SetSpin(float radians) => Roll = Roll.Retarget(Runner, radians * Mathf.Rad2Deg, 360f);
     [Networked] private TickTimer NextFlip { get; set; }
 
     public override string[] Variants => new[] { "Big Log", "Twin Logs", "Speed Log" };
@@ -46,7 +48,7 @@ public class LogRollMinigameController : EliminationMinigameController
     {
         base.Spawned();
         // Start with no ridge on top: everyone spawns up there.
-        if (HasStateAuthority) Angle = 60f;
+        if (HasStateAuthority) Roll = NetMotion.Still(Runner, 60f);
         for (int log = 0; log < LogCount; log++)
         {
             // Static collider (a cylinder looks the same at any angle); the visual log turns. The mesh comes from a
@@ -83,19 +85,19 @@ public class LogRollMinigameController : EliminationMinigameController
         base.StartGame();
         if (!HasStateAuthority) return;
         // A gentle start (standing still on a fast log threw people off in two seconds), building up over the round.
-        Spin = 0.15f * (Variant == 2 ? 1.3f : 1f);
+        SetSpin(0.15f * (Variant == 2 ? 1.3f : 1f));
         NextFlip = TickTimer.CreateFromSeconds(Runner, 12f);
         _hitTick.Clear();
     }
 
     protected override void OnChaosStarted(ChaosModifier modifier)
     {
-        if (modifier == ChaosModifier.Twist) Spin = -Spin * 1.4f;
+        if (modifier == ChaosModifier.Twist) SetSpin(-Spin * 1.4f);
     }
 
     protected override void OnChaosEnded(ChaosModifier modifier)
     {
-        if (modifier == ChaosModifier.Twist) Spin /= 1.4f;
+        if (modifier == ChaosModifier.Twist) SetSpin(Spin / 1.4f);
     }
 
     /// <summary>The spinning surface's speed where you stand (horizontal only): this is what carries you.</summary>
@@ -120,15 +122,17 @@ public class LogRollMinigameController : EliminationMinigameController
         float dt = Runner.DeltaTime;
         float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
         float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
-        Spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt);
+        // Speeding up a little at a time: re-anchored every half second rather than every tick.
+        float spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt * Runner.TickRate / 2f);
+        if (Runner.Tick % (Runner.TickRate / 2) == 0 && !Mathf.Approximately(spin, Spin)) SetSpin(spin);
         if (NextFlip.Expired(Runner) && !TwistActive)
         {
             NextFlip = TickTimer.CreateFromSeconds(Runner, Random.Range(9f, 14f));
-            Spin = -Spin;
+            SetSpin(-Spin);
             Announce("SWITCH!");
         }
-        float previous = Angle;
-        Angle += Spin * Mathf.Rad2Deg * dt;
+        float roll = Roll.AtTick(Runner);
+        float previous = roll - Roll.Rate * dt;
 
         // Ridges rolling over the top knock off anyone standing low in their way.
         foreach (var who in _alive)
@@ -146,7 +150,7 @@ public class LogRollMinigameController : EliminationMinigameController
                 // Angle round the log's axis (0 = straight up, growing toward +Z like the log's own rotation).
                 float at = Mathf.Atan2(rel.z, rel.y) * Mathf.Rad2Deg;
                 float sign = log == 0 ? 1f : -1f;
-                float from = previous * sign, to = Angle * sign;
+                float from = previous * sign, to = roll * sign;
                 bool hit = false;
                 for (int r = 0; r < RIDGES; r++)
                 {
@@ -168,7 +172,8 @@ public class LogRollMinigameController : EliminationMinigameController
     public override void Render()
     {
         base.Render();
+        float angle = Roll.Render(Runner);
         for (int log = 0; log < _logViews.Count; log++)
-            _logViews[log].localRotation = Quaternion.Euler(log == 0 ? Angle : -Angle, 0f, 0f);
+            _logViews[log].localRotation = Quaternion.Euler(log == 0 ? angle : -angle, 0f, 0f);
     }
 }

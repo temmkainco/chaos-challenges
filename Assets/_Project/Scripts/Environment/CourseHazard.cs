@@ -4,8 +4,10 @@ using UnityEngine;
 
 /// <summary>
 /// A moving obstacle (pendulum hammer or spinning sweeper bar). Every peer poses it from the network clock, so it
-/// looks the same everywhere without replication; only the host tests the striking part against contestants and
-/// knocks them away along the hazard's motion with <see cref="PlayerMovement.Launch"/>, which replicates.
+/// looks the same everywhere without replication: drawn at the local render time (in step with your own predicted
+/// player) and tested at the tick being simulated. The host tests the striking part against contestants once per
+/// network tick (<see cref="SimulateAll"/>, from the minigame's FixedUpdateNetwork) and knocks them away along the
+/// hazard's motion with <see cref="PlayerMovement.Launch"/>, which replicates.
 /// </summary>
 public class CourseHazard : MonoBehaviour
 {
@@ -24,8 +26,9 @@ public class CourseHazard : MonoBehaviour
 
     private Quaternion _rest;
     private readonly Collider[] _hits = new Collider[12];
-    private readonly Dictionary<Player, float> _cooldown = new();
-    private Vector3 _lastStrikerPos;
+    private readonly Dictionary<Player, int> _cooldownUntilTick = new();
+
+    private static readonly List<CourseHazard> Active = new();
 
     public void Configure(Kind kind, Vector3 axis, float amount, float period, float phase, Transform striker, float hitRadius, float hitLength)
     {
@@ -34,12 +37,14 @@ public class CourseHazard : MonoBehaviour
     }
 
     private void Awake() => _rest = transform.localRotation;
+    private void OnEnable() => Active.Add(this);
+    private void OnDisable() => Active.Remove(this);
 
     private static float Clock()
     {
         var mc = MinigameController.Current;
         if (mc != null && mc.Runner != null && mc.Runner.IsRunning)
-            return mc.Runner.IsServer ? mc.Runner.SimulationTime : mc.Runner.LocalRenderTime;
+            return mc.Runner.LocalRenderTime;
         return Time.time;
     }
 
@@ -53,16 +58,25 @@ public class CourseHazard : MonoBehaviour
 
     private void Update() => Pose(Clock());
 
-    private void FixedUpdate()
+    /// <summary>Host, once per network tick: every hazard is posed at the tick and tested against contestants.</summary>
+    public static void SimulateAll(MinigameController mc)
     {
-        var mc = MinigameController.Current;
-        if (_striker == null || mc == null || mc.Object == null || !mc.Object.IsValid || !mc.HasStateAuthority || !mc.IsGameActive)
-            return;
+        if (mc == null || !mc.HasStateAuthority || !mc.IsGameActive) return;
+        var runner = mc.Runner;
+        float now = runner.Tick * runner.DeltaTime;
+        foreach (var hazard in Active)
+            if (hazard._striker != null)
+                hazard.Simulate(mc, now, runner.DeltaTime, runner.Tick, runner.TickRate);
+    }
 
-        Pose(Clock());
+    private void Simulate(MinigameController mc, float now, float dt, int tick, int tickRate)
+    {
+        // Where the striker was a tick ago and is now: its motion gives the push direction.
+        Pose(now - dt);
+        Vector3 before = _striker.position;
+        Pose(now);
         Vector3 pos = _striker.position;
-        Vector3 motion = pos - _lastStrikerPos;
-        _lastStrikerPos = pos;
+        Vector3 motion = pos - before;
 
         int count;
         if (_hitLength > 0f)
@@ -78,12 +92,12 @@ public class CourseHazard : MonoBehaviour
             var player = _hits[i].GetComponentInParent<Player>();
             if (player == null || player.Object == null || player.ControlsLocked) continue;
             if (mc is TilefallMinigameController tilefall && tilefall.IsProtected(player.Object.InputAuthority)) continue;   // just respawned
-            if (_cooldown.TryGetValue(player, out var until) && Time.time < until) continue;
+            if (_cooldownUntilTick.TryGetValue(player, out int until) && tick < until) continue;
             // Low sweeper bars are jumped: anyone in the air or above the bar is clear. (The host sees a client's
             // jump a moment late, and the old full-radius test hit players who had cleared it on their screen.)
             if (_kind == Kind.Spinner && player.TryGetComponent<PlayerMovement>(out var mover)
                 && (!mover.IsGrounded || player.transform.position.y > pos.y - 0.25f)) continue;
-            _cooldown[player] = Time.time + 1f;
+            _cooldownUntilTick[player] = tick + tickRate;
 
             // Push along the striker's motion; fall back to "away from the striker" when it barely moves.
             var push = new Vector3(motion.x, 0f, motion.z);

@@ -116,6 +116,7 @@ public class TilefallMinigameController : MinigameController
                 _standing.Add(player.transform.position);
         }
         _course.Simulate(_standing);
+        CourseHazard.SimulateAll(this);
 
         RespawnFallenPlayers();
     }

@@ -18,8 +18,9 @@ public class SpinSweepMinigameController : EliminationMinigameController
     [SerializeField] private float _hexRadius = 1.7f;
 
     /// <summary>Bar angles in degrees (A turns forward, B backward in Counter-Spin).</summary>
-    [Networked] private float AngleA { get; set; }
-    [Networked] private float AngleB { get; set; }
+    /// <summary>The bars' yaw in degrees, evaluated per tick and per frame (smooth on every screen).</summary>
+    [Networked] private NetMotion BarA { get; set; }
+    [Networked] private NetMotion BarB { get; set; }
     /// <summary>Tick a tile cracked (0 = intact).</summary>
     [Networked, Capacity(64)] private NetworkArray<int> CrackTick { get; }
     [Networked] private TickTimer NextCrack { get; set; }
@@ -126,10 +127,12 @@ public class SpinSweepMinigameController : EliminationMinigameController
     {
         base.FixedUpdateNetwork();
         if (!HasStateAuthority || !IsGameActive) return;
-        float dt = Runner.DeltaTime, speed = Speed();
-        float prevA = AngleA, prevB = AngleB;
-        AngleA = Mathf.Repeat(AngleA + speed * dt, 360f);
-        if (Variant == 2) AngleB = Mathf.Repeat(AngleB - speed * 0.8f * dt, 360f);
+        float speed = Speed();
+        // Re-anchored only when the speed has crept up noticeably, so clients rarely have to correct the bars.
+        if (Mathf.Abs(BarA.Rate - speed) > 1f) BarA = BarA.Retarget(Runner, speed, 360f);
+        if (Variant == 2 && Mathf.Abs(BarB.Rate + speed * 0.8f) > 1f) BarB = BarB.Retarget(Runner, -speed * 0.8f, 360f);
+        float angleA = BarA.AtTick(Runner), angleB = BarB.AtTick(Runner);
+        float prevA = angleA - BarA.Rate * Runner.DeltaTime, prevB = angleB - BarB.Rate * Runner.DeltaTime;
 
         // Tiles: a few crack every few seconds (never the ones under the hub), then drop.
         if (NextCrack.Expired(Runner))
@@ -158,9 +161,9 @@ public class SpinSweepMinigameController : EliminationMinigameController
             for (int a = 0; a < Arms; a++)
             {
                 float offset = a * 360f / Arms;
-                if (Swept(prevA + offset, AngleA + offset, angle, halfWidth)) dir = 1;
+                if (Swept(prevA + offset, angleA + offset, angle, halfWidth)) dir = 1;
             }
-            if (Variant == 2 && Swept(prevB, AngleB, angle, halfWidth)) dir = -1;
+            if (Variant == 2 && Swept(prevB, angleB, angle, halfWidth)) dir = -1;
             if (dir == 0 || !player.TryGetComponent<PlayerMovement>(out var movement)) continue;
             _hitTick[who] = Runner.Tick;
             var outward = new Vector3(rel.x, 0f, rel.z).normalized;
@@ -190,8 +193,8 @@ public class SpinSweepMinigameController : EliminationMinigameController
     {
         base.Render();
         if (_barsA == null) return;
-        _barsA.rotation = Quaternion.Euler(0f, AngleA, 0f);
-        if (_barsB != null) _barsB.rotation = Quaternion.Euler(0f, AngleB, 0f);
+        _barsA.rotation = Quaternion.Euler(0f, BarA.Render(Runner), 0f);
+        if (_barsB != null) _barsB.rotation = Quaternion.Euler(0f, BarB.Render(Runner), 0f);
         int crackTicks = Mathf.CeilToInt(1.3f / Runner.DeltaTime);
         for (int i = 0; i < _tiles.Length; i++)
         {
