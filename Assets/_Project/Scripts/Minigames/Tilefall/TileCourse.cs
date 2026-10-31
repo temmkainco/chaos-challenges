@@ -80,6 +80,17 @@ public class TileCourse : NetworkBehaviour
     public int LaneAt(Vector3 worldPosition) =>
         Mathf.Clamp(Mathf.RoundToInt(transform.InverseTransformPoint(worldPosition).x / Pitch + (_lanes - 1) * 0.5f), 0, _lanes - 1);
 
+    /// <summary>
+    /// Standing somewhere that is not the course: beside the lanes (walls, pipes) or well above the tiles. Players
+    /// walked along scenery to skip the whole course.
+    /// </summary>
+    public bool IsOffCourse(Vector3 worldPosition)
+    {
+        var local = transform.InverseTransformPoint(worldPosition);
+        float halfWidth = _lanes * Pitch * 0.5f + 1f;
+        return Mathf.Abs(local.x) > halfWidth || local.y > 2.5f;
+    }
+
     /// <summary>Furthest checkpoint row at or behind <paramref name="row"/>, or -1 for the start platform.</summary>
     public int CheckpointBehind(float row)
     {
@@ -139,7 +150,8 @@ public class TileCourse : NetworkBehaviour
             if (i >= 0) _occupants[i]++;
         }
 
-        float damagePerTick = Runner.DeltaTime / Mathf.Max(0.1f, _secondsToCollapse);
+        // Tiles felt like they never fell: at most a second under one contestant.
+        float damagePerTick = Runner.DeltaTime / Mathf.Clamp(_secondsToCollapse, 0.1f, 1f);
         int respawnTicks = Mathf.CeilToInt(_respawnSeconds * Runner.TickRate);
 
         for (int i = 0; i < TileCount; i++)

@@ -32,6 +32,7 @@ public class ConsoleSitter : MonoBehaviour
         _pad.localScale = new Vector3(0.24f, 0.05f, 0.11f);
         var block = new MaterialPropertyBlock();
         block.SetColor("_BaseColor", new Color(0.2f, 0.18f, 0.28f));
+        _pad.GetComponent<Renderer>().sharedMaterial = ArenaProps.Material;
         _pad.GetComponent<Renderer>().SetPropertyBlock(block);
     }
 

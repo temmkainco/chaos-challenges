@@ -7,6 +7,13 @@ using UnityEngine;
 public static class ArenaProps
 {
     private static MaterialPropertyBlock _block;
+    private static Material _material;
+
+    /// <summary>
+    /// Lit material for runtime primitives. Unity's default material is not included in builds, so primitives that
+    /// keep it render only their shadows there.
+    /// </summary>
+    public static Material Material => _material != null ? _material : _material = Resources.Load<Material>("ArenaProp");
     private static readonly System.Collections.Generic.HashSet<Collider> _colliders = new();
 
     /// <summary>Standing on a prop: arenas that count anyone up on their rim as out must not count this.</summary>
@@ -39,10 +46,41 @@ public static class ArenaProps
         _colliders.Add(collider);
         _block ??= new MaterialPropertyBlock();
         var renderer = go.GetComponent<Renderer>();
+        renderer.sharedMaterial = Material;
         renderer.GetPropertyBlock(_block);
         _block.SetColor("_BaseColor", color);
         renderer.SetPropertyBlock(_block);
         return go.transform;
+    }
+
+    /// <summary>Layer for <see cref="Fence"/>: it collides with contestants only (set up in <see cref="PhysicsSetup"/>).</summary>
+    public const int FENCE_LAYER = 10;
+    public const int PLAYER_LAYER = 7;
+
+    /// <summary>
+    /// A ring of faint glass wall around an arena: contestants cannot leave it, but thrown bombs and prizes fly through.
+    /// </summary>
+    public static void Fence(Transform parent, Vector3 centre, float radius, float height = 6f, int segments = 40)
+    {
+        var root = new GameObject("PlayerFence").transform;
+        root.SetParent(parent, true);
+        root.position = centre;
+        var glass = new Material(Resources.Load<Material>("ThrowArc")) { color = new Color(0.7f, 0.9f, 1f, 0.07f) };
+        float width = 2f * Mathf.PI * radius / segments * 1.04f;
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = (i + 0.5f) / segments * Mathf.PI * 2f;
+            var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            var panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            panel.name = "Fence " + i;
+            panel.layer = FENCE_LAYER;
+            panel.transform.SetParent(root, false);
+            panel.transform.SetPositionAndRotation(centre + direction * radius + Vector3.up * height * 0.5f, Quaternion.LookRotation(direction));
+            panel.transform.localScale = new Vector3(width, height, 0.3f);
+            var renderer = panel.GetComponent<Renderer>();
+            renderer.sharedMaterial = glass;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
     }
 
     /// <summary>Call once after adding props: runtime colliders must reach the physics scene on clients too.</summary>

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Main menu character customizer: body, hands and head colour plus hat, face, neck and back items, with a turning
-/// 3D preview.
+/// 3D preview (drag it to turn it yourself).
 /// Choices are saved right away (<see cref="LocalLook"/>) and used in every match.
 /// </summary>
 public class CustomizePanel : PanelBase
@@ -114,9 +114,29 @@ public class CustomizePanel : PanelBase
         if (_camera != null) _camera.enabled = false;
     }
 
+    private bool _dragging;
+    private float _resumeTurnAt;
+
+    /// <summary>Drag the preview with the left mouse button to turn it; it starts turning by itself again shortly after.</summary>
     private void Update()
     {
-        if (_model != null)
+        if (_model == null) return;
+        var mouse = UnityEngine.InputSystem.Mouse.current;
+        if (mouse != null)
+        {
+            var position = mouse.position.ReadValue();
+            var canvas = _preview.canvas;
+            var eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            if (mouse.leftButton.wasPressedThisFrame && RectTransformUtility.RectangleContainsScreenPoint(_preview.rectTransform, position, eventCamera))
+                _dragging = true;
+            if (!mouse.leftButton.isPressed) _dragging = false;
+            if (_dragging)
+            {
+                _model.transform.Rotate(Vector3.up, -mouse.delta.ReadValue().x * 0.5f, Space.World);
+                _resumeTurnAt = Time.unscaledTime + 2.5f;
+            }
+        }
+        if (!_dragging && Time.unscaledTime >= _resumeTurnAt)
             _model.transform.Rotate(Vector3.up, _turnSpeed * Time.unscaledDeltaTime, Space.World);
     }
 

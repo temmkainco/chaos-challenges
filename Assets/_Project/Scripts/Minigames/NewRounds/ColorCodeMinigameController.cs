@@ -153,20 +153,19 @@ public class ColorCodeMinigameController : EliminationMinigameController
             case CallStage.Shuffle:
                 Target = (byte)Random.Range(0, Colors.Length);
                 Stage = CallStage.Calling;
-                // Each call is faster: 5 s down to 2 s.
-                StageTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(2f, 5f - Calls * 0.4f));
+                // Each call is faster: 4 s down to a near-impossible 1 s.
+                StageTimer = TickTimer.CreateFromSeconds(Runner, Mathf.Max(1f, 4f - Calls * 0.45f));
                 Ink = TwistActive ? (byte)((Target + Random.Range(1, Colors.Length)) % Colors.Length) : Target;
-                Announce(Ink != Target ? $"<color=#{Hex(Ink)}>{Names[Target]}</color>!" : $"{Names[Target]}!");
                 break;
             case CallStage.Calling:
                 Stage = CallStage.Dropped;
-                StageTimer = TickTimer.CreateFromSeconds(Runner, 2.2f);
+                StageTimer = TickTimer.CreateFromSeconds(Runner, 1.6f);
                 Calls++;
                 break;
             default:
                 Shuffle();
                 Stage = CallStage.Shuffle;
-                StageTimer = TickTimer.CreateFromSeconds(Runner, 1.5f);
+                StageTimer = TickTimer.CreateFromSeconds(Runner, 1f);
                 break;
         }
         ApplyTiles();

@@ -222,7 +222,7 @@ public class MinigameHud : MonoBehaviour
     private void PopBanner(string text)
     {
         // Chaos (incoming and started) gets its own look and stays up longer so nobody misses it.
-        bool chaos = text.Contains(" IN 3") || text.StartsWith("BUFF:") || text.StartsWith("DEBUFF:") || text.StartsWith("HAZARD:");
+        bool chaos = text.Contains(" IN 3") || text.EndsWith(" OVER!") || text.StartsWith("BUFF:") || text.StartsWith("DEBUFF:") || text.StartsWith("HAZARD:");
         _banner.fontSize = chaos ? 96f : 120f;
         _banner.color = chaos ? new Color(0.78f, 0.62f, 1f) : new Color(1f, 0.79f, 0.24f);
         float hold = chaos ? 2.2f : 1.1f;

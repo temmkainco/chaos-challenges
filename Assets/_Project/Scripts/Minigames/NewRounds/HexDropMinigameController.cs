@@ -129,6 +129,9 @@ public class HexDropMinigameController : EliminationMinigameController
         _renderers[i].SetPropertyBlock(_block);
     }
 
+    /// <summary>Sprint jumps cleared two missing tiles at once.</summary>
+    public override bool AllowsSprint => false;
+
     public override string TwistTitle => "EARTHQUAKE";
     public override string TwistDescription => "Random tiles on every floor crack on their own.";
 

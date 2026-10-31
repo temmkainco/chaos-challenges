@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Dev only: lets a built player test itself. Start the exe with <c>-autotest bomb_rush,prize_grab</c> and it hosts a
-/// private match with those rounds, readies up, and every few seconds logs what the editor tests can't see in a build
+/// private match with those rounds (<c>-variant N</c> picks the arena layout), readies up, and every few seconds logs what the editor tests can't see in a build
 /// (item sizes, outline state) and saves a screenshot next to Player.log. Does nothing without the argument.
 /// </summary>
 public class BuildAutoTest : MonoBehaviour
@@ -24,6 +24,10 @@ public class BuildAutoTest : MonoBehaviour
         var go = new GameObject("BuildAutoTest");
         DontDestroyOnLoad(go);
         go.AddComponent<BuildAutoTest>()._rounds = args[index + 1].Split(',');
+        // Optional: -variant N plays every round on arena layout N.
+        int variant = System.Array.IndexOf(args, "-variant");
+        if (variant >= 0 && variant + 1 < args.Length && int.TryParse(args[variant + 1], out int layout))
+            NetworkGameManager.ForcedVariant = layout;
         Debug.Log("[AutoTest] rounds: " + args[index + 1]);
     }
 

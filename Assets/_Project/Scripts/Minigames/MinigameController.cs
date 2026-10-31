@@ -177,6 +177,9 @@ public class MinigameController : NetworkBehaviour
     /// </summary>
     public virtual bool HandlePlayerFell(Player player) => false;
 
+    /// <summary>Whether Shift sprint works in this minigame (off where it skips the challenge, e.g. jumping Hex Drop holes).</summary>
+    public virtual bool AllowsSprint => true;
+
     #region Arena layouts
 
     /// <summary>Layouts this minigame's arena can be built in (names for the rules card); null = just one.</summary>
@@ -240,6 +243,7 @@ public class MinigameController : NetworkBehaviour
             EndChaos();
         ActiveChaos = modifier;
         ChaosTimer = TickTimer.CreateFromSeconds(Runner, seconds);
+        _chaosEndWarned = false;
         NextMeteor = TickTimer.CreateFromSeconds(Runner, 1f);
         Announce($"{ChaosInfo.Kind(modifier)}: {ChaosInfo.Title(modifier)}!");
         Debug.Log($"[Chaos] {modifier} for {seconds:0}s");
@@ -271,8 +275,12 @@ public class MinigameController : NetworkBehaviour
         var ended = ActiveChaos;
         ActiveChaos = ChaosModifier.None;
         ChaosTimer = TickTimer.None;
+        if (IsGameActive) Announce($"{ChaosInfo.Title(ended)} OVER!");
         OnChaosEnded(ended);
     }
+
+    /// <summary>Host only: the "ends in 3" warning went out for the running chaos.</summary>
+    private bool _chaosEndWarned;
 
     private void TickChaos()
     {
@@ -290,6 +298,13 @@ public class MinigameController : NetworkBehaviour
             ActivateChaos(next, PendingSeconds);
         }
 
+        // Warn in the middle of the screen before it ends, so nobody has to watch the corner timer.
+        if (ActiveChaos != ChaosModifier.None && !_chaosEndWarned && (ChaosTimer.RemainingTime(Runner) ?? 0f) <= CHAOS_WARNING
+            && (ChaosTimer.RemainingTime(Runner) ?? 0f) > 0.5f)
+        {
+            _chaosEndWarned = true;
+            Announce($"{ChaosInfo.Title(ActiveChaos)} ENDS IN 3...");
+        }
         if (ActiveChaos != ChaosModifier.None && ChaosTimer.Expired(Runner))
             EndChaos();
 

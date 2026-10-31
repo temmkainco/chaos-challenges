@@ -39,6 +39,7 @@ public class BombRushMinigameController : MinigameController
     /// <summary>A blast this close (or in your hands) knocks you out; farther away it only launches you.</summary>
     public const float KILL_RADIUS = 3f;
     private Vector3 _arenaCentre;
+    public float FenceRadius { get; private set; }
 
     public override void Spawned()
     {
@@ -53,6 +54,13 @@ public class BombRushMinigameController : MinigameController
         if (Physics.Raycast(_arenaCentre + Vector3.up * 0.5f, Vector3.down, out var floorHit, 6f, ~0, QueryTriggerInteraction.Ignore))
             _arenaCentre.y = floorHit.point.y;
         BuildLayout();
+        // A glass fence just past the belt ends: nobody walks out of the arena, thrown bombs still fly out.
+        float reach = 0f;
+        foreach (var belt in _belts)
+            reach = Mathf.Max(reach, Vector3.ProjectOnPlane(belt.Evaluate(1f) - _arenaCentre, Vector3.up).magnitude);
+        FenceRadius = reach > 1f ? reach + 1.2f : 18.5f;
+        ArenaProps.Fence(transform, _arenaCentre, FenceRadius);
+        ArenaProps.Done();
     }
 
     public override string[] Variants => new[] { "Open Floor", "Crates", "Pillars" };
@@ -107,16 +115,14 @@ public class BombRushMinigameController : MinigameController
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        // Leaving the arena (onto its raised rim, or down) is out: no hiding outside and jumping back in.
+        // The fence keeps everyone in; anyone who still ends up below the stage (blasted over it) is out.
         if (HasStateAuthority && IsGameActive && Runner.Tick % 10 == 0)
         {
-            float floor = _arenaCentre.y - 1f, rim = _arenaCentre.y + 0.6f;
+            float floor = _arenaCentre.y - 1f;
             for (int i = _alive.Count - 1; i >= 0; i--)
             {
                 if (!_playerSpawner.Players.TryGet(_alive[i], out var p) || p == null) continue;
-                float y = p.transform.position.y;
-                bool onRim = y > rim && p.TryGetComponent<PlayerMovement>(out var movement) && movement.IsGrounded && !ArenaProps.IsStandingOnProp(p.transform.position);
-                if (y < floor || onRim)
+                if (p.transform.position.y < floor)
                     Eliminate(_alive[i]);
             }
             foreach (var who in _eliminationOrder)

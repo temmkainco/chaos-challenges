@@ -192,6 +192,43 @@ public class Bomb : NetworkBehaviour
         if (_spark != null)
             _spark.localScale = Vector3.one * (0.6f + Random.value * 0.6f) * 0.25f;
         ShowBlastRing(true, 1f - remaining);
+        ShowCountdown(FuseRemaining);
+    }
+
+    private TMPro.TextMeshPro _countdown;
+    private int _shownSeconds = -1;
+
+    /// <summary>
+    /// The last three seconds are counted down over the bomb with a tick (louder close by): playtesters could not
+    /// tell when a bomb would go off.
+    /// </summary>
+    private void ShowCountdown(float seconds)
+    {
+        int whole = seconds > 3f ? -1 : Mathf.Max(1, Mathf.CeilToInt(seconds));
+        if (_countdown == null)
+        {
+            var go = new GameObject("FuseCountdown");
+            _countdown = go.AddComponent<TMPro.TextMeshPro>();
+            _countdown.alignment = TMPro.TextAlignmentOptions.Center;
+            _countdown.fontSize = 9f;
+            _countdown.fontStyle = TMPro.FontStyles.Bold;
+            _countdown.outlineWidth = 0.25f;
+            _countdown.outlineColor = new Color32(40, 10, 10, 255);
+            _countdown.rectTransform.sizeDelta = new Vector2(3f, 2f);
+        }
+        _countdown.gameObject.SetActive(whole > 0);
+        if (whole <= 0) { _shownSeconds = -1; return; }
+        var cam = Camera.main;
+        _countdown.transform.position = transform.position + Vector3.up * 1.3f;
+        if (cam != null) _countdown.transform.rotation = Quaternion.LookRotation(_countdown.transform.position - cam.transform.position);
+        float beat = seconds - Mathf.Floor(seconds);
+        _countdown.transform.localScale = Vector3.one * (1f + 0.35f * beat);
+        _countdown.color = whole == 1 ? new Color(1f, 0.25f, 0.2f) : new Color(1f, 0.79f, 0.24f);
+        if (whole == _shownSeconds) return;
+        _shownSeconds = whole;
+        _countdown.text = whole.ToString();
+        float distance = cam != null ? Vector3.Distance(cam.transform.position, transform.position) : 10f;
+        Sfx.Play(Sound.Tick, Mathf.Clamp01(1.2f - distance / 30f) * 0.8f, 0.05f);
     }
 
     private Transform _blastRing;
@@ -233,11 +270,13 @@ public class Bomb : NetworkBehaviour
     {
         if (_blastRing != null) Destroy(_blastRing.gameObject);
         if (_blastMaterial != null) Destroy(_blastMaterial);
+        if (_countdown != null) Destroy(_countdown.gameObject);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
         Active.Remove(this);
         ShowBlastRing(false, 0f);
+        if (_countdown != null) _countdown.gameObject.SetActive(false);   // pooled: hidden until the next fuse
     }
 }

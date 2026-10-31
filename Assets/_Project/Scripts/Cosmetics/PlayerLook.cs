@@ -16,7 +16,7 @@ public class PlayerLook : MonoBehaviour
     private readonly int[] _shown = { -1, -1, -1, -1 };
     private readonly GameObject[] _instances = new GameObject[SLOTS];
     private MaterialPropertyBlock _block;
-    private Transform _neck, _chest;
+    private Transform _chest;
 
     public void Apply(int body, int hands, int head, int hat, int face = 0, int neck = 0, int back = 0)
     {
@@ -56,12 +56,13 @@ public class PlayerLook : MonoBehaviour
         var instance = Instantiate(item.Prefab, bone);
         if (item.WorldSpace)
         {
-            // Metres in the character's frame from the bone, sized in metres: independent of the rig's scale.
-            var frame = transform.rotation;
-            instance.transform.position = bone.position + frame * item.LocalPosition;
-            instance.transform.rotation = frame * Quaternion.Euler(item.LocalEuler);
-            float boneScale = Mathf.Max(0.0001f, bone.lossyScale.x);
-            instance.transform.localScale = Vector3.one * (item.Scale > 0f ? item.Scale : 1f) / boneScale;
+            // Metres in the character's frame from the bone, sized in metres, worked out from the bone's rest pose:
+            // using its current (animated) pose put other players' glasses on their scalps and hats off the back.
+            var (restRotation, restScale) = Rest(bone);
+            var inverse = Quaternion.Inverse(restRotation);
+            instance.transform.localPosition = inverse * item.LocalPosition / restScale;
+            instance.transform.localRotation = inverse * Quaternion.Euler(item.LocalEuler);
+            instance.transform.localScale = Vector3.one * (item.Scale > 0f ? item.Scale : 1f) / restScale;
         }
         else
         {
@@ -81,22 +82,42 @@ public class PlayerLook : MonoBehaviour
         _instances[i] = instance;
     }
 
+    /// <summary>
+    /// Neck and back wearables are placed from the chest (the rigs have no neck bone; the in-game one has no upper
+    /// chest either, and falling back to the head put bow ties on the forehead).
+    /// </summary>
+    private readonly System.Collections.Generic.Dictionary<Transform, (Quaternion rotation, float scale)> _rest = new();
+
+    // Before the animator first poses the rig: the prefab's own pose, the one wearables are authored in.
+    private void Awake()
+    {
+        if (_head == null) return;
+        Rest(_head);
+        Rest(Bone(CosmeticsCatalog.Attach.Back));
+    }
+
+    /// <summary>The bone's rotation in the character's frame and its scale relative to the character, at rest.</summary>
+    private (Quaternion rotation, float scale) Rest(Transform bone)
+    {
+        if (_rest.TryGetValue(bone, out var rest)) return rest;
+        rest = (Quaternion.Inverse(transform.rotation) * bone.rotation,
+                Mathf.Max(0.0001f, bone.lossyScale.x / Mathf.Max(0.0001f, transform.lossyScale.x)));
+        _rest[bone] = rest;
+        return rest;
+    }
+
     private Transform Bone(CosmeticsCatalog.Attach attach)
     {
         if (attach == CosmeticsCatalog.Attach.Head) return _head;
-        if (_neck == null || _chest == null)
+        if (_chest == null)
         {
             var animator = GetComponentInChildren<Animator>(true);
             if (animator != null && animator.isHuman)
-            {
-                _neck = animator.GetBoneTransform(HumanBodyBones.Neck) ?? animator.GetBoneTransform(HumanBodyBones.UpperChest) ?? _head;
                 _chest = animator.GetBoneTransform(HumanBodyBones.UpperChest) ?? animator.GetBoneTransform(HumanBodyBones.Chest)
-                         ?? animator.GetBoneTransform(HumanBodyBones.Spine) ?? _head;
-            }
-            _neck ??= _head;
-            _chest ??= _head;
+                         ?? animator.GetBoneTransform(HumanBodyBones.Spine);
+            if (_chest == null) _chest = _head;
         }
-        return attach == CosmeticsCatalog.Attach.Neck ? _neck : _chest;
+        return _chest;
     }
 
     private void Tint(CosmeticsCatalog.Part part, Color color)

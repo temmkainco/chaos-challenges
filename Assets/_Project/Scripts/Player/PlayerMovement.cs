@@ -116,7 +116,7 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 input = new Vector3(data.Direction.x, 0f, data.Direction.z);
         if (input.sqrMagnitude > 1f) input.Normalize();
         // Shift: sprint (a bit faster, not while carrying - carry speed still applies on top).
-        if (data.Buttons.IsSet(InputButtons.Sprint))
+        if (data.Buttons.IsSet(InputButtons.Sprint) && (MinigameController.Current == null || MinigameController.Current.AllowsSprint))
             speedScale *= SPRINT;
         float speed = _maxSpeed * speedScale;
         if (_interaction != null && _interaction.HeldObject != null && _interaction.HeldObject.TryGetComponent<GrabbableObject>(out var carried))

@@ -35,14 +35,15 @@ public class CannonBarrageMinigameController : EliminationMinigameController
 
     // Just below the stage top: stepping off onto the ground around it counts as out.
     protected override float OutHeight => _centre.position.y - 0.8f;
-    /// <summary>Standing on the raised rim around the stage counts as out.</summary>
-    protected override float RimHeight => _centre.position.y + 0.6f;
 
     protected override Vector3 ArenaSpawn(int slot, int count)
     {
         float angle = (slot + 0.5f) / Mathf.Max(1, count) * Mathf.PI * 2f;
         return _centre.position + Vector3.up * 0.5f + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 6f;
     }
+
+    /// <summary>No shoving: pushes ended rounds in seconds; dodging the cannons is the game.</summary>
+    public override bool AllowShove => false;
 
     public override string[] Variants => new[] { "Full Circle", "Crossfire", "Firing Line" };
 
@@ -86,6 +87,9 @@ public class CannonBarrageMinigameController : EliminationMinigameController
     public override void Spawned()
     {
         base.Spawned();
+        // Nobody walks off the stage onto the rim (cannonballs are not physical, so the fence does not stop them).
+        ArenaProps.Fence(transform, _centre.position, _arenaRadius - 0.4f);
+        ArenaProps.Done();
         var model = _cannonModel;
         _cannonModels = new Transform[_cannons];
         for (int i = 0; i < _cannons; i++)

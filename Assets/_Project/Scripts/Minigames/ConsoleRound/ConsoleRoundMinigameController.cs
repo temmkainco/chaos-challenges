@@ -320,13 +320,11 @@ public class ConsoleRoundMinigameController : MinigameController
                 var input = _input;
                 if (chaos == ChaosModifier.ReversedControls)
                 {
-                    // Everything flips: left/right, up/down, and jump/action trades places with down
-                    // (Pixel Runner: S jumps, Space ducks).
-                    bool down = input.Y < 0, upOrAction = input.Y > 0 || input.A;
+                    // Only the directions flip (left/right, up/down); Space stays the action/jump button.
+                    bool down = input.Y < 0;
                     input.X = -input.X;
-                    input.Y = upOrAction ? -1 : down ? 1 : 0;
-                    input.A = down;
-                    input.APressed = input.UpPressed = down && !_reversedDown;
+                    input.Y = -input.Y;
+                    input.UpPressed = down && !_reversedDown;
                     _reversedDown = down;
                 }
 

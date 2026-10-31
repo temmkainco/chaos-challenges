@@ -43,6 +43,9 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     [Networked] public TickTimer PhaseTimer { get; private set; }
     /// <summary>Drawn by the host for every round: picks the arena layout (<see cref="MinigameController.Variant"/>).</summary>
     [Networked] public int RoundSeed { get; private set; }
+    /// <summary>Host's game pack (bit per database index) and rounds, so guests can see what the show will draw from.</summary>
+    [Networked] public int PackMask { get; private set; }
+    [Networked] public int PackRounds { get; private set; }
 
     [Networked, Capacity(MAX_ROUNDS)] private NetworkArray<int> RoundMinigames { get; }
     [Networked, Capacity(SessionSettings.MAX_PLAYERS)] private NetworkArray<RosterEntry> Roster { get; }
@@ -209,6 +212,9 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         if (!HasStateAuthority)
             return;
 
+        if (Phase == MatchPhase.Lobby && Runner.Tick % 30 == 0)
+            PublishPack();
+
         if (_waitingForLoad)
         {
             bool timedOut = _loadTimeout.Expired(Runner);
@@ -362,6 +368,27 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         SetPhase(MatchPhase.Playing);
         NewRoundSeed();
         LoadScene(CurrentMinigame.SceneBuildIndex);
+    }
+
+    private void PublishPack()
+    {
+        int mask = 0;
+        for (int i = 0; i < _database.Count && i < 32; i++)
+            if (MatchSettings.IsMinigameEnabled(_database.GetByIndex(i).Id)) mask |= 1 << i;
+        PackMask = mask;
+        PackRounds = MatchSettings.Rounds;
+    }
+
+    /// <summary>"Hex Drop, Mines - 5 rounds" for the lobby screen (every peer).</summary>
+    public string PackSummary()
+    {
+        if (_database == null || PackRounds == 0) return null;
+        var names = new List<string>();
+        for (int i = 0; i < _database.Count && i < 32; i++)
+            if ((PackMask & (1 << i)) != 0) names.Add(_database.GetByIndex(i).DisplayName);
+        if (names.Count == 0) return null;
+        string games = names.Count == _database.Count ? $"all {names.Count} games" : string.Join(", ", names);
+        return $"{PackRounds} rounds from {games}" + (names.Count < PackRounds ? " (some repeat)" : "");
     }
 
     private void NewRoundSeed() => RoundSeed = ForcedVariant >= 0 ? ForcedVariant : UnityEngine.Random.Range(0, int.MaxValue);

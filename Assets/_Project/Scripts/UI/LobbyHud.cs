@@ -41,6 +41,9 @@ public class LobbyHud : MonoBehaviour
         if (helpPanel.activeSelf != showHelp)
             helpPanel.SetActive(showHelp);
         string help = GamePackPanel.IsHost ? HOST_HELP : GUEST_HELP;
+        var gameManager = NetworkGameManager.Instance;
+        string pack = gameManager != null && gameManager.Object != null && gameManager.Object.IsValid ? gameManager.PackSummary() : null;
+        if (pack != null) help += $"\n<size=75%><color=#E8590C>SHOW:</color> {pack}</size>";
         if (help != _last)
         {
             _last = help;

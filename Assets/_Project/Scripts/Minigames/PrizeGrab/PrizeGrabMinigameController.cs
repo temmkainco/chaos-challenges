@@ -131,9 +131,15 @@ public class PrizeGrabMinigameController : MinigameController
         // Prizes that fall off the stage come back down from the sky.
         if (Runner.Tick % 30 == 0)
             for (int p = Prize.Active.Count - 1; p >= 0; p--)
-                if (Prize.Active[p] is var prize && !prize.Grabbable.IsGrabbed && prize.transform.position.y < _stageCentre.position.y - 6f)
+                if (Prize.Active[p] is var prize && !prize.Grabbable.IsGrabbed
+                    && (prize.transform.position.y < _stageCentre.position.y - 6f || OutsideFence(prize.transform.position)))
                     Runner.Despawn(prize.Object);
     }
+
+    /// <summary>Past the fence and down near the floor: out of everyone's reach, so it is gone.</summary>
+    private bool OutsideFence(Vector3 position) =>
+        Vector3.ProjectOnPlane(position - _stageCentre.position, Vector3.up).magnitude > _podiumRadius + 2.5f
+        && position.y < _stageCentre.position.y + 1f;
 
     private void DropPrize(bool golden)
     {
@@ -149,6 +155,8 @@ public class PrizeGrabMinigameController : MinigameController
     {
         base.Spawned();
         var ground = _stageCentre.position;
+        // Contestants stay inside the podium ring; prizes thrown wide sail over the fence and are lost.
+        ArenaProps.Fence(transform, ground, _podiumRadius + 2.5f);
         if (Variant == 1)
         {
             // A broken ring of low hurdles: hop them with a prize, or go round through the gaps.

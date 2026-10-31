@@ -14,5 +14,8 @@ public static class PhysicsSetup
 #pragma warning disable CS0618
         Physics.autoSyncTransforms = true;
 #pragma warning restore CS0618
+        // Arena fences stop contestants only: bombs, prizes and everything else pass through.
+        for (int layer = 0; layer < 32; layer++)
+            Physics.IgnoreLayerCollision(ArenaProps.FENCE_LAYER, layer, layer != ArenaProps.PLAYER_LAYER);
     }
 }

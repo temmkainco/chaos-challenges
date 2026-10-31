@@ -75,6 +75,7 @@ public class SpectatorLounge : MonoBehaviour
         void Tint(GameObject go, Color color)
         {
             var renderer = go.GetComponent<Renderer>();
+            renderer.sharedMaterial = ArenaProps.Material;
             renderer.GetPropertyBlock(block);
             block.SetColor(BaseColor, color);
             renderer.SetPropertyBlock(block);

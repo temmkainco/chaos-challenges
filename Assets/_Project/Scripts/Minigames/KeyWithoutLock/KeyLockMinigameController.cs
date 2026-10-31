@@ -4,8 +4,8 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Key Hunt, musical chairs with keys: with N contestants only N-1 doors are open, each glowing in its own colour,
-/// and there is exactly one key per open door, in the same colour, hidden around the vault. Grab a key (E), run to
+/// Key Hunt, musical chairs with keys: up to four doors glow, each in its own colour, but with N contestants only
+/// N-1 of them have a real key (in the same colour) hidden around the vault; the others are decoys. Grab a key (E), run to
 /// the door of its colour and press E to escape; that door then shuts for good. Every colour also has a fake key that
 /// looks the same and crumbles when tried. Someone is always left without a
 /// key, so shoving a key-holder knocks the key out of their hands. Escape order decides the placement; the last one
@@ -98,19 +98,29 @@ public class KeyLockMinigameController : MinigameController
         return $"{todo}\n<size=80%>{open} door{(open == 1 ? "" : "s")} left, {PlayerCount - Escaped} still inside</size>";
     }
 
-    /// <summary>Host. During the rules card: one door fewer than contestants (at least one), each in its own colour.</summary>
+    /// <summary>Doors lit each round whatever the head count (one lit door with two players was a non-search).</summary>
+    private const int LIT_DOORS = 4;
+
+    /// <summary>Host only: colours whose door has a real key this round (one fewer than contestants).</summary>
+    private readonly HashSet<byte> _realColors = new();
+
+    /// <summary>Host. During the rules card: up to four doors light up, each in its own colour.</summary>
     protected override void OnIntro()
     {
         base.OnIntro();
         int doors = Mathf.Min(_doors.Length, 16);
-        int openDoors = Mathf.Clamp(ConnectedPlayers().Count() - 1, 1, Mathf.Min(doors, VaultKey.Colors.Length));
+        int maxOpen = Mathf.Min(doors, VaultKey.Colors.Length);
+        int realKeys = Mathf.Clamp(ConnectedPlayers().Count() - 1, 1, maxOpen);
+        int openDoors = Mathf.Clamp(Mathf.Max(LIT_DOORS, realKeys), 1, maxOpen);
         var order = Enumerable.Range(0, doors).OrderBy(_ => Random.value).ToList();
         var colors = Enumerable.Range(0, VaultKey.Colors.Length).OrderBy(_ => Random.value).ToList();
         for (int i = 0; i < doors; i++) DoorColor.Set(i, CLOSED);
         for (int i = 0; i < openDoors; i++) DoorColor.Set(order[i], (byte)colors[i]);
+        _realColors.Clear();
+        foreach (int c in colors.Take(openDoors).OrderBy(_ => Random.value).Take(realKeys)) _realColors.Add((byte)c);
     }
 
-    /// <summary>Host. One key per open door, in its colour, hidden around the vault.</summary>
+    /// <summary>Host. A real key for N-1 of the lit doors and a fake for every lit door, hidden around the vault.</summary>
     protected override void StartGame()
     {
         base.StartGame();
@@ -123,8 +133,9 @@ public class KeyLockMinigameController : MinigameController
         {
             if (DoorColor[i] == CLOSED) continue;
             byte variant = DoorColor[i];
-            // The real key and a fake of the same colour.
-            foreach (byte doorId in new[] { (byte)_doors[i].Id, VaultKey.FAKE })
+            // The real key (decoy doors have none) and a fake of the same colour.
+            var ids = _realColors.Contains(variant) ? new[] { (byte)_doors[i].Id, VaultKey.FAKE } : new[] { VaultKey.FAKE };
+            foreach (byte doorId in ids)
                 Runner.Spawn(_keyPrefab, spots[spot++], Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
                     (runner, spawned) =>
                     {

@@ -57,9 +57,10 @@ public class Minefield : NetworkBehaviour
     {
         // Layouts (MinesMinigameController.Variants): Classic, Wide Field (more plates, sparser), Danger Zone (denser).
         int layout = MinigameController.VariantOf(MinesMinigameController.Layouts.Length);
-        Size = Mathf.Clamp(playerCount + (layout == 1 ? 4 : 2), MIN_SIZE, MAX_SIZE);
+        // At least 5x5: two players on 4x4 was mostly coin flips.
+        Size = Mathf.Clamp(playerCount + (layout == 1 ? 4 : 3), Mathf.Max(MIN_SIZE, 5), MAX_SIZE);
         int plates = PlateCount;
-        float ratio = _mineRatio * (layout == 1 ? 0.8f : layout == 2 ? 1.6f : 1f);
+        float ratio = _mineRatio * (layout == 1 ? 0.8f : layout == 2 ? 1.35f : 1f);
         MineCount = Mathf.Clamp(Mathf.RoundToInt(plates * ratio), Mathf.Max(1, playerCount - 1), plates - 1);
         MinesFound = 0;
 
