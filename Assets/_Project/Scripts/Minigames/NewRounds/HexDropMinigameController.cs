@@ -35,7 +35,7 @@ public class HexDropMinigameController : EliminationMinigameController, IBeforeT
     private MaterialPropertyBlock _block;
     private static readonly Color[] LayerColors = { new(1f, 0.49f, 0.71f), new(0.36f, 0.75f, 0.92f), new(1f, 0.79f, 0.24f), new(0.31f, 0.82f, 0.63f) };
 
-    public override string[] Variants => new[] { "Classic Stack", "Tall Tower", "Twin Peaks", "Donut" };
+    public override string[] Variants => new[] { "Classic Stack", "Tall Tower", "Twin Peaks", "Donut", "Pyramid", "Spokes", "Swiss Hex" };
 
     private Vector3 Base => _centre.position + Vector3.up * _baseHeight;
     protected override float OutHeight => Base.y - 3f;
@@ -68,12 +68,18 @@ public class HexDropMinigameController : EliminationMinigameController, IBeforeT
         int rings = variant == 1 ? 3 : RINGS;
         float gap = variant == 1 ? _layerGap * 0.85f : _layerGap;
         static int Distance(int q, int r) => (Mathf.Abs(q) + Mathf.Abs(r) + Mathf.Abs(q + r)) / 2;
-        bool Solid(int q, int r) => variant switch
+        bool Solid(int q, int r, int layer) => variant switch
         {
             // Two islands joined by a one-hex bridge.
             2 => Distance(q + 3, r) <= 2 || Distance(q - 3, r) <= 2 || (r == 0 && q == 0),
             // A ring: no middle.
             3 => Distance(q, r) >= 2,
+            // Floors shrink toward the top: the higher you start, the smaller your floor.
+            4 => Distance(q, r) <= rings - layer,
+            // Three narrow spokes through a small hub.
+            5 => Distance(q, r) <= 1 || q == 0 || r == 0 || q + r == 0,
+            // Every third hex missing: hop across the holes.
+            6 => ((q - r) % 3 + 3) % 3 != 0 || Distance(q, r) == 0,
             _ => true,
         };
         float w = Mathf.Sqrt(3f) * _hexRadius * 0.98f;
@@ -86,7 +92,7 @@ public class HexDropMinigameController : EliminationMinigameController, IBeforeT
             for (int q = -reach; q <= reach; q++)
                 for (int r = Mathf.Max(-reach, -q - reach); r <= Mathf.Min(reach, -q + reach); r++)
                 {
-                    if (!Solid(q, r)) continue;
+                    if (!Solid(q, r, layer)) continue;
                     if (_tilePositions.Count >= MAX_TILES) break;
                     float x = w * (q + r * 0.5f), z = _hexRadius * 1.5f * 0.98f * r;
                     _tilePositions.Add(Base + turn * new Vector3(x, 0f, z) + Vector3.up * (layer * gap));
@@ -135,8 +141,12 @@ public class HexDropMinigameController : EliminationMinigameController, IBeforeT
     public override string TwistTitle => "EARTHQUAKE";
     public override string TwistDescription => "Random tiles on every floor crack on their own.";
 
-    /// <summary>At least 0.75 s before a stepped tile drops: with lag, players saw tiles fall under them early.</summary>
-    private float Delay => (ActiveChaos is ChaosModifier.IceFloor or ChaosModifier.SpeedRush ? 0.6f : 1f) * Mathf.Max(_dropDelay, 0.75f);
+    /// <summary>
+    /// Seconds from a step to the drop (the scene's _dropDelay, 0.55 s). The drop tick is fixed when it is stepped on and
+    /// every peer drops the tile on that tick, so it only has to stay above the network floor (<see cref="MIN_DROP_DELAY"/>).
+    /// </summary>
+    private float Delay => (ActiveChaos is ChaosModifier.IceFloor or ChaosModifier.SpeedRush ? 0.6f : 1f) * Mathf.Max(_dropDelay, MIN_DROP_DELAY);
+    private const float MIN_DROP_DELAY = 0.4f;
 
     protected override bool SimulatedOnClients => true;
 
