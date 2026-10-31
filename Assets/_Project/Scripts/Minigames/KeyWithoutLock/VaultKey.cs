@@ -5,8 +5,8 @@ using UnityEngine;
 
 /// <summary>
 /// A Key Hunt key. Carried with <see cref="GrabbableObject"/> (keys cannot be thrown). Which door it opens
-/// (<see cref="DoorId"/>) is set by the host and never shown; after a wrong try the key remembers how close its
-/// door was (<see cref="Heat"/>) and glows cold blue, warm orange or hot red.
+/// (<see cref="DoorId"/>) is set by the host and never shown: its colour only tells keys apart and never matches its
+/// door, so a key has to be tried on the doors.
 /// </summary>
 [RequireComponent(typeof(GrabbableObject))]
 public class VaultKey : NetworkBehaviour
@@ -15,7 +15,7 @@ public class VaultKey : NetworkBehaviour
     public static readonly List<VaultKey> Active = new();
 
     private static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
-    /// <summary>Key and door colours (Key Hunt pairs each open door with one key of its colour).</summary>
+    /// <summary>Key and door colours (a key is never the colour of its own door).</summary>
     public static readonly string[] Names = { "RED", "ORANGE", "YELLOW", "GREEN", "BLUE", "PURPLE", "PINK" };
     public static readonly Color[] Colors =
     {
