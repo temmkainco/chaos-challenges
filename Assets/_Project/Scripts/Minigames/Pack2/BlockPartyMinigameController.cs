@@ -28,6 +28,11 @@ public class BlockPartyMinigameController : EliminationMinigameController
 
     [SerializeField] private Transform _centre;
     [SerializeField] private float _height = 6f;
+    [SerializeField, Tooltip("How far beyond the platform's edge a wall appears (metres), so there's time to react")]
+    private float _wallStartDistance = 6f;
+    [SerializeField, Tooltip("Height of the brick lintel over each gap: stand in the gap, but a jump there hits it")]
+    private float _gapCeiling = 2.4f;
+    private const float BODY_HEIGHT = 1.8f;
 
     [Networked, Capacity(MAX_WALLS)] private NetworkArray<SlidingWall> Walls { get; }
     [Networked] private TickTimer NextWall { get; set; }
@@ -39,8 +44,7 @@ public class BlockPartyMinigameController : EliminationMinigameController
 
     /// <summary>Per wall: the root (moved as one) and each segment's full and low brick.</summary>
     private Transform[] _wallRoots;
-    private GameObject[][] _full, _low;
-    private readonly Dictionary<PlayerRef, int> _hitTick = new();
+    private GameObject[][] _full, _low, _lintel;
 
     private Vector3 Floor => _centre.position + Vector3.up * _height;
     protected override float OutHeight => Floor.y - 3f;
@@ -62,6 +66,7 @@ public class BlockPartyMinigameController : EliminationMinigameController
         _wallRoots = new Transform[MAX_WALLS];
         _full = new GameObject[MAX_WALLS][];
         _low = new GameObject[MAX_WALLS][];
+        _lintel = new GameObject[MAX_WALLS][];
         var bricks = new[] { "BrickTall", "Brick4", "Brick6", "Brick2" };
         for (int w = 0; w < MAX_WALLS; w++)
         {
@@ -71,6 +76,7 @@ public class BlockPartyMinigameController : EliminationMinigameController
             _wallRoots[w] = root;
             _full[w] = new GameObject[SEGMENTS];
             _low[w] = new GameObject[SEGMENTS];
+            _lintel[w] = new GameObject[SEGMENTS];
             for (int seg = 0; seg < SEGMENTS; seg++)
             {
                 var x = (seg + 0.5f) * SEGMENT - HALF;
@@ -78,6 +84,8 @@ public class BlockPartyMinigameController : EliminationMinigameController
                     new Vector3(SEGMENT * 0.98f, WALL_HEIGHT, 0.8f))?.gameObject;
                 _low[w][seg] = ArenaModels.Spawn("BrickLong", root, root.TransformPoint(new Vector3(x, LOW_HEIGHT * 0.5f, 0f)), root.rotation,
                     new Vector3(SEGMENT * 0.98f, LOW_HEIGHT, 0.8f))?.gameObject;
+                _lintel[w][seg] = ArenaModels.Spawn("BrickLong", root, root.TransformPoint(new Vector3(x, (_gapCeiling + WALL_HEIGHT) * 0.5f, 0f)), root.rotation,
+                    new Vector3(SEGMENT * 0.98f, WALL_HEIGHT - _gapCeiling, 0.8f))?.gameObject;
             }
             root.gameObject.SetActive(false);
         }
@@ -90,13 +98,12 @@ public class BlockPartyMinigameController : EliminationMinigameController
         if (!HasStateAuthority) return;
         for (int i = 0; i < MAX_WALLS; i++) Walls.Set(i, default);
         NextWall = TickTimer.CreateFromSeconds(Runner, 1.5f);
-        _hitTick.Clear();
     }
 
     private float Elapsed => Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
 
     /// <summary>Distance the wall has travelled from its start edge (it starts just outside).</summary>
-    private float Travel(SlidingWall wall) => (Runner.Tick - wall.StartTick) * Runner.DeltaTime * wall.Speed * 0.1f - 1.5f;
+    private float Travel(SlidingWall wall) => (Runner.Tick - wall.StartTick) * Runner.DeltaTime * wall.Speed * 0.1f - _wallStartDistance;
 
     private static Vector3 Direction(byte side) => side switch { 0 => Vector3.left, 1 => Vector3.right, 2 => Vector3.back, _ => Vector3.forward };
 
@@ -137,11 +144,14 @@ public class BlockPartyMinigameController : EliminationMinigameController
         }
     }
 
-    /// <summary>A wall reaching you shoves you along ahead of it, unless you are in a gap or over its low bricks.</summary>
+    /// <summary>
+    /// A wall reaching you shoves you along ahead of it, unless you stand in a gap (jumping there hits the lintel) or
+    /// jump its low bricks. Every tick you overlap it, not once in a while: with a cooldown the wall slid through people.
+    /// </summary>
     public override void SimulateContestant(Player player, PlayerMovement movement)
     {
         var who = player.Object.InputAuthority;
-        if (HasStateAuthority && !_alive.Contains(who) || CoolingDown(_hitTick, who, Runner.TickRate / 4)) return;
+        if (HasStateAuthority && !_alive.Contains(who)) return;
         for (int w = 0; w < MAX_WALLS; w++)
         {
             var wall = Walls[w];
@@ -156,12 +166,15 @@ public class BlockPartyMinigameController : EliminationMinigameController
             float across = Vector3.Dot(rel, Vector3.Cross(Vector3.up, dir)) + HALF;
             if (Mathf.Abs(along - travel) > 0.75f) continue;
             int segment = Mathf.FloorToInt(across / SEGMENT);
-            if (segment == wall.GapA || segment == wall.GapB) continue;
+            // In a gap you're safe standing; jump there and your head hits the lintel.
+            if ((segment == wall.GapA || segment == wall.GapB) && rel.y + BODY_HEIGHT < _gapCeiling + 0.1f) continue;
             // Low bricks only catch you on the ground (jump them).
             if ((segment == wall.LowA || segment == wall.LowB) && rel.y > LOW_HEIGHT - 0.3f) continue;
-            _hitTick[who] = Runner.Tick;
+            // Already being carried ahead of it fast enough: nothing more to do this tick.
+            float wallSpeed = wall.Speed * 0.1f;
+            if (Vector3.Dot(movement.CurrentVelocity, dir) >= wallSpeed + 1f) return;
             // A shove ahead of the wall, not a launch: it keeps catching you until you find a gap or the edge.
-            movement.Launch(dir * (wall.Speed * 0.1f + 3f) + Vector3.up * 2f);
+            movement.Launch(dir * (wallSpeed + 3f) + Vector3.up * 2f);
             return;
         }
     }
@@ -178,13 +191,14 @@ public class BlockPartyMinigameController : EliminationMinigameController
             if (root.gameObject.activeSelf != on) root.gameObject.SetActive(on);
             if (!on) continue;
             var dir = Direction(wall.Side);
-            float travel = (Runner.LocalRenderTime - wall.StartTick * Runner.DeltaTime) * wall.Speed * 0.1f - 1.5f;
+            float travel = (Runner.LocalRenderTime - wall.StartTick * Runner.DeltaTime) * wall.Speed * 0.1f - _wallStartDistance;
             root.SetPositionAndRotation(Floor + dir * (travel - HALF), Quaternion.LookRotation(dir));
             for (int seg = 0; seg < SEGMENTS; seg++)
             {
                 bool gap = seg == wall.GapA || seg == wall.GapB, low = seg == wall.LowA || seg == wall.LowB;
                 if (_full[w][seg] != null && _full[w][seg].activeSelf != (!gap && !low)) _full[w][seg].SetActive(!gap && !low);
                 if (_low[w][seg] != null && _low[w][seg].activeSelf != low) _low[w][seg].SetActive(low);
+                if (_lintel[w][seg] != null && _lintel[w][seg].activeSelf != gap) _lintel[w][seg].SetActive(gap);
             }
         }
     }
