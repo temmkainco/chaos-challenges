@@ -6,9 +6,10 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
-/// Lobby, host only: pick which minigames the show draws its rounds from (<see cref="MatchSettings.IsMinigameEnabled"/>).
-/// G opens it; click a game to take it in or out, or use a ready-made pack. At least one game always stays in.
-/// Built from code with <see cref="UiKit"/>, like the rules card.
+/// Lobby: the games tonight's show draws its rounds from. Everyone opens it with L to see the list (pictures, in or out);
+/// the host also edits it (L or G): click a game to take it in or out, or use a ready-made pack
+/// (<see cref="MatchSettings.IsMinigameEnabled"/>). At least one game always stays in. Clients see the host's pack
+/// (<see cref="NetworkGameManager.PackMask"/>). Built from code with <see cref="UiKit"/>, like the rules card.
 /// </summary>
 public class GamePackPanel : MonoBehaviour
 {
@@ -33,7 +34,17 @@ public class GamePackPanel : MonoBehaviour
     private RectTransform _card;
     private TMP_Text _subtitle;
     private readonly List<(MinigameDefinitionSO def, Image tile, Image picture, TMP_Text badge, CanvasGroup fade)> _tiles = new();
+    private readonly List<GameObject> _hostOnly = new();
     private bool _built;
+
+    private static bool InLobby
+    {
+        get
+        {
+            var gm = NetworkGameManager.Instance;
+            return gm != null && gm.Object != null && gm.Object.IsValid && gm.Phase == MatchPhase.Lobby;
+        }
+    }
 
     private void Awake()
     {
@@ -49,7 +60,7 @@ public class GamePackPanel : MonoBehaviour
         card.type = Image.Type.Sliced;
         _card = card.rectTransform;
         Place(_card, 0f, 0f, 1400f, 900f);
-        MakeText(_card, "Title", 72f, UiKit.Orange, true, 0f, 385f, 1200f, 90f).text = "GAME PACK";
+        MakeText(_card, "Title", 72f, UiKit.Orange, true, 0f, 385f, 1200f, 90f).text = "TONIGHT'S GAMES";
         _subtitle = MakeText(_card, "Subtitle", 28f, UiKit.Ink, false, 0f, 322f, 1200f, 40f);
     }
 
@@ -103,15 +114,15 @@ public class GamePackPanel : MonoBehaviour
             _tiles.Add((def, tile, picture, badge, fade));
         }
 
-        PresetButton("ALL GAMES", UiKit.Yellow, -540f, () => SetPack(null));
-        PresetButton("ACTION PACK", UiKit.Pink, -270f, () => SetPack(ActionPack));
-        PresetButton("BRAIN PACK", UiKit.Lavender, 0f, () => SetPack(BrainPack));
-        PresetButton("NEW GAMES", UiKit.Orange, 270f, () => SetPack(NewPack));
+        _hostOnly.Add(PresetButton("ALL GAMES", UiKit.Yellow, -540f, () => SetPack(null)));
+        _hostOnly.Add(PresetButton("ACTION PACK", UiKit.Pink, -270f, () => SetPack(ActionPack)));
+        _hostOnly.Add(PresetButton("BRAIN PACK", UiKit.Lavender, 0f, () => SetPack(BrainPack)));
+        _hostOnly.Add(PresetButton("NEW GAMES", UiKit.Orange, 270f, () => SetPack(NewPack)));
         PresetButton("DONE", UiKit.Mint, 540f, () => Show(false));
         Refresh();
     }
 
-    private void PresetButton(string label, Color color, float x, UnityEngine.Events.UnityAction action)
+    private GameObject PresetButton(string label, Color color, float x, UnityEngine.Events.UnityAction action)
     {
         var image = MakeImage(_card, label, UiKit.Instance.Button, color);
         image.type = Image.Type.Sliced;
@@ -122,10 +133,12 @@ public class GamePackPanel : MonoBehaviour
         button.onClick.AddListener(action);
         image.gameObject.AddComponent<ButtonJuice>();
         MakeText(image.transform, "Label", 28f, UiKit.Ink, false, 0f, 3f, 240f, 60f).text = label;
+        return image.gameObject;
     }
 
     private void Toggle(MinigameDefinitionSO def)
     {
+        if (!IsHost) return;   // guests look, only the host edits
         bool enabled = MatchSettings.IsMinigameEnabled(def.Id);
         if (enabled && EnabledCount() <= 1)
         {
@@ -153,24 +166,32 @@ public class GamePackPanel : MonoBehaviour
     private int EnabledCount()
     {
         int count = 0;
-        foreach (var t in _tiles) if (MatchSettings.IsMinigameEnabled(t.def.Id)) count++;
+        for (int i = 0; i < _tiles.Count; i++) if (IsIn(i)) count++;
         return count;
     }
 
+    /// <summary>The host's own settings on the host; the host's published pack everywhere else.</summary>
+    private bool IsIn(int index) => IsHost ? MatchSettings.IsMinigameEnabled(_tiles[index].def.Id)
+        : NetworkGameManager.Instance != null && NetworkGameManager.Instance.IsInPack(index);
+
     private void Refresh()
     {
-        foreach (var t in _tiles)
+        bool host = IsHost;
+        foreach (var button in _hostOnly) button.SetActive(host);
+        for (int i = 0; i < _tiles.Count; i++)
         {
-            bool on = MatchSettings.IsMinigameEnabled(t.def.Id);
+            var t = _tiles[i];
+            bool on = IsIn(i);
             t.fade.alpha = on ? 1f : 0.45f;
             t.tile.color = on ? Color.white : new Color(0.85f, 0.83f, 0.9f);
             t.badge.text = on ? "IN" : "OUT";
             t.badge.transform.parent.GetComponent<Image>().color = on ? UiKit.Mint : UiKit.Tomato;
         }
         int count = EnabledCount();
-        int rounds = MatchSettings.Rounds;
+        var gm = NetworkGameManager.Instance;
+        int rounds = host ? MatchSettings.Rounds : gm != null ? gm.PackRounds : MatchSettings.Rounds;
         _subtitle.text = $"<b>{count}</b> of {_tiles.Count} games in the show - each match plays {rounds} of them" +
-                         (count < rounds ? " (some twice)" : "");
+                         (count < rounds ? " (some twice)" : "") + (host ? "  -  click a game to take it in or out" : "");
     }
 
     private void Show(bool open)
@@ -191,15 +212,17 @@ public class GamePackPanel : MonoBehaviour
 
     private void Update()
     {
-        bool host = IsHost;
-        if (IsOpen && !host)
+        if (IsOpen && !InLobby)
         {
             Show(false);
             return;
         }
         var keyboard = Keyboard.current;
-        if (host && keyboard != null && keyboard.gKey.wasPressedThisFrame && !PauseMenu.IsOpen)
+        if (keyboard == null || PauseMenu.IsOpen || !InLobby) return;
+        if (keyboard.lKey.wasPressedThisFrame || (IsHost && keyboard.gKey.wasPressedThisFrame))
             Show(!IsOpen);
+        else if (IsOpen && !IsHost && Time.frameCount % 15 == 0)
+            Refresh();   // the host may change the pack while a guest looks
     }
 
     #region UI building

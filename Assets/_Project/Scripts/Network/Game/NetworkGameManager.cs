@@ -445,6 +445,9 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
         PackRounds = MatchSettings.Rounds;
     }
 
+    /// <summary>Whether the minigame at <paramref name="databaseIndex"/> is in the host's game pack (every peer).</summary>
+    public bool IsInPack(int databaseIndex) => databaseIndex >= 0 && databaseIndex < 32 && (PackMask & (1 << databaseIndex)) != 0;
+
     /// <summary>"Hex Drop, Mines - 5 rounds" for the lobby screen (every peer).</summary>
     public string PackSummary()
     {

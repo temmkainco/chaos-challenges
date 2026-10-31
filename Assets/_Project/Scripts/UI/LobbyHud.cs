@@ -7,9 +7,9 @@ using Zenject;
 public class LobbyHud : MonoBehaviour
 {
     private const string GUEST_HELP = "Everyone in? Press <b>E</b> on the big red button to get ready.\n" +
-                                      "<size=80%>The show starts when all contestants are ready. Hold <b>T</b> to emote, hold <b>Tab</b> for players.</size>";
+                                      "<size=80%><b>L</b>: tonight's games. Hold <b>T</b> to emote, hold <b>Tab</b> for players.</size>";
     private const string HOST_HELP = "Everyone in? Press <b>E</b> on the big red button to get ready.\n" +
-                                     "<size=80%>Hold <b>T</b> to emote. <b>G</b>: game pack. hold <b>Tab</b>: players, kick, start now.</size>";
+                                     "<size=80%><b>L</b>: tonight's games (pick them). Hold <b>T</b> to emote. Hold <b>Tab</b>: players, kick, start now.</size>";
 
     [SerializeField] private TMP_Text _code;
     [SerializeField] private TMP_Text _help;
@@ -42,9 +42,6 @@ public class LobbyHud : MonoBehaviour
         if (helpPanel.activeSelf != showHelp)
             helpPanel.SetActive(showHelp);
         string help = GamePackPanel.IsHost ? HOST_HELP : GUEST_HELP;
-        var gameManager = NetworkGameManager.Instance;
-        string pack = gameManager != null && gameManager.Object != null && gameManager.Object.IsValid ? gameManager.PackSummary() : null;
-        if (pack != null) help += $"\n<size=75%><color=#E8590C>SHOW:</color> {pack}</size>";
         if (help != _last)
         {
             _last = help;
