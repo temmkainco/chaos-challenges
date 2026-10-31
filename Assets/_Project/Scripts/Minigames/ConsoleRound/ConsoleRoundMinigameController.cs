@@ -85,8 +85,9 @@ public class ConsoleRoundMinigameController : MinigameController
         return modifier switch
         {
             ChaosModifier.SpeedRush or ChaosModifier.SlowMotion or ChaosModifier.Blackout or ChaosModifier.Twist => true,
-            // Playtesters: no reversed controls in Flap Dash or Pixel Runner (one-button timing games).
-            ChaosModifier.ReversedControls => Cartridge is not (1 or 2),
+            // Playtesters: no reversed controls in Flap Dash or Pixel Runner (one-button timing games); Stack Tower is
+            // one button too, where reversing would change nothing.
+            ChaosModifier.ReversedControls => Cartridge is not (1 or 2 or 7),
             ChaosModifier.LowGravity or ChaosModifier.SuperJump => ConsoleGame.HasGravity(Cartridge),
             _ => false,
         };
