@@ -5,9 +5,10 @@ using UnityEngine;
 /// <summary>
 /// A moving obstacle (pendulum hammer or spinning sweeper bar). Every peer poses it from the network clock, so it
 /// looks the same everywhere without replication: drawn at the local render time (in step with your own predicted
-/// player) and tested at the tick being simulated. The host tests the striking part against contestants once per
-/// network tick (<see cref="SimulateAll"/>, from the minigame's FixedUpdateNetwork) and knocks them away along the
-/// hazard's motion with <see cref="PlayerMovement.Launch"/>, which replicates.
+/// player) and tested at the tick being simulated. Once per network tick (<see cref="SimulateAll"/>, from the
+/// minigame's FixedUpdateNetwork) the host tests the striking part against every contestant, and a client against its
+/// own predicted one, and knocks them away along the hazard's motion with <see cref="PlayerMovement.Launch"/>: the
+/// host's knockback replicates, the client's lands on its own screen at once on the same tick.
 /// </summary>
 public class CourseHazard : MonoBehaviour
 {
@@ -58,10 +59,10 @@ public class CourseHazard : MonoBehaviour
 
     private void Update() => Pose(Clock());
 
-    /// <summary>Host, once per network tick: every hazard is posed at the tick and tested against contestants.</summary>
+    /// <summary>Once per network tick on every peer: each hazard is posed at the tick and tested against contestants.</summary>
     public static void SimulateAll(MinigameController mc)
     {
-        if (mc == null || !mc.HasStateAuthority || !mc.IsGameActive) return;
+        if (mc == null || !mc.IsGameActive) return;
         var runner = mc.Runner;
         float now = runner.Tick * runner.DeltaTime;
         foreach (var hazard in Active)
@@ -91,8 +92,10 @@ public class CourseHazard : MonoBehaviour
         {
             var player = _hits[i].GetComponentInParent<Player>();
             if (player == null || player.Object == null || player.ControlsLocked) continue;
+            if (!mc.HasStateAuthority && !player.Object.HasInputAuthority) continue;   // a client predicts only its own
             if (mc is TilefallMinigameController tilefall && tilefall.IsProtected(player.Object.InputAuthority)) continue;   // just respawned
-            if (_cooldownUntilTick.TryGetValue(player, out int until) && tick < until) continue;
+            // Cooling down after a hit, but re-running the hit's own tick (client re-simulation) applies it again.
+            if (_cooldownUntilTick.TryGetValue(player, out int until) && tick < until && tick > until - tickRate) continue;
             // Low sweeper bars are jumped: anyone in the air or above the bar is clear. (The host sees a client's
             // jump a moment late, and the old full-radius test hit players who had cleared it on their screen.)
             if (_kind == Kind.Spinner && player.TryGetComponent<PlayerMovement>(out var mover)
@@ -106,7 +109,8 @@ public class CourseHazard : MonoBehaviour
             if (push.sqrMagnitude < 0.0001f) push = Vector3.right;
             if (player.TryGetComponent<PlayerMovement>(out var movement))
                 movement.Launch(push.normalized * _knockback + Vector3.up * _knockUp);
-            Debug.Log($"[Hazard] {name} hit {player.Object.InputAuthority}");
+            if (mc.Runner.IsResimulation) continue;
+            if (mc.HasStateAuthority) Debug.Log($"[Hazard] {name} hit {player.Object.InputAuthority}");
             HazardHitFx(player.transform.position);
         }
     }

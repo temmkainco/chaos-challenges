@@ -115,30 +115,35 @@ public class LogRollMinigameController : EliminationMinigameController
         return Vector3.zero;
     }
 
+    protected override bool SimulatedOnClients => true;
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!HasStateAuthority || !IsGameActive) return;
+        if (!IsGameActive) return;
         float dt = Runner.DeltaTime;
-        float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-        float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
-        // Speeding up a little at a time: re-anchored every half second rather than every tick.
-        float spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt * Runner.TickRate / 2f);
-        if (Runner.Tick % (Runner.TickRate / 2) == 0 && !Mathf.Approximately(spin, Spin)) SetSpin(spin);
-        if (NextFlip.Expired(Runner) && !TwistActive)
+        if (HasStateAuthority)
         {
-            NextFlip = TickTimer.CreateFromSeconds(Runner, Random.Range(9f, 14f));
-            SetSpin(-Spin);
-            Announce("SWITCH!");
+            float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
+            float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
+            // Speeding up a little at a time: re-anchored every half second rather than every tick.
+            float spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt * Runner.TickRate / 2f);
+            if (Runner.Tick % (Runner.TickRate / 2) == 0 && !Mathf.Approximately(spin, Spin)) SetSpin(spin);
+            if (NextFlip.Expired(Runner) && !TwistActive)
+            {
+                NextFlip = TickTimer.CreateFromSeconds(Runner, Random.Range(9f, 14f));
+                SetSpin(-Spin);
+                Announce("SWITCH!");
+            }
         }
         float roll = Roll.AtTick(Runner);
         float previous = roll - Roll.Rate * dt;
 
         // Ridges rolling over the top knock off anyone standing low in their way.
-        foreach (var who in _alive)
+        foreach (var who in HitTestedContestants(_alive))
         {
             if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-            if (_hitTick.TryGetValue(who, out int last) && Runner.Tick - last < Runner.TickRate / 2) continue;
+            if (CoolingDown(_hitTick, who, Runner.TickRate / 2)) continue;
             for (int log = 0; log < LogCount; log++)
             {
                 var rel = player.transform.position - Axis(log);

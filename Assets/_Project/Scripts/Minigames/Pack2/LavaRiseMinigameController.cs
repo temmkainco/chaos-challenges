@@ -132,20 +132,25 @@ public class LavaRiseMinigameController : EliminationMinigameController
         ArenaProps.Done();
     }
 
+    protected override bool SimulatedOnClients => true;
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!HasStateAuthority || !IsGameActive) return;
-        float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-        float speed = (0.16f + 0.011f * elapsed) * (TwistActive ? 3f : 1f);
-        if (LavaY >= LavaTop) speed = 0f;
-        // The rate creeps up over the round: re-anchored every half second rather than every tick.
-        if (Runner.Tick % (Runner.TickRate / 2) == 0 || speed == 0f && Lava.Rate != 0f) Lava = Lava.Retarget(Runner, speed);
+        if (!IsGameActive) return;
+        if (HasStateAuthority)
+        {
+            float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
+            float speed = (0.16f + 0.011f * elapsed) * (TwistActive ? 3f : 1f);
+            if (LavaY >= LavaTop) speed = 0f;
+            // The rate creeps up over the round: re-anchored every half second rather than every tick.
+            if (Runner.Tick % (Runner.TickRate / 2) == 0 || speed == 0f && Lava.Rate != 0f) Lava = Lava.Retarget(Runner, speed);
+        }
 
-        foreach (var who in _alive)
+        foreach (var who in HitTestedContestants(_alive))
         {
             if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-            if (_bouncedTick.TryGetValue(who, out int last) && Runner.Tick - last < Runner.TickRate) continue;
+            if (CoolingDown(_bouncedTick, who, Runner.TickRate)) continue;
             var position = player.transform.position;
             foreach (var spring in _bouncers)
             {
@@ -153,7 +158,7 @@ public class LavaRiseMinigameController : EliminationMinigameController
                 if (!player.TryGetComponent<PlayerMovement>(out var movement)) break;
                 _bouncedTick[who] = Runner.Tick;
                 movement.Launch(Vector3.up * 15f);
-                RPC_Boing(spring);
+                if (HasStateAuthority) RPC_Boing(spring);
                 break;
             }
         }

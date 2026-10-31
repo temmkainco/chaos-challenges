@@ -141,16 +141,19 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!HasStateAuthority || !IsGameActive) return;
-        float speed = Speed();
-        // Re-anchored only when the speed has crept up noticeably, so clients rarely have to correct the bars.
-        if (Mathf.Abs(BarA.Rate - speed) > 1f) BarA = BarA.Retarget(Runner, speed, 360f);
-        if (Variant == 2 && Mathf.Abs(BarB.Rate + speed * 0.8f) > 1f) BarB = BarB.Retarget(Runner, -speed * 0.8f, 360f);
+        if (!IsGameActive) return;
+        if (HasStateAuthority)
+        {
+            float speed = Speed();
+            // Re-anchored only when the speed has crept up noticeably, so clients rarely have to correct the bars.
+            if (Mathf.Abs(BarA.Rate - speed) > 1f) BarA = BarA.Retarget(Runner, speed, 360f);
+            if (Variant == 2 && Mathf.Abs(BarB.Rate + speed * 0.8f) > 1f) BarB = BarB.Retarget(Runner, -speed * 0.8f, 360f);
+        }
         float angleA = BarA.AtTick(Runner), angleB = BarB.AtTick(Runner);
         float prevA = angleA - BarA.Rate * Runner.DeltaTime, prevB = angleB - BarB.Rate * Runner.DeltaTime;
 
         // Tiles: a few crack every few seconds (never the ones under the hub), then drop.
-        if (NextCrack.Expired(Runner))
+        if (HasStateAuthority && NextCrack.Expired(Runner))
         {
             NextCrack = TickTimer.CreateFromSeconds(Runner, Mathf.Max(2.5f, 6f - (Definition.GameDuration - TimeRemaining) * 0.04f));
             for (int n = 0, guard = 0; n < 3 && guard < 40; guard++)
@@ -163,10 +166,10 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
         }
 
         // Sweep: anyone standing low where a bar passed this tick is flung off.
-        foreach (var who in _alive)
+        foreach (var who in HitTestedContestants(_alive))
         {
             if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-            if (_hitTick.TryGetValue(who, out int last) && Runner.Tick - last < Runner.TickRate / 2) continue;
+            if (CoolingDown(_hitTick, who, Runner.TickRate / 2)) continue;
             var rel = player.transform.position - Floor;
             float radius = new Vector2(rel.x, rel.z).magnitude;
             if (radius < 1.1f || radius > Reach + 0.5f || rel.y > BAR_TOP + 0.05f) continue;
@@ -184,7 +187,7 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
             var outward = new Vector3(rel.x, 0f, rel.z).normalized;
             var tangent = Vector3.Cross(Vector3.up, outward) * dir;
             movement.Launch(tangent * 6f + outward * 2f + Vector3.up * 5.5f);
-            RPC_Swept(player.transform.position);
+            if (HasStateAuthority) RPC_Swept(player.transform.position);
         }
     }
 

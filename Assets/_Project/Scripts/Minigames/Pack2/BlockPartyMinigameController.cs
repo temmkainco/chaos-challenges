@@ -115,12 +115,14 @@ public class BlockPartyMinigameController : EliminationMinigameController
         WallCount++;
     }
 
+    protected override bool SimulatedOnClients => true;
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!HasStateAuthority || !IsGameActive) return;
+        if (!IsGameActive) return;
 
-        if (NextWall.Expired(Runner))
+        if (HasStateAuthority && NextWall.Expired(Runner))
         {
             NextWall = TickTimer.CreateFromSeconds(Runner, Mathf.Lerp(4.2f, 2.4f, Mathf.Clamp01(Elapsed / 70f)));
             byte side = (byte)Random.Range(0, Variant == 2 || Elapsed > 30f ? 4 : 2);
@@ -134,12 +136,16 @@ public class BlockPartyMinigameController : EliminationMinigameController
             var wall = Walls[w];
             if (wall.StartTick == 0) continue;
             float travel = Travel(wall);
-            if (travel > SEGMENTS * SEGMENT + 3f) { Walls.Set(w, default); continue; }
+            if (travel > SEGMENTS * SEGMENT + 3f)
+            {
+                if (HasStateAuthority) Walls.Set(w, default);
+                continue;
+            }
             var dir = Direction(wall.Side);
-            foreach (var who in _alive)
+            foreach (var who in HitTestedContestants(_alive))
             {
                 if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-                if (_hitTick.TryGetValue(who, out int last) && Runner.Tick - last < Runner.TickRate / 4) continue;
+                if (CoolingDown(_hitTick, who, Runner.TickRate / 4)) continue;
                 var rel = player.transform.position - Floor;
                 if (rel.y > WALL_HEIGHT || rel.y < -1f) continue;
                 // Along the wall's travel, measured from its start edge; across it, which segment.

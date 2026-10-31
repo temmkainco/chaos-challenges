@@ -87,9 +87,13 @@ public class TilefallMinigameController : MinigameController
         return true;
     }
 
+    protected override bool SimulatedOnClients => true;
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
+        if (IsGameActive)
+            CourseHazard.SimulateAll(this);
 
         if (!HasStateAuthority || !IsGameActive)
             return;
@@ -116,7 +120,6 @@ public class TilefallMinigameController : MinigameController
                 _standing.Add(player.transform.position);
         }
         _course.Simulate(_standing);
-        CourseHazard.SimulateAll(this);
 
         RespawnFallenPlayers();
     }
