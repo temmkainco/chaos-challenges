@@ -157,6 +157,11 @@ public class MinigameController : NetworkBehaviour
     /// <summary>Multiplier on shove knockback (Ring Out makes shoves the main weapon).</summary>
     public virtual float ShoveStrength => 1f;
 
+    /// <summary>Side scoreboard entry for a contestant ("12", "Lap 2", "#1"); null for everyone hides the board.</summary>
+    public virtual string ScoreboardValue(PlayerRef player) => null;
+    /// <summary>Order on the side scoreboard, highest first.</summary>
+    public virtual float ScoreboardRank(PlayerRef player) => 0f;
+
     /// <summary>Optional big, persistent instruction at the top of the screen while it matters (Color Code's colour).</summary>
     public virtual string Callout => null;
 

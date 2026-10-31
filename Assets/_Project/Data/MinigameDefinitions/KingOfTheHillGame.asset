@@ -19,16 +19,16 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: King of the Hill
-  <Description>k__BackingField: A glowing zone hops around the stage. Stand in it
-    alone to score - shove everyone else out!
+  <Description>k__BackingField: A glowing zone hops around the stage. Everyone standing
+    in it scores - shove the others out!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 3d43ba2001b2b09489146c5d982832b3, type: 3}
   <Rules>k__BackingField:
-  - Alone in the zone = points
-  - Shove rivals out
+  - Stand in the zone to score
+  - Shove rivals out of it
   - Watch for the zone moving
   <Objective>k__BackingField: Score the most points in the zone.
-  <Danger>k__BackingField: 'Two or more in the zone: contested, nobody scores. The
-    zone moves every few seconds.'
+  <Danger>k__BackingField: The zone moves every few seconds. Rivals will shove you
+    out.
   <Scoring>k__BackingField: Most points wins.
   <Controls>k__BackingField:
   - LMB|Shove (extra strong)

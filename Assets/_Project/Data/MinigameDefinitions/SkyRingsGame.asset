@@ -19,17 +19,17 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Sky Rings
-  <Description>k__BackingField: Take to the sky in a little plane and fly through
-    as many rings as you can!
+  <Description>k__BackingField: A plane race through the hoops! Fly through them
+    in order - your next hoop glows gold.
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 96865c391f2a29c43b2a4308f31dbf1d, type: 3}
   <Rules>k__BackingField:
-  - Rings score again after a few seconds
-  - Gold rings are worth 3
+  - Fly through the gold hoop
+  - W climbs, S dives
   - Shift boosts
-  <Objective>k__BackingField: Score the most rings.
-  <Danger>k__BackingField: Your plane never stops. Hit the ground and you crash back
-    to the start.
-  <Scoring>k__BackingField: Most points wins. Gold rings are worth 3.
+  <Objective>k__BackingField: Finish two laps of hoops first.
+  <Danger>k__BackingField: Miss a hoop and you have to turn back for it. Hit the
+    ground and you crash back to your last hoop.
+  <Scoring>k__BackingField: Finish order wins; the rest by hoops.
   <Controls>k__BackingField:
   - W / S|Nose up / down
   - A / D|Turn

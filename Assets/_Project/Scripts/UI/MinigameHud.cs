@@ -31,6 +31,9 @@ public class MinigameHud : MonoBehaviour
     private int _lastTimerSeconds = -1;
     private bool _chipVisible;
     private float _nextStatus;
+    private int _lastTurnSecond = -1;
+    private RectTransform _board;
+    private readonly System.Collections.Generic.List<(UnityEngine.UI.Image swatch, TMP_Text name, TMP_Text value)> _rows = new();
     private static BasePlayerSpawner _spawner;
 
     private void Awake()
@@ -81,6 +84,91 @@ public class MinigameHud : MonoBehaviour
         if (!t.TryGetComponent<CanvasGroup>(out var group))
             group = t.gameObject.AddComponent<CanvasGroup>();
         return group;
+    }
+
+    /// <summary>
+    /// Side scoreboard under the LIVE chip: one row per contestant (outfit colour, name, value), best first. Shown when
+    /// the minigame reports values (<see cref="MinigameController.ScoreboardValue"/>).
+    /// </summary>
+    private void UpdateBoard(MinigameController controller)
+    {
+        var players = new System.Collections.Generic.List<(PlayerRef player, string value, float rank)>();
+        foreach (var player in controller.Runner.ActivePlayers)
+        {
+            string value = controller.ScoreboardValue(player);
+            if (value != null) players.Add((player, value, controller.ScoreboardRank(player)));
+        }
+        if (_board == null)
+        {
+            if (players.Count == 0) return;
+            var go = new GameObject("Scoreboard", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.VerticalLayoutGroup), typeof(UnityEngine.UI.ContentSizeFitter));
+            go.transform.SetParent(transform, false);
+            _board = (RectTransform)go.transform;
+            _board.anchorMin = _board.anchorMax = _board.pivot = new Vector2(1f, 1f);
+            _board.anchoredPosition = new Vector2(-24f, -190f);
+            _board.sizeDelta = new Vector2(330f, 10f);
+            var background = go.GetComponent<UnityEngine.UI.Image>();
+            background.sprite = UiKit.Instance != null ? UiKit.Instance.Panel : null;
+            background.type = UnityEngine.UI.Image.Type.Sliced;
+            background.color = new Color(1f, 0.97f, 0.9f, 0.92f);
+            background.raycastTarget = false;
+            var layout = go.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();
+            layout.padding = new RectOffset(18, 18, 12, 12);
+            layout.spacing = 2f;
+            layout.childControlHeight = layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            go.GetComponent<UnityEngine.UI.ContentSizeFitter>().verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+        }
+        players.Sort((a, b) => b.rank.CompareTo(a.rank));
+        _board.gameObject.SetActive(players.Count > 0);
+        while (_rows.Count < players.Count) _rows.Add(CreateRow());
+        for (int i = 0; i < _rows.Count; i++)
+        {
+            bool on = i < players.Count;
+            _rows[i].name.transform.parent.gameObject.SetActive(on);
+            if (!on) continue;
+            var (player, value, _) = players[i];
+            bool mine = player == controller.Runner.LocalPlayer;
+            _rows[i].name.text = mine ? $"<b>{Nickname(player)}</b>" : Nickname(player);
+            _rows[i].value.text = value;
+            _rows[i].swatch.color = _spawner != null && _spawner.Players.TryGet(player, out var p) && p != null ? p.OutfitColor : Color.grey;
+        }
+    }
+
+    private (UnityEngine.UI.Image swatch, TMP_Text name, TMP_Text value) CreateRow()
+    {
+        var row = new GameObject("Row", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
+        row.transform.SetParent(_board, false);
+        row.GetComponent<UnityEngine.UI.LayoutElement>().preferredHeight = 38f;
+        var swatchGo = new GameObject("Swatch", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        swatchGo.transform.SetParent(row.transform, false);
+        var swatchRect = (RectTransform)swatchGo.transform;
+        swatchRect.anchorMin = swatchRect.anchorMax = swatchRect.pivot = new Vector2(0f, 0.5f);
+        swatchRect.sizeDelta = new Vector2(22f, 22f);
+        var swatch = swatchGo.GetComponent<UnityEngine.UI.Image>();
+        swatch.raycastTarget = false;
+        TMP_Text Label(string name, TextAlignmentOptions alignment, float left, float right)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(row.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(left, 0f); rt.offsetMax = new Vector2(-right, 0f);
+            var text = go.AddComponent<TextMeshProUGUI>();
+            text.font = _timer.font;
+            text.fontSize = 26f;
+            text.color = new Color32(46, 26, 71, 255);
+            text.alignment = alignment;
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            text.raycastTarget = false;
+            return text;
+        }
+        var nameText = Label("Name", TextAlignmentOptions.MidlineLeft, 32f, 70f);
+        var valueText = Label("Value", TextAlignmentOptions.MidlineRight, 0f, 0f);
+        valueText.color = new Color(0.91f, 0.35f, 0.05f);
+        valueText.fontStyle = FontStyles.Bold;
+        return (swatch, nameText, valueText);
     }
 
     private TMP_Text CreateBanner()
@@ -165,7 +253,17 @@ public class MinigameHud : MonoBehaviour
             bool mine = turnBased.CurrentTurn == controller.Runner.LocalPlayer;
             string turn = mine ? "<color=#E8590C>Your turn</color>" : $"{Nickname(turnBased.CurrentTurn)}'s turn";
             if (turnBased.HasTurnTimer)
-                turn += $"  {Mathf.CeilToInt(turnBased.TurnTimeRemaining)}s";
+            {
+                int left = Mathf.CeilToInt(turnBased.TurnTimeRemaining);
+                turn += $"  {left}s";
+                // The last seconds of a turn tick (louder on yours) and count down big on your screen.
+                if (left <= 3 && left > 0 && left != _lastTurnSecond)
+                {
+                    Sfx.Play(Sound.Tick, mine ? 1f : 0.4f, 0f);
+                    if (mine) PopBanner($"<color=#E03131>{left}</color>");
+                }
+                _lastTurnSecond = left;
+            }
             status = string.IsNullOrEmpty(status) ? turn : $"{turn}\n<size=75%>{status}</size>";
 
             if (turnBased.CurrentTurn != _lastTurn)
@@ -188,6 +286,7 @@ public class MinigameHud : MonoBehaviour
         }
         Set(_status, status, ref _lastStatus);
         _status.gameObject.SetActive(status.Length > 0);
+        UpdateBoard(controller);
         _timer.gameObject.SetActive(timer.Length > 0);
         _chipVisible = timer.Length + status.Length > 0;
 

@@ -76,7 +76,7 @@ public class SpinSweepMinigameController : EliminationMinigameController
         }
 
         // The hub the bars turn on (you can't stand in the middle) and the bars themselves.
-        ArenaProps.Block(transform, PrimitiveType.Cylinder, Floor, new Vector3(2.4f, 1.6f, 2.4f), ArenaProps.Yellow);
+        ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, Floor, new Vector3(2.4f, 1.6f, 2.4f), ArenaProps.Yellow), "Tower", true);
         _barsA = BuildBars(Variant == 1 ? 4 : Variant == 2 ? 1 : 2, ArenaProps.Pink);
         if (Variant == 2) _barsB = BuildBars(1, ArenaProps.Blue);
         ArenaProps.Done();
@@ -94,14 +94,10 @@ public class SpinSweepMinigameController : EliminationMinigameController
             var arm = new GameObject("Arm").transform;
             arm.SetParent(root, false);
             arm.localRotation = Quaternion.Euler(0f, a * 360f / arms, 0f);
-            for (int s = 0; s < 4; s++)
-            {
-                // Striped, so the spin reads at a glance.
-                var piece = ArenaProps.Block(arm, PrimitiveType.Cube, Floor, new Vector3(0.5f, 0.45f, Reach / 4f), s % 2 == 0 ? color : Color.white);
-                Destroy(piece.GetComponent<Collider>());
-                piece.localPosition = new Vector3(0f, BAR_TOP - 0.22f, 1.1f + (s + 0.5f) * (Reach - 1.1f) / 4f);
-                piece.localRotation = Quaternion.identity;
-            }
+            // A log for each arm (its long side along the arm), low enough to jump.
+            float length = Reach - 1.1f;
+            ArenaModels.Spawn("Log", arm, arm.TransformPoint(new Vector3(0f, BAR_TOP - 0.25f, 1.1f + length * 0.5f)), arm.rotation * Quaternion.Euler(0f, 90f, 0f),
+                new Vector3(length, 0.5f, 0.5f), tint: color);
         }
         return root;
     }

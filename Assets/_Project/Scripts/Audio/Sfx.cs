@@ -64,15 +64,38 @@ public class Sfx : MonoBehaviour
         _clips[Sound.Whoosh] = SoundSynth.Whoosh();
 
         _music = gameObject.AddComponent<AudioSource>();
-        _music.clip = SoundSynth.MusicLoop();
         _music.loop = true;
         _music.playOnAwake = false;
         _music.volume = GameSettings.MusicVolume;
-        _music.Play();
+        PlayMusicFor(SceneManager.GetActiveScene().name);
 
         GameSettings.Changed += OnSettingsChanged;
-        SceneManager.sceneLoaded += (scene, mode) => HookButtons();
+        SceneManager.sceneLoaded += (scene, mode) => { HookButtons(); PlayMusicFor(scene.name); };
         HookButtons();
+    }
+
+    private readonly Dictionary<int, AudioClip> _musicClips = new();
+    private int _musicStyle = -1;
+
+    /// <summary>
+    /// Every arena has its own tune (a style picked from the scene name, the same for everyone); the menus and the
+    /// lobby play the show theme. Tunes are made the first time they are needed.
+    /// </summary>
+    private void PlayMusicFor(string sceneName)
+    {
+        int style = 0;
+        if (sceneName.EndsWith("Minigame"))
+        {
+            int hash = 0;
+            foreach (char c in sceneName) hash = hash * 31 + c;
+            style = 1 + (hash & 0x7fffffff) % (SoundSynth.MUSIC_STYLES - 1);
+        }
+        if (style == _musicStyle) return;
+        _musicStyle = style;
+        if (!_musicClips.TryGetValue(style, out var clip))
+            _musicClips[style] = clip = SoundSynth.MusicLoop(style);
+        _music.clip = clip;
+        _music.Play();
     }
 
     private void OnSettingsChanged()

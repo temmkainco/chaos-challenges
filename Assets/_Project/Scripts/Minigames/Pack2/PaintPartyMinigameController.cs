@@ -50,11 +50,21 @@ public class PaintPartyMinigameController : ScoreMinigameController
 
     private Vector3 CellPosition(int x, int z) => Floor + new Vector3((x - (GRID - 1) * 0.5f) * TILE, 0f, (z - (GRID - 1) * 0.5f) * TILE);
 
+    /// <summary>On the tile nearest a ring round the floor (never over a gap: Islands and Ring have holes).</summary>
     protected override Vector3 ArenaSpawn(int slot, int count)
     {
         float angle = (slot + 0.5f) / Mathf.Max(1, count) * Mathf.PI * 2f;
-        var spot = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * GRID * TILE * 0.36f;
-        return Floor + spot + Vector3.up * 0.6f;
+        var wanted = Floor + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * GRID * TILE * 0.36f;
+        var best = Floor;
+        float bestDistance = float.MaxValue;
+        for (int z = 0; z < GRID; z++)
+            for (int x = 0; x < GRID; x++)
+            {
+                if (!HasTile(x, z)) continue;
+                float d = (CellPosition(x, z) - wanted).sqrMagnitude;
+                if (d < bestDistance) { bestDistance = d; best = CellPosition(x, z); }
+            }
+        return best + Vector3.up * 0.6f;
     }
 
     /// <summary>Paint colour by join order, the same on every peer.</summary>

@@ -77,6 +77,12 @@ public class Bomb : NetworkBehaviour
             RideBelt();
         else if (FromSky && !Lit && !_grabbable.IsGrabbed)
             LeaveBelt(Vector3.down * 3f);   // dropped from the sky (Bomb Bonanza): falls lit
+        else if (!FromSky && !Lit && !_grabbable.IsGrabbed && _body.Rigidbody.isKinematic)
+        {
+            // An island's supply bomb: drops onto the island and waits, unlit, to be picked up.
+            _body.Rigidbody.isKinematic = false;
+            _body.Rigidbody.useGravity = true;
+        }
 
         if (Lit && Fuse.Expired(Runner))
         {
@@ -164,6 +170,7 @@ public class Bomb : NetworkBehaviour
 
     public override void Render()
     {
+        _grabbable.Blocked = FromSky;   // sky bombs are a hazard, not ammo
         if (_visual == null)
             return;
 

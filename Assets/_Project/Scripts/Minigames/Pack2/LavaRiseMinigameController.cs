@@ -10,8 +10,9 @@ using UnityEngine;
 /// </summary>
 public class LavaRiseMinigameController : EliminationMinigameController
 {
-    private const float STEP = 1.25f;
-    private const int PLATFORMS = 34;
+    private const float STEP = 1.1f;
+    private const int PLATFORMS = 38;
+    private const float SIZE = 3f;
 
     [SerializeField] private Transform _centre;
 
@@ -22,6 +23,8 @@ public class LavaRiseMinigameController : EliminationMinigameController
     public override string TwistDescription => "The lava races up for a few seconds.";
 
     private readonly List<Vector3> _platforms = new();
+    private readonly List<Vector3> _bouncers = new();
+    private readonly Dictionary<PlayerRef, int> _bouncedTick = new();
     private Transform _lava;
     private Renderer _lavaRenderer;
     private MaterialPropertyBlock _block;
@@ -57,8 +60,11 @@ public class LavaRiseMinigameController : EliminationMinigameController
         // Ground floor everyone starts on.
         _platforms.Add(Base + Vector3.up * 0.4f);
         ArenaProps.Block(transform, PrimitiveType.Cylinder, Base, new Vector3(16f, 0.4f, 16f), ArenaProps.Purple);
-        var colors = new[] { ArenaProps.Pink, ArenaProps.Blue, ArenaProps.Yellow, ArenaProps.Green };
-        var previous = new List<Vector3> { Base };
+        var bricks = new[] { "BrickPlate", "Brick2", "Brick4", "Brick6" };
+        var placed = new List<Vector3> { Base };
+        var previous = Vector3.zero;
+        // Nothing may hang over a platform within head height, or the jump up bonks into it.
+        bool Clear(Vector3 spot) => placed.TrueForAll(p => Mathf.Abs(p.y - spot.y) > 2.4f || new Vector2(p.x - spot.x, p.z - spot.z).magnitude > SIZE + 0.6f);
         for (int i = 1; i <= PLATFORMS; i++)
         {
             float y = Base.y + i * STEP;
@@ -66,32 +72,44 @@ public class LavaRiseMinigameController : EliminationMinigameController
             switch (Variant)
             {
                 case 1:
-                    float a1 = i * 34f * Mathf.Deg2Rad;
-                    spots.Add(new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1)) * 6.5f);
-                    spots.Add(new Vector3(Mathf.Cos(a1 + Mathf.PI), 0f, Mathf.Sin(a1 + Mathf.PI)) * 6.5f);
+                    float a1 = i * 46f * Mathf.Deg2Rad;
+                    spots.Add(new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1)) * 6.8f);
+                    spots.Add(new Vector3(Mathf.Cos(a1 + Mathf.PI), 0f, Mathf.Sin(a1 + Mathf.PI)) * 6.8f);
                     break;
                 case 2:
-                    // A wandering path (each step within jumping reach of the last) plus a decoy or two.
-                    var from = previous[0] - Base;
-                    float turn = R(0f, Mathf.PI * 2f);
-                    var next = new Vector3(from.x, 0f, from.z) + new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * R(2.6f, 3.6f);
-                    if (next.magnitude > 8f) next = next.normalized * 6f;
-                    spots.Add(next);
-                    if (random.NextDouble() < 0.6) spots.Add(new Vector3(R(-8f, 8f), 0f, R(-8f, 8f)));
+                    // A wandering path: each step within jumping reach of the last, never under another platform.
+                    for (int attempt = 0; attempt < 30; attempt++)
+                    {
+                        float turn = R(0f, Mathf.PI * 2f);
+                        var next = previous + new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * R(3.6f, 4.4f);
+                        if (next.magnitude > 8.2f || next.magnitude < 3f) continue;
+                        if (!Clear(new Vector3(Base.x + next.x, y, Base.z + next.z))) continue;
+                        spots.Add(next);
+                        break;
+                    }
+                    if (spots.Count == 0) spots.Add(new Vector3(Mathf.Cos(i * 0.8f), 0f, Mathf.Sin(i * 0.8f)) * 6.8f);
                     break;
                 default:
-                    float a = i * 32f * Mathf.Deg2Rad;
-                    spots.Add(new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 6f);
+                    float a = i * 46f * Mathf.Deg2Rad;
+                    spots.Add(new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 6.8f);
                     break;
             }
-            previous.Clear();
             foreach (var spot in spots)
             {
                 var ground = new Vector3(Base.x + spot.x, y - 0.5f, Base.z + spot.z);
-                ArenaProps.Block(transform, PrimitiveType.Cube, ground, new Vector3(3.2f, 0.5f, 3.2f), colors[i % colors.Length], R(0f, 90f));
-                _platforms.Add(ground + Vector3.up * 0.5f);
-                previous.Add(ground);
+                var block = ArenaProps.Block(transform, PrimitiveType.Cube, ground, new Vector3(SIZE, 0.5f, SIZE), ArenaProps.Pink, R(0f, 90f));
+                ArenaProps.Skin(block, bricks[i % bricks.Length]);
+                var top = ground + Vector3.up * 0.5f;
+                _platforms.Add(top);
+                placed.Add(top);
+                // A spring every few steps: it throws you up a couple of levels.
+                if (i % 7 == 3)
+                {
+                    _bouncers.Add(top);
+                    ArenaModels.Spawn("Bouncer", transform, top + Vector3.up * 0.45f, Quaternion.identity, new Vector3(1.4f, 0.9f, 1.4f), true);
+                }
             }
+            previous = spots[0];
         }
         // Nobody leaves the tower to wander the studio.
         ArenaProps.Fence(transform, Base, 10.5f, PLATFORMS * STEP + 8f);
@@ -118,7 +136,26 @@ public class LavaRiseMinigameController : EliminationMinigameController
         float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
         float speed = (0.16f + 0.011f * elapsed) * (TwistActive ? 3f : 1f);
         LavaY = Mathf.Min(LavaY + speed * Runner.DeltaTime, Base.y + PLATFORMS * STEP + 2f);
+
+        foreach (var who in _alive)
+        {
+            if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
+            if (_bouncedTick.TryGetValue(who, out int last) && Runner.Tick - last < Runner.TickRate) continue;
+            var position = player.transform.position;
+            foreach (var spring in _bouncers)
+            {
+                if (new Vector2(position.x - spring.x, position.z - spring.z).magnitude > 0.9f || position.y < spring.y - 0.2f || position.y > spring.y + 1.2f) continue;
+                if (!player.TryGetComponent<PlayerMovement>(out var movement)) break;
+                _bouncedTick[who] = Runner.Tick;
+                movement.Launch(Vector3.up * 15f);
+                RPC_Boing(spring);
+                break;
+            }
+        }
     }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Boing(Vector3 position) => Sfx.Play(Sound.Pop, 1f, 0.15f);
 
     public override void Render()
     {

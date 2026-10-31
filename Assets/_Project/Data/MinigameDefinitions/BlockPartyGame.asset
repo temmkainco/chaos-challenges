@@ -19,16 +19,15 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Block Party
-  <Description>k__BackingField: Walls with gaps slide across the platform. Find the
-    gap or get shoved off!
+  <Description>k__BackingField: Toy-brick walls slide across the platform. Stand
+    in a gap or jump the low bricks!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: c26c06eda57f5774a85ffddb7606fc45, type: 3}
   <Rules>k__BackingField:
   - Stand in a gap as the wall passes
+  - Jump the low bricks
   - Walls get faster and come from more sides
-  - Shove rivals out of the gap
   <Objective>k__BackingField: Stay on the platform.
-  <Danger>k__BackingField: A wall pushes you along until you go over the edge - unless
-    you're in a gap.
+  <Danger>k__BackingField: Tall bricks shove you along until you go over the edge.
   <Scoring>k__BackingField: Last one standing wins; survivors tie at the bell.
   <Controls>k__BackingField:
   - LMB|Shove

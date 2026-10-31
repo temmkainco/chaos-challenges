@@ -2,9 +2,8 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// King of the Hill: a glowing zone sits somewhere on the stage and jumps to a new spot every few seconds. Stand in
-/// it alone to score; with two or more inside it is contested and nobody scores, so shove! Most points at the bell
-/// wins. Layouts: Open Stage, Pillars, Shrinking Zone. Twist: DOUBLE POINTS.
+/// King of the Hill: a glowing zone sits somewhere on the stage and jumps to a new spot every few seconds. Everyone
+/// standing in it scores, so shove rivals out! Most points at the bell wins. Layouts: Open Stage, Pillars, Shrinking Zone. Twist: DOUBLE POINTS.
 /// </summary>
 public class KingOfTheHillMinigameController : ScoreMinigameController
 {
@@ -12,8 +11,8 @@ public class KingOfTheHillMinigameController : ScoreMinigameController
 
     [Networked] private Vector3 Zone { get; set; }
     [Networked] private TickTimer NextMove { get; set; }
-    [Networked] private PlayerRef King { get; set; }
-    [Networked] private NetworkBool Contested { get; set; }
+    /// <summary>Bit per player slot: standing in the zone right now (for the callout and the ring colour).</summary>
+    [Networked] private int Inside { get; set; }
 
     public override string[] Variants => new[] { "Open Stage", "Pillars", "Shrinking Zone" };
     public override string TwistTitle => "DOUBLE POINTS";
@@ -51,8 +50,8 @@ public class KingOfTheHillMinigameController : ScoreMinigameController
             for (int i = 0; i < 5; i++)
             {
                 float angle = i / 5f * Mathf.PI * 2f + 0.3f;
-                ArenaProps.Block(transform, PrimitiveType.Cylinder, ArenaCentre + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5.5f,
-                    new Vector3(1.4f, 2.6f, 1.4f), i % 2 == 0 ? ArenaProps.Pink : ArenaProps.Blue);
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, ArenaCentre + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5.5f,
+                    new Vector3(1.8f, 2.8f, 1.8f), ArenaProps.Pink), "Tower", true);
             }
         ArenaProps.Done();
 
@@ -99,28 +98,24 @@ public class KingOfTheHillMinigameController : ScoreMinigameController
             Announce("THE HILL MOVED!");
         }
 
-        // Four times a second: one contestant alone inside scores.
+        // Four times a second everyone inside scores.
         if (Runner.Tick % Mathf.Max(1, Runner.TickRate / 4) != 0) return;
-        PlayerRef inside = PlayerRef.None;
-        int count = 0;
+        int inside = 0;
         foreach (var entry in _playerSpawner.Players)
         {
             var player = entry.Value;
             if (player == null || player.IsSpectator || player.ControlsLocked) continue;
             var rel = player.transform.position - Zone;
             if (new Vector2(rel.x, rel.z).magnitude > Radius || Mathf.Abs(rel.y) > 2.5f) continue;
-            inside = entry.Key;
-            count++;
+            inside |= 1 << (entry.Key.PlayerId & 31);
+            AddScore(entry.Key, TwistActive ? 2 : 1);
         }
-        Contested = count > 1;
-        King = count == 1 ? inside : PlayerRef.None;
-        if (count == 1) AddScore(inside, TwistActive ? 2 : 1);
+        Inside = inside;
     }
 
-    public override string Callout =>
-        !IsGameActive ? null :
-        Contested ? "<color=#E03131>CONTESTED!</color>" :
-        King != PlayerRef.None && King == Runner.LocalPlayer ? "<color=#2F9E44>YOU'RE THE KING!</color>" : null;
+    private bool LocalInside => Runner.LocalPlayer.IsRealPlayer && (Inside & (1 << (Runner.LocalPlayer.PlayerId & 31))) != 0;
+
+    public override string Callout => IsGameActive && LocalInside ? "<color=#2F9E44>ON THE HILL!</color>" : null;
 
     public override void Render()
     {
@@ -130,7 +125,7 @@ public class KingOfTheHillMinigameController : ScoreMinigameController
         float pulse = 0.5f + 0.5f * Mathf.Sin(Time.time * 5f);
         _ring.position = Zone + Vector3.up * 0.06f;
         _ring.localScale = new Vector3(radius * 2f, 0.03f, radius * 2f);
-        var color = Contested ? new Color(1f, 0.37f, 0.36f) : King != PlayerRef.None ? new Color(0.31f, 0.82f, 0.63f) : new Color(1f, 0.79f, 0.24f);
+        var color = Inside != 0 ? new Color(0.31f, 0.82f, 0.63f) : new Color(1f, 0.79f, 0.24f);
         _block.SetColor("_BaseColor", Color.Lerp(color, Color.white, pulse * 0.3f));
         _ringRenderer.SetPropertyBlock(_block);
         _beam.position = Zone + Vector3.up * 6f;

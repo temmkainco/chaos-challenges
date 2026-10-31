@@ -19,16 +19,16 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Door Dash
-  <Description>k__BackingField: Race through rows of doors - some burst open, some
-    are fakes!
+  <Description>k__BackingField: Race through rows of doors - real ones burst open,
+    fakes throw you back!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: d052d998b436ac742bdcf27dd4dd6a8f, type: 3}
   <Rules>k__BackingField:
   - Run into a door to burst it
   - Watch which doors others got through
   - Shove rivals into fakes
   <Objective>k__BackingField: Reach the finish first.
-  <Danger>k__BackingField: 'Fake doors are solid: bounce off and try another. Fall
-    off and you go back a row.'
+  <Danger>k__BackingField: Fake doors are solid and knock you back. Fall off and
+    you go back a row.
   <Scoring>k__BackingField: Finish order wins; the rest by distance.
   <Controls>k__BackingField:
   - SPACE|Jump

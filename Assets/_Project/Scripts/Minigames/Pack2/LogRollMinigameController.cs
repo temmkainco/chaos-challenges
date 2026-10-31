@@ -45,6 +45,8 @@ public class LogRollMinigameController : EliminationMinigameController
     public override void Spawned()
     {
         base.Spawned();
+        // Start with no ridge on top: everyone spawns up there.
+        if (HasStateAuthority) Angle = 60f;
         for (int log = 0; log < LogCount; log++)
         {
             // Static collider (a cylinder looks the same at any angle); the visual log turns.
@@ -59,31 +61,14 @@ public class LogRollMinigameController : EliminationMinigameController
             var view = new GameObject("Log").transform;
             view.SetParent(transform, false);
             view.position = Axis(log);
-            var trunk = ArenaProps.Block(view, PrimitiveType.Cylinder, Axis(log), new Vector3(Radius * 2f, LENGTH, Radius * 2f), new Color(0.62f, 0.4f, 0.24f));
-            Destroy(trunk.GetComponent<Collider>());
-            trunk.localPosition = Vector3.zero;
-            trunk.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            // A wood log (its long side along X, like the collider) with three thinner logs along it as ridges.
+            ArenaModels.Spawn("Log", view, Axis(log), Quaternion.identity, new Vector3(LENGTH, Radius * 2f, Radius * 2f));
             for (int r = 0; r < RIDGES; r++)
             {
-                float a = r * 360f / RIDGES;
-                var ridge = ArenaProps.Block(view, PrimitiveType.Cube, Axis(log), new Vector3(LENGTH * 0.96f, 0.45f, 0.55f), r == 0 ? ArenaProps.Pink : ArenaProps.Yellow);
-                Destroy(ridge.GetComponent<Collider>());
-                ridge.localRotation = Quaternion.Euler(a, 0f, 0f);
-                ridge.localPosition = ridge.localRotation * (Vector3.up * (Radius + 0.15f));
-            }
-            // Bark stripes so the spin is easy to see.
-            for (int s = 0; s < 8; s++)
-            {
-                var stripe = ArenaProps.Block(view, PrimitiveType.Cube, Axis(log), new Vector3(LENGTH * 0.98f, 0.06f, 0.5f), new Color(0.45f, 0.27f, 0.15f));
-                Destroy(stripe.GetComponent<Collider>());
-                stripe.localRotation = Quaternion.Euler(s * 45f + 22.5f, 0f, 0f);
-                stripe.localPosition = stripe.localRotation * (Vector3.up * (Radius + 0.01f));
+                var spin = Quaternion.Euler(r * 360f / RIDGES, 0f, 0f);
+                ArenaModels.Spawn("Log", view, Axis(log) + spin * (Vector3.up * (Radius + 0.2f)), spin, new Vector3(LENGTH * 0.96f, 0.6f, 0.6f));
             }
             _logViews.Add(view);
-            // End walls keep you from walking off the ends.
-            foreach (float end in new[] { -1f, 1f })
-                ArenaProps.Block(transform, PrimitiveType.Cube, Axis(log) + Vector3.right * end * (LENGTH * 0.5f + 0.3f) + Vector3.down * (Radius + 0.5f),
-                    new Vector3(0.6f, Radius * 2f + 2.5f, Radius * 2f + 0.6f), ArenaProps.Blue);
         }
         ArenaProps.Done();
     }
@@ -148,7 +133,7 @@ public class LogRollMinigameController : EliminationMinigameController
             {
                 var rel = player.transform.position - Axis(log);
                 float distance = new Vector2(rel.y, rel.z).magnitude;
-                if (distance > Radius + 0.55f || Mathf.Abs(rel.x) > LENGTH * 0.5f) continue;
+                if (distance > Radius + 0.9f || Mathf.Abs(rel.x) > LENGTH * 0.5f) continue;
                 // Angle round the log's axis (0 = straight up, growing toward +Z like the log's own rotation).
                 float at = Mathf.Atan2(rel.z, rel.y) * Mathf.Rad2Deg;
                 float sign = log == 0 ? 1f : -1f;
@@ -159,12 +144,12 @@ public class LogRollMinigameController : EliminationMinigameController
                     float offset = r * 360f / RIDGES;
                     float travel = Mathf.DeltaAngle(from + offset, to + offset);
                     float start = Mathf.DeltaAngle(from + offset, at);
-                    float width = 10f;
+                    float width = 14f;
                     if (travel >= 0f ? start >= -width && start <= travel + width : start <= width && start >= travel - width) hit = true;
                 }
                 if (!hit || !player.TryGetComponent<PlayerMovement>(out var movement)) continue;
                 _hitTick[who] = Runner.Tick;
-                movement.Launch(new Vector3(0f, 5f, Mathf.Sign(SpinOf(log)) * 4f));
+                movement.Launch(new Vector3(0f, 6f, Mathf.Sign(SpinOf(log)) * 6f));
                 break;
             }
         }

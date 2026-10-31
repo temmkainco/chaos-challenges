@@ -9,20 +9,22 @@ public struct SlidingWall : INetworkStruct
     public byte Side;
     /// <summary>Gap segments (255 = none); a gap is one segment wide.</summary>
     public byte GapA, GapB;
+    /// <summary>Low segments to jump over (255 = none).</summary>
+    public byte LowA, LowB;
     /// <summary>Speed in tenths of a metre per second.</summary>
     public short Speed;
 }
 
 /// <summary>
-/// Block Party (after Fall Guys): walls with gaps slide across a square platform high above the studio. Stand in a
-/// gap as a wall goes by, or it shoves you along until you go over the edge. Walls come faster and from more sides as
+/// Block Party (after Fall Guys): toy-brick walls slide across a square platform high above the studio. Stand in a
+/// gap or jump a low section as a wall goes by, or it shoves you along until you go over the edge. Walls come faster and from more sides as
 /// the round goes on. Last one standing wins. Layouts: Classic (two gaps), Narrow (one gap), Crossfire (walls from
 /// two sides). Twist: DOUBLE TROUBLE, two walls at once from opposite sides.
 /// </summary>
 public class BlockPartyMinigameController : EliminationMinigameController
 {
     private const int SEGMENTS = 9, MAX_WALLS = 6;
-    private const float SEGMENT = 2f, HALF = SEGMENTS * SEGMENT * 0.5f, WALL_HEIGHT = 3.2f;
+    private const float SEGMENT = 2f, HALF = SEGMENTS * SEGMENT * 0.5f, WALL_HEIGHT = 3.2f, LOW_HEIGHT = 0.8f;
 
     [SerializeField] private Transform _centre;
     [SerializeField] private float _height = 6f;
@@ -35,7 +37,9 @@ public class BlockPartyMinigameController : EliminationMinigameController
     public override string TwistTitle => "DOUBLE TROUBLE";
     public override string TwistDescription => "Walls come from both sides at once.";
 
-    private Transform[][] _wallViews;
+    /// <summary>Per wall: the root (moved as one) and each segment's full and low brick.</summary>
+    private Transform[] _wallRoots;
+    private GameObject[][] _full, _low;
     private readonly Dictionary<PlayerRef, int> _hitTick = new();
 
     private Vector3 Floor => _centre.position + Vector3.up * _height;
@@ -55,19 +59,25 @@ public class BlockPartyMinigameController : EliminationMinigameController
             for (int z = 0; z < SEGMENTS; z++)
                 ArenaProps.Block(transform, PrimitiveType.Cube, Floor + new Vector3((x + 0.5f) * SEGMENT - HALF, -0.6f, (z + 0.5f) * SEGMENT - HALF),
                     new Vector3(SEGMENT, 0.6f, SEGMENT), (x + z) % 2 == 0 ? ArenaProps.Purple : new Color(0.85f, 0.8f, 0.98f));
-        _wallViews = new Transform[MAX_WALLS][];
-        var colors = new[] { ArenaProps.Pink, ArenaProps.Blue, ArenaProps.Yellow, ArenaProps.Green };
+        _wallRoots = new Transform[MAX_WALLS];
+        _full = new GameObject[MAX_WALLS][];
+        _low = new GameObject[MAX_WALLS][];
+        var bricks = new[] { "BrickTall", "Brick4", "Brick6", "Brick2" };
         for (int w = 0; w < MAX_WALLS; w++)
         {
+            // Built at the origin facing +Z, then moved as one piece.
             var root = new GameObject("Wall " + w).transform;
             root.SetParent(transform, false);
-            _wallViews[w] = new Transform[SEGMENTS + 1];
-            _wallViews[w][SEGMENTS] = root;
-            for (int s = 0; s < SEGMENTS; s++)
+            _wallRoots[w] = root;
+            _full[w] = new GameObject[SEGMENTS];
+            _low[w] = new GameObject[SEGMENTS];
+            for (int seg = 0; seg < SEGMENTS; seg++)
             {
-                var piece = ArenaProps.Block(root, PrimitiveType.Cube, Floor, new Vector3(SEGMENT * 0.98f, WALL_HEIGHT, 0.8f), colors[w % colors.Length]);
-                Destroy(piece.GetComponent<Collider>());   // the host pushes; no collider for the controller to snag on
-                _wallViews[w][s] = piece;
+                var x = (seg + 0.5f) * SEGMENT - HALF;
+                _full[w][seg] = ArenaModels.Spawn(bricks[(w + seg) % bricks.Length], root, root.TransformPoint(new Vector3(x, WALL_HEIGHT * 0.5f, 0f)), root.rotation,
+                    new Vector3(SEGMENT * 0.98f, WALL_HEIGHT, 0.8f))?.gameObject;
+                _low[w][seg] = ArenaModels.Spawn("BrickLong", root, root.TransformPoint(new Vector3(x, LOW_HEIGHT * 0.5f, 0f)), root.rotation,
+                    new Vector3(SEGMENT * 0.98f, LOW_HEIGHT, 0.8f))?.gameObject;
             }
             root.gameObject.SetActive(false);
         }
@@ -95,14 +105,13 @@ public class BlockPartyMinigameController : EliminationMinigameController
         int slot = -1;
         for (int i = 0; i < MAX_WALLS; i++) if (Walls[i].StartTick == 0) { slot = i; break; }
         if (slot < 0) return;
-        byte gapA = (byte)Random.Range(0, SEGMENTS), gapB = 255;
-        if (Variant != 1)
-        {
-            gapB = (byte)Random.Range(0, SEGMENTS - 1);
-            if (gapB >= gapA) gapB++;
-        }
+        // A gap or two to stand in and a couple of low bricks to jump, all on different segments.
+        var order = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < SEGMENTS; i++) order.Insert(Random.Range(0, order.Count + 1), i);
+        byte gapA = (byte)order[0], gapB = Variant == 1 ? (byte)255 : (byte)order[1];
+        byte lowA = (byte)order[2], lowB = Random.value < 0.6f ? (byte)order[3] : (byte)255;
         float speed = Mathf.Lerp(3.5f, 7f, Mathf.Clamp01(Elapsed / 70f));
-        Walls.Set(slot, new SlidingWall { StartTick = Runner.Tick, Side = side, GapA = gapA, GapB = gapB, Speed = (short)(speed * 10f) });
+        Walls.Set(slot, new SlidingWall { StartTick = Runner.Tick, Side = side, GapA = gapA, GapB = gapB, LowA = lowA, LowB = lowB, Speed = (short)(speed * 10f) });
         WallCount++;
     }
 
@@ -139,6 +148,8 @@ public class BlockPartyMinigameController : EliminationMinigameController
                 if (Mathf.Abs(along - travel) > 0.75f) continue;
                 int segment = Mathf.FloorToInt(across / SEGMENT);
                 if (segment == wall.GapA || segment == wall.GapB) continue;
+                // Low bricks only catch you on the ground (jump them).
+                if ((segment == wall.LowA || segment == wall.LowB) && rel.y > LOW_HEIGHT - 0.3f) continue;
                 if (!player.TryGetComponent<PlayerMovement>(out var movement)) continue;
                 _hitTick[who] = Runner.Tick;
                 // A shove ahead of the wall, not a launch: it keeps catching you until you find a gap or the edge.
@@ -150,24 +161,22 @@ public class BlockPartyMinigameController : EliminationMinigameController
     public override void Render()
     {
         base.Render();
-        if (_wallViews == null) return;
+        if (_wallRoots == null) return;
         for (int w = 0; w < MAX_WALLS; w++)
         {
             var wall = Walls[w];
-            var root = _wallViews[w][SEGMENTS];
+            var root = _wallRoots[w];
             bool on = wall.StartTick != 0 && IsGameActive;
             if (root.gameObject.activeSelf != on) root.gameObject.SetActive(on);
             if (!on) continue;
             var dir = Direction(wall.Side);
-            var across = Vector3.Cross(Vector3.up, dir);
             float travel = (Runner.LocalRenderTime - wall.StartTick * Runner.DeltaTime) * wall.Speed * 0.1f - 1.5f;
-            var origin = Floor + dir * (travel - HALF);
-            for (int s = 0; s < SEGMENTS; s++)
+            root.SetPositionAndRotation(Floor + dir * (travel - HALF), Quaternion.LookRotation(dir));
+            for (int seg = 0; seg < SEGMENTS; seg++)
             {
-                var piece = _wallViews[w][s];
-                bool gap = s == wall.GapA || s == wall.GapB;
-                if (piece.gameObject.activeSelf == gap) piece.gameObject.SetActive(!gap);
-                piece.SetPositionAndRotation(origin + across * ((s + 0.5f) * SEGMENT - HALF) + Vector3.up * WALL_HEIGHT * 0.5f, Quaternion.LookRotation(dir));
+                bool gap = seg == wall.GapA || seg == wall.GapB, low = seg == wall.LowA || seg == wall.LowB;
+                if (_full[w][seg] != null && _full[w][seg].activeSelf != (!gap && !low)) _full[w][seg].SetActive(!gap && !low);
+                if (_low[w][seg] != null && _low[w][seg].activeSelf != low) _low[w][seg].SetActive(low);
             }
         }
     }

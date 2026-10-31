@@ -26,7 +26,8 @@ MonoBehaviour:
   - A fresh tail can't be stolen for a moment
   - Every second with a tail scores
   <Objective>k__BackingField: Have a tail when the time runs out.
-  <Danger>k__BackingField: Anyone without a tail is hunting yours.
+  <Danger>k__BackingField: Anyone without a tail is hunting yours. A fresh tail can't
+    be stolen for a moment.
   <Scoring>k__BackingField: Tail-wearers at the bell place first; tail time decides
     the rest.
   <Controls>k__BackingField:

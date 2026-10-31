@@ -41,10 +41,10 @@ public class HotPotatoMinigameController : EliminationMinigameController
             for (int i = 0; i < 6; i++)
             {
                 float angle = i / 6f * Mathf.PI * 2f;
-                ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 4.5f,
-                    new Vector3(1.6f, 3f, 1.6f), i % 2 == 0 ? ArenaProps.Pink : ArenaProps.Blue);
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 4.5f,
+                    new Vector3(1.8f, 2.8f, 1.8f), ArenaProps.Pink), "Tower", true);
             }
-            ArenaProps.Block(transform, PrimitiveType.Cylinder, ground, new Vector3(2.2f, 3f, 2.2f), ArenaProps.Yellow);
+            ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, ground, new Vector3(2.4f, 3.6f, 2.4f), ArenaProps.Yellow), "Tower", true);
         }
         else if (Variant == 2)
         {
@@ -53,8 +53,8 @@ public class HotPotatoMinigameController : EliminationMinigameController
             {
                 float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
                 var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-                ArenaProps.Block(transform, PrimitiveType.Cube, ground + direction * 4f, new Vector3(0.8f, 1.1f, 4.5f), ArenaProps.Purple,
-                    Quaternion.LookRotation(direction).eulerAngles.y);
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, ground + direction * 4f, new Vector3(0.8f, 1.1f, 4.5f), ArenaProps.Purple,
+                    Quaternion.LookRotation(direction).eulerAngles.y), "WoodFence", yawOffset: 90f);
             }
         }
         ArenaProps.Done();
@@ -80,13 +80,27 @@ public class HotPotatoMinigameController : EliminationMinigameController
     protected override void StartGame()
     {
         base.StartGame();
+        _lastBlast = null;
         if (HasStateAuthority) NewBomb();
     }
+
+    /// <summary>Where the last bomb went off: the next one goes to whoever is nearest (not someone a field away).</summary>
+    private Vector3? _lastBlast;
 
     private void NewBomb()
     {
         if (_alive.Count <= 1) return;
         Holder = _alive[Random.Range(0, _alive.Count)];
+        if (_lastBlast.HasValue)
+        {
+            float best = float.MaxValue;
+            foreach (var who in _alive)
+                if (_playerSpawner.Players.TryGet(who, out var p) && p != null && (p.transform.position - _lastBlast.Value).sqrMagnitude < best)
+                {
+                    best = (p.transform.position - _lastBlast.Value).sqrMagnitude;
+                    Holder = who;
+                }
+        }
         PreviousHolder = PlayerRef.None;
         float scale = Mathf.Lerp(0.6f, 1f, (_alive.Count - 2) / 4f);
         Fuse = TickTimer.CreateFromSeconds(Runner, Random.Range(_fuseSeconds.x, _fuseSeconds.y) * scale);
@@ -106,6 +120,7 @@ public class HotPotatoMinigameController : EliminationMinigameController
             if (holder.TryGetComponent<PlayerMovement>(out var movement))
                 movement.Launch(Random.insideUnitSphere.WithY(0f).normalized * 6f + Vector3.up * 12f);
             RPC_Boom(holder.transform.position);
+            _lastBlast = holder.transform.position;
             Eliminate(blasted);
             if (IsGameActive) NewBomb();
             return;

@@ -4,11 +4,12 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Bomb Rush: conveyors keep feeding bombs into the arena. Grab one (E), throw it (E again) at a rival:
-/// thrown bombs go off on contact, lit ones on their own after the fuse. A bomb going off in your hands or right
-/// next to you knocks you out; farther away it launches you, and whoever falls off the arena is out too.
-/// Knocked-out contestants watch from the <see cref="SpectatorLounge"/>. Last contestant standing wins; on time-up
-/// the survivors tie.
+/// Bomb Rush, island wars: everyone stands on their own grass island in a ring above the scrapyard, and every few
+/// seconds a bomb drops onto each island. Grab it (E), throw it (E again) at a rival's island: thrown bombs go off on
+/// contact, lit ones on their own after the fuse. A bomb going off in your hands or right next to you knocks you out;
+/// farther away it blasts you, and whoever is blown off their island is out. Knocked-out contestants watch from the
+/// scrapyard below. Last contestant standing wins; on time-up the survivors tie. Layouts: Islands, Close Islands
+/// (close enough to jump across), Crate Islands (crates for cover). Twist: BOMB BONANZA, bombs rain on the islands.
 /// </summary>
 public class BombRushMinigameController : MinigameController
 {
@@ -33,13 +34,11 @@ public class BombRushMinigameController : MinigameController
     private ConveyorBelt[] _belts;
     private readonly List<PlayerRef> _alive = new();
     private readonly List<PlayerRef> _eliminationOrder = new();
-    private int _nextBelt;
     private readonly List<(PlayerRef player, TickTimer timer)> _toLounge = new();
 
     /// <summary>A blast this close (or in your hands) knocks you out; farther away it only launches you.</summary>
     public const float KILL_RADIUS = 3f;
     private Vector3 _arenaCentre;
-    public float FenceRadius { get; private set; }
 
     public override void Spawned()
     {
@@ -53,46 +52,83 @@ public class BombRushMinigameController : MinigameController
         // The belt ends sit above the stage: drop the centre onto the stage floor (out-of-arena checks and props use it).
         if (Physics.Raycast(_arenaCentre + Vector3.up * 0.5f, Vector3.down, out var floorHit, 6f, ~0, QueryTriggerInteraction.Ignore))
             _arenaCentre.y = floorHit.point.y;
-        BuildLayout();
-        // A glass fence just past the belt ends: nobody walks out of the arena, thrown bombs still fly out.
-        float reach = 0f;
-        foreach (var belt in _belts)
-            reach = Mathf.Max(reach, Vector3.ProjectOnPlane(belt.Evaluate(1f) - _arenaCentre, Vector3.up).magnitude);
-        FenceRadius = reach > 1f ? reach + 1.2f : 18.5f;
-        ArenaProps.Fence(transform, _arenaCentre, FenceRadius);
-        ArenaProps.Done();
+        BuildIslands();
     }
 
-    public override string[] Variants => new[] { "Open Floor", "Crates", "Pillars" };
+    public override string[] Variants => new[] { "Islands", "Close Islands", "Crate Islands" };
 
-    /// <summary>Cover in the middle of the arena: it blocks thrown bombs (not the blast).</summary>
-    private void BuildLayout()
+    private const int ISLANDS = 6;
+    private const float ISLAND_SIZE = 6f, ISLAND_HEIGHT = 7f;
+    private float RingRadius => Variant == 1 ? 9.6f : 12.5f;
+    private Vector3 Island(int i)
     {
-        var ground = _arenaCentre;
-        if (Variant == 1)
+        float angle = (i + 0.5f) / ISLANDS * Mathf.PI * 2f;
+        return _arenaCentre + Vector3.up * ISLAND_HEIGHT + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * RingRadius;
+    }
+    private float IslandY => _arenaCentre.y + ISLAND_HEIGHT;
+
+    /// <summary>Host only: which island each contestant got, and when their next bomb drops.</summary>
+    private readonly Dictionary<PlayerRef, int> _islandOf = new();
+    private readonly Dictionary<PlayerRef, TickTimer> _supply = new();
+
+    private void BuildIslands()
+    {
+        for (int i = 0; i < ISLANDS; i++)
         {
-            var crates = new[] { new Vector3(-4.5f, 0f, 2f), new Vector3(3.5f, 0f, 4.5f), new Vector3(5f, 0f, -3f), new Vector3(-2f, 0f, -5.5f), new Vector3(0.5f, 0f, 0.5f) };
-            for (int i = 0; i < crates.Length; i++)
-                ArenaProps.Block(transform, PrimitiveType.Cube, ground + crates[i], new Vector3(1.8f, 1.4f, 1.8f), new Color(0.78f, 0.55f, 0.32f), i * 23f);
-        }
-        else if (Variant == 2)
-        {
-            for (int i = 0; i < 4; i++)
+            var top = Island(i);
+            float yaw = (i + 0.5f) / ISLANDS * -360f;
+            ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top + Vector3.down * 1.2f, new Vector3(ISLAND_SIZE, 1.2f, ISLAND_SIZE), ArenaProps.Green, yaw), "Grass");
+            if (Variant == 2)
             {
-                float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
-                ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 6.5f,
-                    new Vector3(1.8f, 3.5f, 1.8f), i % 2 == 0 ? ArenaProps.Blue : ArenaProps.Pink);
+                var outward = (top - _arenaCentre).WithY(0f).normalized;
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top - outward * 1.6f + Vector3.Cross(Vector3.up, outward) * 1.3f,
+                    new Vector3(1.3f, 1.3f, 1.3f), ArenaProps.Yellow, yaw), "Crate");
             }
         }
         ArenaProps.Done();
     }
+
+    /// <summary>Host. Everyone onto their own island, spread round the ring, facing the middle.</summary>
+    protected override void OnIntro()
+    {
+        base.OnIntro();
+        var players = ConnectedPlayers().OrderBy(p => p.PlayerId).ToList();
+        _islandOf.Clear();
+        for (int i = 0; i < players.Count; i++)
+        {
+            int island = i * ISLANDS / Mathf.Max(1, players.Count);
+            _islandOf[players[i]] = island;
+            if (_playerSpawner.Players.TryGet(players[i], out var player) && player != null)
+                _playerSpawner.Teleport(player, Island(island) + Vector3.up * 0.6f, Quaternion.LookRotation((_arenaCentre - Island(island)).WithY(0f)));
+        }
+    }
+
+    /// <summary>Host. Drops an unlit bomb on every island that has none lying on it.</summary>
+    private void Supply()
+    {
+        foreach (var who in _alive)
+        {
+            if (!_islandOf.TryGetValue(who, out int island)) continue;
+            if (_supply.TryGetValue(who, out var timer) && !timer.ExpiredOrNotRunning(Runner)) continue;
+            var top = Island(island);
+            bool stocked = false;
+            foreach (var bomb in Bomb.Active)
+                if (bomb != null && !bomb.Lit && (bomb.transform.position - top).WithY(0f).magnitude < ISLAND_SIZE * 0.6f && Mathf.Abs(bomb.transform.position.y - top.y) < 3f)
+                    stocked = true;
+            _supply[who] = TickTimer.CreateFromSeconds(Runner, SuddenDeath ? 2f : 3.2f);
+            if (stocked) continue;
+            Runner.Spawn(_bombPrefab, top + Vector3.up * 1.6f + Random.insideUnitSphere.WithY(0f), Quaternion.identity, null,
+                (runner, obj) => obj.GetComponent<Bomb>().Initialize(this, -1));
+        }
+    }
+
 
     public ConveyorBelt GetBelt(int index) => index >= 0 && index < _belts.Length ? _belts[index] : null;
 
     private bool SuddenDeath => IsTimeLimited && IsGameActive && TimeRemaining <= _suddenDeathSeconds;
 
     public override string TwistTitle => "BOMB BONANZA";
-    public override string TwistDescription => "Bombs rain down from the sky all over the arena.";
+    public override string TwistDescription => "Lit bombs rain down on the islands.";
 
     public override string GetStatusText()
     {
@@ -110,19 +146,20 @@ public class BombRushMinigameController : MinigameController
         _eliminationOrder.Clear();
         AliveCount = _alive.Count;
         SpawnTimer = TickTimer.CreateFromSeconds(Runner, 0.5f);
+        _supply.Clear();
     }
 
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        // The fence keeps everyone in; anyone who still ends up below the stage (blasted over it) is out.
+        // Blown off your island (below it) is out; ghosts watch from the scrapyard and are put back if they fall out of it.
         if (HasStateAuthority && IsGameActive && Runner.Tick % 10 == 0)
         {
-            float floor = _arenaCentre.y - 1f;
+            float off = IslandY - 3f, floor = _arenaCentre.y - 1f;
             for (int i = _alive.Count - 1; i >= 0; i--)
             {
                 if (!_playerSpawner.Players.TryGet(_alive[i], out var p) || p == null) continue;
-                if (p.transform.position.y < floor)
+                if (p.transform.position.y < off)
                     Eliminate(_alive[i]);
             }
             foreach (var who in _eliminationOrder)
@@ -138,30 +175,18 @@ public class BombRushMinigameController : MinigameController
                     _toLounge.RemoveAt(i);
                     SendToLounge(who);
                 }
-        if (!HasStateAuthority || !IsGameActive || _belts.Length == 0)
+        if (!HasStateAuthority || !IsGameActive)
             return;
 
-        if (!SpawnTimer.Expired(Runner))
+        Supply();
+
+        // Bomb Bonanza: now and then a lit bomb falls onto a random island (it can't be caught).
+        if (!TwistActive || !SpawnTimer.Expired(Runner))
             return;
-
-        float interval = _spawnInterval * 2f / Mathf.Max(2, _alive.Count) * (SuddenDeath ? 0.5f : 1f) * (TwistActive ? 0.4f : 1f);
-        SpawnTimer = TickTimer.CreateFromSeconds(Runner, interval);
-
-        if (Bomb.Active.Count >= _alive.Count * _maxBombsPerPlayer * (SuddenDeath || TwistActive ? 2 : 1))
-            return;
-
-        // Bomb Bonanza: bombs rain from the sky at random spots across the arena instead of out of the conveyors.
-        if (TwistActive)
-        {
-            var flat = Random.insideUnitCircle * 15f;
-            Runner.Spawn(_bombPrefab, _arenaCentre + new Vector3(flat.x, 14f, flat.y), Quaternion.identity, null,
-                (runner, obj) => { var bomb = obj.GetComponent<Bomb>(); bomb.Initialize(this, -1); bomb.FromSky = true; });
-            return;
-        }
-
-        int belt = _nextBelt++ % _belts.Length;
-        Runner.Spawn(_bombPrefab, _belts[belt].Evaluate(0f), Quaternion.identity, null,
-            (runner, obj) => obj.GetComponent<Bomb>().Initialize(this, belt));
+        SpawnTimer = TickTimer.CreateFromSeconds(Runner, 1.6f);
+        var target = Island(Random.Range(0, ISLANDS)) + Random.insideUnitSphere.WithY(0f) * 2f;
+        Runner.Spawn(_bombPrefab, target + Vector3.up * 12f, Quaternion.identity, null,
+            (runner, obj) => { var bomb = obj.GetComponent<Bomb>(); bomb.Initialize(this, -1); bomb.FromSky = true; });
     }
 
     /// <summary>Host only. Is any player other than <paramref name="ignore"/> within <paramref name="radius"/>?</summary>

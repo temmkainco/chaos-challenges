@@ -13,6 +13,9 @@ public abstract class RaceMinigameController : MinigameController
     [SerializeField] protected Transform _centre;
 
     [Networked] protected int FinishedCount { get; private set; }
+    /// <summary>Per player slot: finishing place (0 = still racing) and the furthest progress, for the scoreboard.</summary>
+    [Networked, Capacity(32)] private NetworkArray<byte> Place { get; }
+    [Networked, Capacity(32)] private NetworkArray<short> BoardProgress { get; }
 
     protected readonly List<PlayerRef> _finishOrder = new();
     protected readonly Dictionary<PlayerRef, float> _best = new();
@@ -48,12 +51,25 @@ public abstract class RaceMinigameController : MinigameController
         _best.Clear();
         _respawns.Clear();
         FinishedCount = 0;
+        for (int i = 0; i < 32; i++) { Place.Set(i, 0); BoardProgress.Set(i, 0); }
     }
 
-    public override string GetStatusText()
+    public override string GetStatusText() => null;
+
+    /// <summary>How the scoreboard shows a racer's progress (e.g. "Lap 2", "Row 4").</summary>
+    protected virtual string ProgressLabel(float progress) => Mathf.FloorToInt(progress).ToString();
+
+    public override string ScoreboardValue(PlayerRef player)
     {
-        if (!IsGameActive) return null;
-        return FinishedCount > 0 ? $"{FinishedCount} finished" : null;
+        if (!IsGameActive && Phase != MinigamePhase.Finished) return null;
+        int slot = player.PlayerId & 31;
+        return Place[slot] > 0 ? $"#{Place[slot]}" : ProgressLabel(BoardProgress[slot]);
+    }
+
+    public override float ScoreboardRank(PlayerRef player)
+    {
+        int slot = player.PlayerId & 31;
+        return Place[slot] > 0 ? 100000 - Place[slot] : BoardProgress[slot];
     }
 
     public override bool HandlePlayerFell(Player player)
@@ -103,6 +119,7 @@ public abstract class RaceMinigameController : MinigameController
             if (player == null || _finishOrder.Contains(who) || _respawns.Exists(r => r.player == who)) continue;
             float progress = Progress(who, player.transform.position);
             if (!_best.TryGetValue(who, out float best) || progress > best) _best[who] = progress;
+            BoardProgress.Set(who.PlayerId & 31, (short)Mathf.Clamp(Mathf.FloorToInt(_best[who]), short.MinValue, short.MaxValue));
             if (IsFinished(progress)) Finish(who);
         }
     }
@@ -113,6 +130,7 @@ public abstract class RaceMinigameController : MinigameController
         if (!IsGameActive || _finishOrder.Contains(player)) return;
         _finishOrder.Add(player);
         FinishedCount = _finishOrder.Count;
+        Place.Set(player.PlayerId & 31, (byte)_finishOrder.Count);
         if (_playerSpawner.Players.TryGet(player, out var p) && p != null)
         {
             p.ControlsLocked = true;

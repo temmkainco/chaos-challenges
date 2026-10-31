@@ -53,6 +53,24 @@ public static class ArenaProps
         return go.transform;
     }
 
+    /// <summary>
+    /// Dresses <paramref name="block"/> (from <see cref="Block"/>) with a prop-pack model of the same size: the block
+    /// keeps its collider and stops rendering. Returns the block for chaining.
+    /// </summary>
+    public static Transform Skin(Transform block, string model, bool uniform = false, Color? tint = null, float yawOffset = 0f)
+    {
+        if (block == null) return null;
+        var scale = block.lossyScale;
+        bool cylinder = block.GetComponent<MeshFilter>() is { sharedMesh: { name: var mesh } } && mesh.StartsWith("Cylinder");
+        var size = cylinder ? new Vector3(scale.x, scale.y * 2f, scale.z) : scale;
+        var rotation = block.rotation * Quaternion.Euler(0f, yawOffset, 0f);
+        if (Mathf.Abs(Mathf.DeltaAngle(yawOffset, 0f)) > 45f && Mathf.Abs(Mathf.DeltaAngle(yawOffset, 180f)) > 45f)
+            size = new Vector3(size.z, size.y, size.x);
+        var skin = ArenaModels.Spawn(model, block.parent, block.position, rotation, size, uniform, tint);
+        if (skin != null && block.TryGetComponent<Renderer>(out var renderer)) renderer.enabled = false;
+        return block;
+    }
+
     /// <summary>Layer for <see cref="Fence"/>: it collides with contestants only (set up in <see cref="PhysicsSetup"/>).</summary>
     public const int FENCE_LAYER = 10;
     public const int PLAYER_LAYER = 7;

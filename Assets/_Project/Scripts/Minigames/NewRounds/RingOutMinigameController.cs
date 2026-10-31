@@ -73,6 +73,9 @@ public class RingOutMinigameController : EliminationMinigameController
                 // Pillars to hide behind and get pinned against; they close in with the ring.
                 var pillar = Disc("Pillar " + i, new Color(1f, 0.49f, 0.71f), 2.4f, 2.4f);
                 pillar.localScale = new Vector3(1.6f, 1.2f, 1.6f);
+                // A little tower on the pillar's collider; it moves with the pillar as the ring closes in.
+                var tower = ArenaModels.Spawn("Tower", null, pillar.position, Quaternion.identity, new Vector3(1.8f, 2.4f, 1.8f), true);
+                if (tower != null) { tower.SetParent(pillar, true); pillar.GetComponent<Renderer>().enabled = false; }
                 _pillars.Add(pillar);
             }
         Apply(_startRadius);

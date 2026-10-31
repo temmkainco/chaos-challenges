@@ -88,28 +88,81 @@ public static class SoundSynth
     }
 
     /// <summary>Upbeat 8-bar loop: kick, hats, bass and a plucky arpeggio over C - Am - F - G.</summary>
-    public static AudioClip MusicLoop()
+    /// <summary>How many music styles <see cref="MusicLoop(int)"/> can make (0 is the show theme).</summary>
+    public const int MUSIC_STYLES = 8;
+
+    private struct Style
     {
-        const float bpm = 124f;
-        float beat = 60f / bpm;
+        public float Bpm;
+        public int Transpose;
+        public int[][] Chords;
+        public int[] Roots;
+        /// <summary>0 square+sine, 1 triangle, 2 saw-ish, 3 pulse.</summary>
+        public int Lead;
+        /// <summary>0 four on the floor, 1 half time, 2 broken beat, 3 sparse.</summary>
+        public int Drums;
+        /// <summary>Arpeggio step order over the chord.</summary>
+        public int[] Arp;
+        public float Swing;
+    }
+
+    private static readonly int[][] Major = { new[] { -9, -5, -2 }, new[] { -12, -9, -5 }, new[] { -16, -12, -9 }, new[] { -14, -10, -7 } };
+    private static readonly int[][] Minor = { new[] { -12, -9, -5 }, new[] { -16, -12, -9 }, new[] { -14, -11, -7 }, new[] { -10, -7, -3 } };
+    private static readonly int[][] Bright = { new[] { -9, -5, -2 }, new[] { -7, -4, 0 }, new[] { -12, -9, -5 }, new[] { -10, -7, -4 } };
+
+    private static readonly Style[] Styles =
+    {
+        new() { Bpm = 124f, Transpose = 0, Chords = Major, Roots = new[] { -33, -36, -40, -38 }, Lead = 0, Drums = 0, Arp = new[] { 0, 1, 2 } },          // show theme
+        new() { Bpm = 150f, Transpose = -2, Chords = Minor, Roots = new[] { -36, -40, -38, -34 }, Lead = 2, Drums = 0, Arp = new[] { 0, 2, 1, 2 } },     // chase
+        new() { Bpm = 96f, Transpose = 3, Chords = Bright, Roots = new[] { -33, -31, -36, -34 }, Lead = 1, Drums = 3, Arp = new[] { 0, 1, 2, 1 }, Swing = 0.12f },   // chill
+        new() { Bpm = 112f, Transpose = 5, Chords = Major, Roots = new[] { -33, -36, -40, -38 }, Lead = 3, Drums = 2, Arp = new[] { 2, 0, 1 }, Swing = 0.08f },     // funk
+        new() { Bpm = 140f, Transpose = 7, Chords = Bright, Roots = new[] { -33, -31, -36, -34 }, Lead = 3, Drums = 0, Arp = new[] { 0, 1, 2, 1, 0, 2 } },        // chiptune
+        new() { Bpm = 104f, Transpose = -5, Chords = Minor, Roots = new[] { -36, -40, -38, -34 }, Lead = 1, Drums = 1, Arp = new[] { 0, 2 } },             // spooky
+        new() { Bpm = 160f, Transpose = 2, Chords = Major, Roots = new[] { -33, -36, -40, -38 }, Lead = 2, Drums = 0, Arp = new[] { 0, 1, 2, 2 } },        // race
+        new() { Bpm = 90f, Transpose = -3, Chords = Bright, Roots = new[] { -33, -31, -36, -34 }, Lead = 0, Drums = 3, Arp = new[] { 0, 1 }, Swing = 0.18f },     // lounge
+    };
+
+    public static AudioClip MusicLoop() => MusicLoop(0);
+
+    /// <summary>An eight-bar loop in one of <see cref="MUSIC_STYLES"/> styles (tempo, key, chords, lead and drums differ).</summary>
+    public static AudioClip MusicLoop(int style)
+    {
+        var st = Styles[Mathf.Abs(style) % Styles.Length];
+        float beat = 60f / st.Bpm;
         float bar = beat * 4f;
-        int[][] chords = { new[] { -9, -5, -2 }, new[] { -12, -9, -5 }, new[] { -16, -12, -9 }, new[] { -14, -10, -7 } };
-        int[] roots = { -33, -36, -40, -38 };
+        float eighthLength = beat / 2f;
         float lengthSeconds = bar * 8f;
-        return Make("music", lengthSeconds, t =>
+        return Make("music" + style, lengthSeconds, t =>
         {
             int barIndex = (int)(t / bar) % 8;
             int chord = barIndex / 2 % 4;
             float inBeat = t % beat;
-            float inEighth = t % (beat / 2f);
-            int eighth = (int)(t / (beat / 2f)) % 8;
+            int eighth = (int)(t / eighthLength) % 8;
+            // Swing: off-beat eighths start a little late.
+            float start = eighth % 2 == 1 ? st.Swing * eighthLength : 0f;
+            float inEighth = (t % eighthLength) - start;
+            if (inEighth < 0f) inEighth += eighthLength;
+            int beatIndex = (int)(t / beat) % 4;
 
-            float kick = Sine(inBeat, Mathf.Lerp(120f, 45f, Mathf.Clamp01(inBeat * 12f))) * Env(inBeat, 0.002f, 0.09f) * 0.55f;
-            float hat = (eighth % 2 == 1 ? White() * Env(inEighth, 0.001f, 0.015f) * 0.12f : 0f);
-            float bass = Tri(t, Note(roots[chord] + (eighth % 4 == 3 ? 12 : 0))) * Env(inEighth, 0.004f, 0.12f) * 0.32f;
-            int arpNote = chords[chord][eighth % 3] + 12;
-            float lead = (Square(inEighth, Note(arpNote)) * 0.06f + Sine(inEighth, Note(arpNote)) * 0.12f) * Env(inEighth, 0.003f, 0.08f);
-            return (kick + hat + bass + lead) * 0.8f;
+            float kick = 0f, snare = 0f, hat = 0f;
+            bool kickHere = st.Drums switch { 1 => beatIndex == 0, 2 => eighth == 0 || eighth == 3 || eighth == 6, 3 => beatIndex == 0 && barIndex % 2 == 0, _ => true };
+            float kickTime = st.Drums == 2 ? t % eighthLength : inBeat;
+            if (kickHere) kick = Sine(kickTime, Mathf.Lerp(120f, 45f, Mathf.Clamp01(kickTime * 12f))) * Env(kickTime, 0.002f, 0.09f) * 0.55f;
+            if (st.Drums != 3 && (beatIndex == 1 || beatIndex == 3)) snare = White() * Env(inBeat, 0.001f, st.Drums == 1 ? 0.09f : 0.05f) * 0.16f;
+            if (eighth % 2 == 1 || st.Drums == 0) hat = White() * Env(inEighth, 0.001f, 0.015f) * (eighth % 2 == 1 ? 0.12f : 0.05f);
+
+            float bass = Tri(t, Note(st.Roots[chord] + st.Transpose + (eighth % 4 == 3 ? 12 : 0))) * Env(inEighth, 0.004f, 0.12f) * 0.32f;
+            int step = (int)(t / eighthLength) % st.Arp.Length;
+            float note = Note(st.Chords[chord][st.Arp[step] % 3] + 12 + st.Transpose);
+            float tone = st.Lead switch
+            {
+                1 => Tri(inEighth, note) * 0.2f,
+                2 => (Mathf.Repeat(inEighth * note, 1f) * 2f - 1f) * 0.09f + Sine(inEighth, note) * 0.08f,
+                3 => (Mathf.Repeat(inEighth * note, 1f) < 0.25f ? 1f : -1f) * 0.08f,
+                _ => Square(inEighth, note) * 0.06f + Sine(inEighth, note) * 0.12f,
+            };
+            float lead = tone * Env(inEighth, 0.003f, st.Lead == 1 ? 0.16f : 0.08f);
+            return (kick + snare + hat + bass + lead) * 0.8f;
         });
     }
 }

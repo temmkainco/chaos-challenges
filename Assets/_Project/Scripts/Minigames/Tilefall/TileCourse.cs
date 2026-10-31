@@ -150,8 +150,8 @@ public class TileCourse : NetworkBehaviour
             if (i >= 0) _occupants[i]++;
         }
 
-        // Tiles felt like they never fell: at most a second under one contestant.
-        float damagePerTick = Runner.DeltaTime / Mathf.Clamp(_secondsToCollapse, 0.1f, 1f);
+        // Tiles felt like they never fell: at most 0.7 s under one contestant.
+        float damagePerTick = Runner.DeltaTime / Mathf.Clamp(_secondsToCollapse, 0.1f, 0.7f);
         int respawnTicks = Mathf.CeilToInt(_respawnSeconds * Runner.TickRate);
 
         for (int i = 0; i < TileCount; i++)

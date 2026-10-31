@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// Door Dash (after Fall Guys): race down a long hall through rows of doors. Real doors burst open when you run into
-/// them; fakes are solid, so guess, bounce, and try the next. Finishers place in order; at the bell the rest are
+/// them; fakes are solid and throw you back for a moment, so don't just try them all. Finishers place in order; at the bell the rest are
 /// ranked by how far they got. Layouts: Classic (3 of 5 real), Fake Out (2 of 5), Long Hall (more rows).
 /// Twist: LOCKDOWN, every burst door slams shut again.
 /// </summary>
@@ -17,6 +17,8 @@ public class DoorDashMinigameController : RaceMinigameController
     [SerializeField] private float _height = 4f;
 
     [Networked, Capacity(64)] private NetworkArray<byte> DoorState { get; }
+
+    private readonly Dictionary<PlayerRef, int> _bouncedTick = new();
 
     public override string[] Variants => new[] { "Classic", "Fake Out", "Long Hall" };
     public override string TwistTitle => "LOCKDOWN";
@@ -62,6 +64,9 @@ public class DoorDashMinigameController : RaceMinigameController
                 int i = row * DOORS + d;
                 var door = ArenaProps.Block(transform, PrimitiveType.Cube, Origin + z + Vector3.right * ((d + 0.5f) * DOOR_WIDTH - Width * 0.5f),
                     new Vector3(DOOR_WIDTH - 0.4f, DOOR_HEIGHT, 0.3f), new Color(0.98f, 0.85f, 0.55f));
+                // The door model sits on the collision box (a child, so it vanishes with the door when it bursts).
+                var model = ArenaModels.Spawn("Door", door, door.position, door.rotation, new Vector3(DOOR_WIDTH - 0.3f, DOOR_HEIGHT, 0.6f));
+                if (model != null) door.GetComponent<Renderer>().enabled = false;
                 _doors[i] = door;
                 _doorColliders[i] = door.GetComponent<Collider>();
                 _shown[i] = 255;
@@ -131,6 +136,15 @@ public class DoorDashMinigameController : RaceMinigameController
                     DoorState.Set(i, BROKEN);
                     RPC_Burst(_doors[i].position);
                 }
+                else if (DoorState[i] == FAKE && rel.z < RowZ(row) && RowZ(row) - rel.z < 0.95f
+                         && (!_bouncedTick.TryGetValue(entry.Key, out int last) || Runner.Tick - last > Runner.TickRate)
+                         && player.TryGetComponent<PlayerMovement>(out var movement))
+                {
+                    // A fake throws you back: guessing costs time.
+                    _bouncedTick[entry.Key] = Runner.Tick;
+                    movement.Launch(Vector3.back * 9f + Vector3.up * 5f);
+                    RPC_Fake(_doors[i].position);
+                }
             }
         }
     }
@@ -140,6 +154,20 @@ public class DoorDashMinigameController : RaceMinigameController
     {
         Sfx.Play(Sound.Crack, 0.9f, 0.15f);
         LowPolyExplosion.Play(position, 1.6f, Resources.Load<Material>("ThrowArc"));
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Fake(Vector3 position)
+    {
+        Sfx.Play(Sound.Nope, 0.9f, 0.1f);
+        WorldPopup.Show(position + Vector3.up * 2f, "FAKE!", new Color(1f, 0.37f, 0.36f), 9f);
+    }
+
+    protected override string ProgressLabel(float progress)
+    {
+        int rows = 0;
+        for (int row = 0; row < Rows; row++) if (progress > RowZ(row) + 1f) rows++;
+        return $"Row {rows}/{Rows}";
     }
 
     public override void Render()

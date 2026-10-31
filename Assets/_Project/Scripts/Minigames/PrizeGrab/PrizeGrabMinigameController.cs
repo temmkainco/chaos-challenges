@@ -141,9 +141,19 @@ public class PrizeGrabMinigameController : MinigameController
         Vector3.ProjectOnPlane(position - _stageCentre.position, Vector3.up).magnitude > _podiumRadius + 2.5f
         && position.y < _stageCentre.position.y + 1f;
 
+    private int _dropTurn;
+
+    /// <summary>Prizes take turns falling toward each contestant's side of the stage, so nobody's half stays empty.</summary>
     private void DropPrize(bool golden)
     {
+        var players = ConnectedPlayers().OrderBy(p => p.PlayerId).ToList();
         var flat = Random.insideUnitCircle * _rainRadius;
+        if (players.Count > 0)
+        {
+            var towards = PodiumPosition(_dropTurn++ % players.Count, players.Count) - _stageCentre.position;
+            var side = new Vector2(towards.x, towards.z).normalized * Random.Range(_rainRadius * 0.35f, _rainRadius * 0.85f);
+            flat = side + Random.insideUnitCircle * 2.5f;
+        }
         var position = _stageCentre.position + new Vector3(flat.x, 12f, flat.y);
         Runner.Spawn(_prizePrefab, position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null,
             (runner, spawned) => spawned.GetComponent<Prize>().Value = (byte)(golden ? 3 : 1));
@@ -164,8 +174,8 @@ public class PrizeGrabMinigameController : MinigameController
             {
                 float angle = (i * 60f + 15f) * Mathf.Deg2Rad;
                 var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-                ArenaProps.Block(transform, PrimitiveType.Cube, ground + direction * 7f, new Vector3(4f, 0.7f, 0.6f), ArenaProps.Yellow,
-                    Quaternion.LookRotation(direction).eulerAngles.y);
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, ground + direction * 7f, new Vector3(4f, 0.9f, 0.4f), ArenaProps.Yellow,
+                    Quaternion.LookRotation(direction).eulerAngles.y), "WoodFence");
             }
         }
         else if (Variant == 2)
@@ -174,10 +184,10 @@ public class PrizeGrabMinigameController : MinigameController
             for (int i = 0; i < 3; i++)
             {
                 float angle = (i * 120f + 30f) * Mathf.Deg2Rad;
-                ArenaProps.Block(transform, PrimitiveType.Cylinder, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5.5f,
-                    new Vector3(3.2f, 1.1f, 3.2f), i == 0 ? ArenaProps.Pink : i == 1 ? ArenaProps.Blue : ArenaProps.Green);
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5.5f,
+                    new Vector3(3.2f, 1.1f, 3.2f), ArenaProps.Pink, i * 40f), i == 0 ? "BrickTall" : i == 1 ? "Brick4" : "Brick6");
             }
-            ArenaProps.Block(transform, PrimitiveType.Cylinder, ground, new Vector3(2.4f, 1.6f, 2.4f), ArenaProps.Purple);
+            ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, ground, new Vector3(2.4f, 1.6f, 2.4f), ArenaProps.Purple), "Crate");
         }
         ArenaProps.Done();
     }

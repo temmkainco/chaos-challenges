@@ -3,110 +3,151 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Kart Kup: everyone drives a kart (W/S throttle and brake, A/D steer, Space hops) three laps round a track raised
-/// above the studio. Yellow pads give a burst of speed; bumping rivals is fair game. Fall off and you're put back on
-/// the track. Finishers place in order; at the bell the rest by laps and distance. Layouts: Oval, Clover, Long Oval.
-/// Twist: TURBO, everyone gets a speed boost.
-/// The track is a closed loop of points built the same way on every peer.
+/// Kart Kup: everyone drives a toy car (W/S throttle and brake, A/D steer, Space hops) three laps round a road-tile
+/// track raised above the studio. Yellow pads give a burst of speed; bumping rivals is fair game. Fall off and you're
+/// put back on the track. Finishers place in order; at the bell the rest by laps and distance. Layouts: Oval, Hook,
+/// Long Oval. Twist: TURBO, everyone gets a speed boost.
+/// The track is a loop of 10 m grid cells (straights and corners) built the same way on every peer: a box collider
+/// and a road-tile model per cell, a solid wall dressed with fences on every outside edge.
 /// </summary>
 public class KartKupMinigameController : RaceMinigameController
 {
-    private const int POINTS = 96, LAPS = 3;
-    private const float WIDTH = 11f;
+    private const float CELL = 10f, WALL_HEIGHT = 1.4f;
+    private const int LAPS = 3;
 
     [SerializeField] private float _height = 12f;
 
     public override VehicleKind Vehicle => VehicleKind.Kart;
     public override bool AllowShove => false;
     public override bool UsesDefaultControls => false;
-    public override string[] Variants => new[] { "Oval", "Clover", "Long Oval" };
+    public override string[] Variants => new[] { "Oval", "Hook", "Long Oval" };
     public override string TwistTitle => "TURBO";
     public override string TwistKind => "BUFF";
     public override string TwistDescription => "Everyone gets a burst of speed.";
 
-    /// <summary>Laps completed per player slot (for the HUD; the host keeps the exact progress).</summary>
-    [Networked, Capacity(32)] private NetworkArray<byte> Laps { get; }
-
-    private readonly List<Vector3> _points = new();
+    private readonly List<Vector2Int> _cells = new();
+    private readonly List<int> _pads = new();
     private readonly Dictionary<PlayerRef, int> _index = new();
     private readonly Dictionary<PlayerRef, int> _lap = new();
-    private readonly List<int> _pads = new();
+    private Vector3 _origin;
 
-    private Vector3 Centre => _centre.position + Vector3.up * _height;
-    protected override float FallHeight => Centre.y - 5f;
+    private int Count => _cells.Count;
+    protected override float FallHeight => _origin.y - 5f;
+
+    private static readonly Vector2Int[] Oval = Loop(6, 3);
+    private static readonly Vector2Int[] LongOval = Loop(8, 2);
+    private static readonly Vector2Int[] Hook =
+    {
+        new(0, 0), new(1, 0), new(2, 0), new(3, 0), new(4, 0), new(4, 1), new(4, 2), new(3, 2), new(2, 2), new(2, 3),
+        new(2, 4), new(1, 4), new(0, 4), new(0, 3), new(0, 2), new(0, 1),
+    };
+
+    /// <summary>The cells round the edge of a w x h rectangle, in driving order.</summary>
+    private static Vector2Int[] Loop(int w, int h)
+    {
+        var cells = new List<Vector2Int>();
+        for (int x = 0; x < w; x++) cells.Add(new Vector2Int(x, 0));
+        for (int z = 1; z < h; z++) cells.Add(new Vector2Int(w - 1, z));
+        for (int x = w - 2; x >= 0; x--) cells.Add(new Vector2Int(x, h - 1));
+        for (int z = h - 2; z >= 1; z--) cells.Add(new Vector2Int(0, z));
+        return cells.ToArray();
+    }
+
+    private Vector3 CellCentre(int i) => _origin + new Vector3(_cells[(i % Count + Count) % Count].x * CELL, 0f, _cells[(i % Count + Count) % Count].y * CELL);
+    private Vector3 Forward(int i) => (CellCentre(i + 1) - CellCentre(i)).normalized;
 
     public override void Spawned()
     {
         base.Spawned();
-        for (int i = 0; i < POINTS; i++) _points.Add(Point(i / (float)POINTS * Mathf.PI * 2f));
-        BuildTrack();
+        var loop = Variant switch { 1 => Hook, 2 => LongOval, _ => Oval };
+        // Start the list on a straight with a straight behind it (the grid lines up there).
+        int start = 0;
+        for (int i = 0; i < loop.Length; i++)
+        {
+            var a = loop[(i - 1 + loop.Length) % loop.Length]; var b = loop[i]; var c = loop[(i + 1) % loop.Length]; var d = loop[(i + 2) % loop.Length];
+            if (b - a == c - b && c - b == d - c) { start = i; break; }
+        }
+        for (int i = 0; i < loop.Length; i++) _cells.Add(loop[(start + i) % loop.Length]);
+        var min = new Vector2(float.MaxValue, float.MaxValue); var max = -min;
+        foreach (var c in _cells) { min = Vector2.Min(min, c); max = Vector2.Max(max, c); }
+        var middle = (min + max) * 0.5f * CELL;
+        _origin = _centre.position + Vector3.up * _height - new Vector3(middle.x, 0f, middle.y);
+        Build();
     }
 
-    private Vector3 Point(float t)
+    private void Build()
     {
-        float x, z;
-        switch (Variant)
+        var neighbours = new HashSet<(Vector2Int, Vector2Int)>();
+        for (int i = 0; i < Count; i++)
         {
-            case 1:
-                float r = 24f + 6f * Mathf.Sin(3f * t);
-                x = Mathf.Cos(t) * r * 1.15f; z = Mathf.Sin(t) * r;
-                break;
-            case 2:
-                x = Mathf.Cos(t) * 44f; z = Mathf.Sin(t) * 15f;
-                break;
-            default:
-                // A rounded rectangle (superellipse).
-                float c = Mathf.Cos(t), s = Mathf.Sin(t);
-                x = Mathf.Sign(c) * Mathf.Pow(Mathf.Abs(c), 0.6f) * 34f;
-                z = Mathf.Sign(s) * Mathf.Pow(Mathf.Abs(s), 0.6f) * 19f;
-                break;
+            neighbours.Add((_cells[i], _cells[(i + 1) % Count]));
+            neighbours.Add((_cells[(i + 1) % Count], _cells[i]));
         }
-        return Centre + new Vector3(x, 0f, z);
-    }
-
-    private Vector3 Tangent(int i) => (_points[(i + 1) % POINTS] - _points[(i + POINTS - 1) % POINTS]).normalized;
-
-    private void BuildTrack()
-    {
-        var asphalt = new Color(0.32f, 0.3f, 0.38f);
-        for (int i = 0; i < POINTS; i++)
+        var sides = new[] { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
+        for (int i = 0; i < Count; i++)
         {
-            var a = _points[i];
-            var b = _points[(i + 1) % POINTS];
-            var mid = (a + b) * 0.5f;
-            var dir = (b - a).normalized;
-            float length = (b - a).magnitude + 1.2f;
-            float yaw = Quaternion.LookRotation(dir).eulerAngles.y;
-            ArenaProps.Block(transform, PrimitiveType.Cube, mid + Vector3.down * 0.6f, new Vector3(WIDTH, 0.6f, length), asphalt, yaw);
-            // A disc under every joint fills the wedge-shaped gaps on the outside of bends.
-            ArenaProps.Block(transform, PrimitiveType.Cylinder, a + Vector3.down * 0.61f, new Vector3(WIDTH, 0.6f, WIDTH), asphalt);
-            var normal = Vector3.Cross(Vector3.up, dir);
-            foreach (float side in new[] { -1f, 1f })
-                ArenaProps.Block(transform, PrimitiveType.Cube, mid + normal * side * (WIDTH * 0.5f + 0.3f), new Vector3(0.6f, 1.1f, length),
-                    i % 2 == 0 ? new Color(0.95f, 0.3f, 0.3f) : Color.white, yaw);
+            var cell = _cells[i];
+            var centre = CellCentre(i);
+            var floor = ArenaProps.Block(transform, PrimitiveType.Cube, centre + Vector3.down * 0.6f, new Vector3(CELL, 0.6f, CELL), new Color(0.3f, 0.3f, 0.36f));
+            floor.GetComponent<Renderer>().enabled = false;
+            var into = cell - _cells[(i - 1 + Count) % Count];
+            var outOf = _cells[(i + 1) % Count] - cell;
+            bool straight = into == outOf;
+            // The road tiles run along their local X (straights) and turn from -X round to -Z (corners).
+            float yaw;
+            if (straight) yaw = outOf.x != 0 ? 0f : 90f;
+            else yaw = CornerYaw(-into, outOf);
+            ArenaModels.Spawn(straight ? "RoadStraight" : "RoadCorner", transform, centre + Vector3.down * 0.08f, Quaternion.Euler(0f, yaw, 0f), new Vector3(CELL, 0.16f, CELL));
+
+            // Walls on every edge that doesn't lead to the next or previous cell.
+            foreach (var side in sides)
+            {
+                if (neighbours.Contains((cell, cell + side))) continue;
+                var normal = new Vector3(side.x, 0f, side.y);
+                var wallCentre = centre + normal * (CELL * 0.5f + 0.25f);
+                var wall = ArenaProps.Block(transform, PrimitiveType.Cube, wallCentre, new Vector3(CELL + 0.5f, WALL_HEIGHT, 0.5f), Color.white,
+                    Quaternion.LookRotation(normal).eulerAngles.y);
+                wall.GetComponent<Renderer>().enabled = false;
+                var along = Vector3.Cross(Vector3.up, normal);
+                for (int f = 0; f < 5; f++)
+                    ArenaModels.Spawn("WoodFence", transform, wallCentre + along * ((f - 2f) * 2f) + Vector3.up * WALL_HEIGHT * 0.5f,
+                        Quaternion.LookRotation(normal), new Vector3(2f, WALL_HEIGHT, 0.15f));   // fence runs along its X = along
+            }
         }
-        // Start line and speed pads (no colliders: the host checks who drives over them).
-        var line = ArenaProps.Block(transform, PrimitiveType.Cube, _points[0] + Vector3.up * 0.01f, new Vector3(WIDTH, 0.04f, 1.2f), Color.white,
-            Quaternion.LookRotation(Tangent(0)).eulerAngles.y);
+        // Start line, speed pads on two straights (no colliders: the host checks who drives over them).
+        var line = ArenaProps.Block(transform, PrimitiveType.Cube, CellCentre(0) + Vector3.up * 0.03f, new Vector3(CELL, 0.03f, 0.8f), Color.white,
+            Quaternion.LookRotation(Forward(0)).eulerAngles.y);
         Destroy(line.GetComponent<Collider>());
-        for (int k = 1; k <= 3; k++)
+        ArenaModels.Spawn("Flag", transform, CellCentre(0) + Vector3.Cross(Vector3.up, Forward(0)) * (CELL * 0.5f - 0.6f) + Vector3.up * 1.2f,
+            Quaternion.LookRotation(Forward(0)), new Vector3(1.4f, 2.4f, 0.4f), true);
+        for (int i = 2; i < Count; i++)
         {
-            int i = k * POINTS / 4 + POINTS / 12;
+            if (_pads.Count >= 2) break;
+            if (Forward(i - 1) != Forward(i) || (_pads.Count > 0 && i - _pads[0] < Count / 3)) continue;
             _pads.Add(i);
-            var pad = ArenaProps.Block(transform, PrimitiveType.Cube, _points[i] + Vector3.up * 0.01f, new Vector3(WIDTH * 0.45f, 0.05f, 3.2f), ArenaProps.Yellow,
-                Quaternion.LookRotation(Tangent(i)).eulerAngles.y);
+            var pad = ArenaProps.Block(transform, PrimitiveType.Cube, CellCentre(i) + Vector3.up * 0.04f, new Vector3(CELL * 0.4f, 0.05f, 3f), ArenaProps.Yellow,
+                Quaternion.LookRotation(Forward(i)).eulerAngles.y);
             Destroy(pad.GetComponent<Collider>());
         }
         ArenaProps.Done();
     }
 
+    /// <summary>Yaw for a corner tile joining the sides <paramref name="a"/> and <paramref name="b"/> of the cell.</summary>
+    private static float CornerYaw(Vector2Int a, Vector2Int b)
+    {
+        bool Has(Vector2Int side) => a == side || b == side;
+        if (Has(Vector2Int.left) && Has(Vector2Int.down)) return 0f;
+        if (Has(Vector2Int.left) && Has(Vector2Int.up)) return 90f;
+        if (Has(Vector2Int.right) && Has(Vector2Int.up)) return 180f;
+        return 270f;
+    }
+
     protected override Vector3 StartPosition(int slot, int count, out float yaw)
     {
+        var forward = Forward(0);
+        yaw = Quaternion.LookRotation(forward).eulerAngles.y;
         int row = slot / 2, column = slot % 2;
-        int i = POINTS - 2 - row * 2;
-        var tangent = Tangent(i);
-        yaw = Quaternion.LookRotation(tangent).eulerAngles.y;
-        return _points[i] + Vector3.Cross(Vector3.up, tangent) * (column == 0 ? -2.6f : 2.6f) + Vector3.up * 0.6f;
+        return CellCentre(0) - forward * (2.5f + row * 3.5f) + Vector3.Cross(Vector3.up, forward) * (column == 0 ? -2.2f : 2.2f) + Vector3.up * 0.6f;
     }
 
     protected override void StartGame()
@@ -115,48 +156,50 @@ public class KartKupMinigameController : RaceMinigameController
         if (!HasStateAuthority) return;
         _index.Clear();
         _lap.Clear();
-        for (int i = 0; i < 32; i++) Laps.Set(i, 0);
     }
 
-    /// <summary>Nearest track point, searched near the last one (the track never crosses itself).</summary>
+    /// <summary>The cell under <paramref name="position"/>, searched near the last one (cells never repeat).</summary>
     private int Nearest(PlayerRef player, Vector3 position)
     {
-        int start = _index.TryGetValue(player, out int last) ? last : -1;
+        bool known = _index.TryGetValue(player, out int last);
         int best = 0;
         float bestDistance = float.MaxValue;
-        int from = start < 0 ? 0 : start - 6, to = start < 0 ? POINTS : start + 7;
+        int from = known ? last - 2 : 0, to = known ? last + 3 : Count;
         for (int k = from; k < to; k++)
         {
-            int i = ((k % POINTS) + POINTS) % POINTS;
-            float d = (new Vector3(position.x, Centre.y, position.z) - _points[i]).sqrMagnitude;
+            int i = (k % Count + Count) % Count;
+            var offset = position - CellCentre(i);
+            float d = Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.z));
             if (d < bestDistance) { bestDistance = d; best = i; }
         }
         return best;
     }
 
-    /// <summary>Laps times points plus the point reached. The grid starts just behind the line on lap -1.</summary>
+    /// <summary>Laps times cells plus the cell and how far through it. The grid starts behind the line on lap -1.</summary>
     protected override float Progress(PlayerRef player, Vector3 position)
     {
         int index = Nearest(player, position);
-        if (!_lap.TryGetValue(player, out int lap)) lap = index > POINTS / 2 ? -1 : 0;
+        if (!_lap.TryGetValue(player, out int lap)) lap = Vector3.Dot(position - CellCentre(0), Forward(0)) < 0f ? -1 : 0;
         if (_index.TryGetValue(player, out int last))
         {
-            if (last > POINTS * 3 / 4 && index < POINTS / 4) lap++;
-            else if (last < POINTS / 4 && index > POINTS * 3 / 4) lap--;
+            if (last > Count * 3 / 4 && index < Count / 4) lap++;
+            else if (last < Count / 4 && index > Count * 3 / 4) lap--;
         }
         _index[player] = index;
         _lap[player] = lap;
-        Laps.Set(player.PlayerId & 31, (byte)Mathf.Clamp(lap + 1, 0, 255));
-        return lap * POINTS + index;
+        float through = Mathf.Clamp(Vector3.Dot(position - CellCentre(index), Forward(index)) / CELL, -0.5f, 0.5f);
+        return lap * Count + index + through;
     }
 
-    protected override bool IsFinished(float progress) => progress >= LAPS * POINTS;
+    protected override bool IsFinished(float progress) => progress >= LAPS * Count;
+
+    protected override string ProgressLabel(float progress) => $"Lap {Mathf.Clamp(Mathf.FloorToInt(progress / Mathf.Max(1, Count)) + 1, 1, LAPS)}/{LAPS}";
 
     protected override Vector3 RespawnPoint(PlayerRef player, float bestProgress, out float yaw)
     {
-        int i = Mathf.Clamp(_index.TryGetValue(player, out int last) ? last : 0, 0, POINTS - 1);
-        yaw = Quaternion.LookRotation(Tangent(i)).eulerAngles.y;
-        return _points[i] + Vector3.up * 0.6f;
+        int i = _index.TryGetValue(player, out int last) ? last : 0;
+        yaw = Quaternion.LookRotation(Forward(i)).eulerAngles.y;
+        return CellCentre(i) + Vector3.up * 0.6f;
     }
 
     protected override void OnChaosStarted(ChaosModifier modifier)
@@ -173,22 +216,11 @@ public class KartKupMinigameController : RaceMinigameController
         foreach (var entry in _playerSpawner.Players)
         {
             var player = entry.Value;
-            if (player == null || !_index.TryGetValue(entry.Key, out int index)) continue;
-            foreach (int pad in _pads)
-            {
-                if (Mathf.Abs(index - pad) > 1) continue;
-                var rel = player.transform.position - _points[pad];
-                if (Mathf.Abs(Vector3.Dot(rel, Vector3.Cross(Vector3.up, Tangent(pad)))) < WIDTH * 0.25f && player.TryGetComponent<PlayerMovement>(out var movement) && !movement.IsBoosted)
-                    movement.Boost(1.4f);
-            }
+            if (player == null || !_index.TryGetValue(entry.Key, out int index) || !_pads.Contains(index)) continue;
+            var rel = player.transform.position - CellCentre(index);
+            if (Mathf.Abs(Vector3.Dot(rel, Vector3.Cross(Vector3.up, Forward(index)))) < CELL * 0.22f && Mathf.Abs(Vector3.Dot(rel, Forward(index))) < 2f
+                && player.TryGetComponent<PlayerMovement>(out var movement) && !movement.IsBoosted)
+                movement.Boost(1.4f);
         }
-    }
-
-    public override string GetStatusText()
-    {
-        if (!IsGameActive) return null;
-        int lap = Runner.LocalPlayer.IsRealPlayer ? Laps[Runner.LocalPlayer.PlayerId & 31] : 0;
-        string mine = $"Lap <b>{Mathf.Clamp(lap, 1, LAPS)}</b> / {LAPS}";
-        return FinishedCount > 0 ? $"{mine}   {FinishedCount} finished" : mine;
     }
 }

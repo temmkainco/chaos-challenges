@@ -22,7 +22,10 @@ public class GrabbableObject : NetworkBehaviour, IGrabbable, ICancellableInterac
     [Networked, OnChangedRender(nameof(OnGrabbedChanged))]
     public NetworkBool IsGrabbed { get; private set; }
 
-    public bool CanBeInteractedWith => Object != null && Object.IsValid && !IsGrabbed;
+    public bool CanBeInteractedWith => Object != null && Object.IsValid && !IsGrabbed && !Blocked;
+
+    /// <summary>Set (on every peer, from networked state) while nobody may pick this up, e.g. a bomb falling from the sky.</summary>
+    [System.NonSerialized] public bool Blocked;
     public Outline Outline { get; private set; }
 
     [Networked] public PlayerRef CurrentHolder { get; private set; }

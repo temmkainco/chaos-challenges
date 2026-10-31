@@ -74,7 +74,7 @@ public class RiderVisual : MonoBehaviour
     {
         if (_hips == null) return;
         Vector3 up = _visuals.up, fwd = _visuals.forward, right = _visuals.right;
-        float seat = kind == VehicleKind.Kart ? 0.42f : 0.62f;
+        float seat = kind == VehicleKind.Kart ? 1.12f : 0.62f;   // on the toy car's roof; in the plane's body
         _hips.position = _visuals.TransformPoint(new Vector3(0f, seat, -0.25f));
         Tilt(_spine, right, -10f);
         Aim(_lUpperLeg, _lLowerLeg, (fwd + up * 0.15f - right * 0.12f).normalized);
@@ -118,33 +118,34 @@ public class RiderVisual : MonoBehaviour
         var trim = Color.Lerp(paint, Color.white, 0.45f);
         if (kind == VehicleKind.Kart)
         {
-            Part(PrimitiveType.Cube, new Vector3(0f, 0.32f, 0.05f), Vector3.zero, new Vector3(1.25f, 0.32f, 2.1f), paint);
-            Part(PrimitiveType.Cube, new Vector3(0f, 0.38f, 1.12f), new Vector3(12f, 0f, 0f), new Vector3(1.0f, 0.22f, 0.5f), trim);
-            Part(PrimitiveType.Cube, new Vector3(0f, 0.72f, -0.62f), new Vector3(-12f, 0f, 0f), new Vector3(0.85f, 0.62f, 0.14f), dark);
-            Part(PrimitiveType.Cube, new Vector3(0f, 0.98f, -1.08f), Vector3.zero, new Vector3(1.35f, 0.08f, 0.38f), trim);
-            foreach (float x in new[] { -0.5f, 0.5f })
-                Part(PrimitiveType.Cube, new Vector3(x, 0.78f, -1.05f), Vector3.zero, new Vector3(0.06f, 0.4f, 0.06f), dark);
-            foreach (float x in new[] { -0.72f, 0.72f })
-                foreach (float z in new[] { -0.72f, 0.78f })
-                    Part(PrimitiveType.Cylinder, new Vector3(x, 0.28f, z), new Vector3(0f, 0f, 90f), new Vector3(0.56f, 0.13f, 0.56f), dark);
-            Part(PrimitiveType.Cylinder, new Vector3(0f, 0.72f, 0.42f), new Vector3(-55f, 0f, 0f), new Vector3(0.05f, 0.22f, 0.05f), dark);
-            Part(PrimitiveType.Cylinder, new Vector3(0f, 0.9f, 0.3f), new Vector3(-55f, 0f, 0f), new Vector3(0.38f, 0.025f, 0.38f), dark);
+            // A toy car in the outfit colour; the contestant rides on top, hands on a steering wheel.
+            Model("ToyCar", new Vector3(0f, 0.55f, 0.1f), Vector3.zero, new Vector3(1.6f, 1.1f, 2.7f), Color.Lerp(Color.white, paint, 0.7f));
+            Model("SteeringWheel", new Vector3(0f, 1.45f, 0.42f), new Vector3(-60f, 0f, 0f), new Vector3(0.45f, 0.45f, 0.12f), null);
         }
         else
         {
-            Part(PrimitiveType.Capsule, new Vector3(0f, 0.55f, 0.1f), new Vector3(90f, 0f, 0f), new Vector3(0.95f, 1.45f, 0.85f), paint);
-            Part(PrimitiveType.Cube, new Vector3(0f, 0.6f, 0.35f), Vector3.zero, new Vector3(4.4f, 0.1f, 0.85f), trim);
-            Part(PrimitiveType.Cube, new Vector3(0f, 1.05f, -1.25f), Vector3.zero, new Vector3(0.08f, 0.7f, 0.55f), paint);
-            Part(PrimitiveType.Cube, new Vector3(0f, 0.65f, -1.3f), Vector3.zero, new Vector3(1.7f, 0.07f, 0.45f), trim);
-            Part(PrimitiveType.Sphere, new Vector3(0f, 0.55f, 1.55f), Vector3.zero, new Vector3(0.3f, 0.3f, 0.3f), dark);
+            // A plane built from toy bricks: a long brick body, a plate for wings and tail, a spinning propeller.
+            Model("BrickLong", new Vector3(0f, 0.5f, 0.1f), new Vector3(0f, 90f, 0f), new Vector3(2.9f, 0.85f, 0.9f), paint);
+            Model("BrickPlate", new Vector3(0f, 0.62f, 0.35f), Vector3.zero, new Vector3(4.4f, 0.14f, 1f), trim);
+            Model("BrickPlate", new Vector3(0f, 0.75f, -1.25f), Vector3.zero, new Vector3(1.7f, 0.12f, 0.55f), trim);
+            Model("Brick2", new Vector3(0f, 1.05f, -1.3f), new Vector3(0f, 0f, 90f), new Vector3(0.7f, 0.12f, 0.6f), paint);
             var spinner = new GameObject("Propeller").transform;
             spinner.SetParent(_vehicle, false);
-            spinner.localPosition = new Vector3(0f, 0.55f, 1.68f);
+            spinner.localPosition = new Vector3(0f, 0.5f, 1.68f);
             spinner.localRotation = Quaternion.Euler(90f, 0f, 0f);   // spins round the plane's forward axis
             var blade = Part(PrimitiveType.Cube, Vector3.zero, Vector3.zero, new Vector3(1.4f, 0.04f, 0.14f), dark);
             blade.SetParent(spinner, false);
             spinner.gameObject.AddComponent<CosmeticSpin>();
         }
+    }
+
+    /// <summary>A prop-pack model fitted to <paramref name="size"/> at a spot on the vehicle (falls back to a box).</summary>
+    private void Model(string key, Vector3 position, Vector3 euler, Vector3 size, Color? tint)
+    {
+        var model = ArenaModels.Spawn(key, null, _vehicle.TransformPoint(position), _vehicle.rotation * Quaternion.Euler(euler), size, false, tint);
+        if (model == null) { Part(PrimitiveType.Cube, position, euler, size, tint ?? Color.white); return; }
+        model.SetParent(_vehicle, true);
+        foreach (var renderer in model.GetComponentsInChildren<Renderer>()) renderer.gameObject.layer = gameObject.layer;
     }
 
     private Transform Part(PrimitiveType shape, Vector3 position, Vector3 euler, Vector3 scale, Color color)

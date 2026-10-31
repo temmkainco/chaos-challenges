@@ -4496,7 +4496,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &351132652
 Transform:
   m_ObjectHideFlags: 0
@@ -12275,7 +12275,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1016213731
 Transform:
   m_ObjectHideFlags: 0
@@ -12462,7 +12462,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1057263561
 Transform:
   m_ObjectHideFlags: 0
@@ -18626,7 +18626,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1501640806
 Transform:
   m_ObjectHideFlags: 0
@@ -21538,7 +21538,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1746649277
 Transform:
   m_ObjectHideFlags: 0
@@ -23948,6 +23948,7 @@ MonoBehaviour:
   _AnnouncementId: 0
   _ReadyMask: 0
   _ActiveChaos: 0
+  _PendingChaos: 0
   _minigameDefinition: {fileID: 11400000, guid: 5e2de15b92a5f604a92c7df5ec5a875e, type: 2}
   _hasCountdown: 1
   _room: {fileID: 1858252621}
@@ -26239,7 +26240,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2071882154
 Transform:
   m_ObjectHideFlags: 0

@@ -11,7 +11,7 @@ using UnityEngine;
 /// </summary>
 public class TailTagMinigameController : ScoreMinigameController
 {
-    private const float ARENA_RADIUS = 10.5f, GRAB_RANGE = 2.4f, IMMUNE_SECONDS = 1.5f;
+    private const float ARENA_RADIUS = 10.5f, GRAB_RANGE = 3.1f, IMMUNE_SECONDS = 1.5f;
 
     /// <summary>Bit per player slot (PlayerId &amp; 31): wearing a tail.</summary>
     [Networked] private int Tails { get; set; }
@@ -42,16 +42,20 @@ public class TailTagMinigameController : ScoreMinigameController
             for (int i = 0; i < 6; i++)
             {
                 float angle = i / 6f * Mathf.PI * 2f;
-                ArenaProps.Block(transform, PrimitiveType.Cylinder, ArenaCentre + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f,
-                    new Vector3(1.6f, 3f, 1.6f), i % 2 == 0 ? ArenaProps.Pink : ArenaProps.Yellow);
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, ArenaCentre + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f,
+                    new Vector3(1.8f, 2.8f, 1.8f), ArenaProps.Pink), "Tower", true);
             }
         else if (Variant == 2)
             for (int i = 0; i < 4; i++)
             {
                 float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
                 var direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-                ArenaProps.Block(transform, PrimitiveType.Cube, ArenaCentre + direction * 5f, new Vector3(5f, 1.4f, 1f), ArenaProps.Green,
+                // A hedge: three bushes over one collision box.
+                var hedge = ArenaProps.Block(transform, PrimitiveType.Cube, ArenaCentre + direction * 5f, new Vector3(5f, 1.4f, 1.2f), ArenaProps.Green,
                     Quaternion.LookRotation(direction).eulerAngles.y + 90f);
+                hedge.GetComponent<Renderer>().enabled = false;
+                for (int b = -1; b <= 1; b++)
+                    ArenaModels.Spawn("Bush", transform, hedge.position + hedge.right * b * 1.7f, hedge.rotation * Quaternion.Euler(0f, b * 40f, 0f), new Vector3(2f, 1.6f, 1.6f));
             }
         ArenaProps.Done();
     }
@@ -66,8 +70,8 @@ public class TailTagMinigameController : ScoreMinigameController
     private void DealTails()
     {
         var players = ConnectedPlayers().OrderBy(_ => Random.value).ToList();
-        int tails = Mathf.Max(1, (players.Count + 1) / 2);
-        if (players.Count > 1) tails = Mathf.Min(tails, players.Count - 1);
+        // Fewer tails than hunters: 2-3 players share one tail, 4-5 two, 6 three.
+        int tails = Mathf.Max(1, players.Count / 2);
         int mask = 0;
         for (int i = 0; i < tails && i < players.Count; i++) mask |= Bit(players[i]);
         Tails = mask;
@@ -97,7 +101,8 @@ public class TailTagMinigameController : ScoreMinigameController
             if (Runner.Tick < ImmuneUntil[entry.Key.PlayerId & 31]) continue;
             var to = entry.Value.transform.position - player.transform.position;
             to.y = 0f;
-            if (to.magnitude > GRAB_RANGE || Vector3.Angle(flat, to) > 75f) continue;
+            // Generous: lag makes a rival right next to you look further away to the host.
+            if (to.magnitude > GRAB_RANGE || (to.magnitude > 1.4f && Vector3.Angle(flat, to) > 110f)) continue;
             if (to.magnitude < bestDistance) { bestDistance = to.magnitude; best = entry.Key; }
         }
         if (best == PlayerRef.None) return true;

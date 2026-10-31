@@ -59,13 +59,10 @@ public abstract class ScoreMinigameController : MinigameController
         _respawns.Clear();
     }
 
-    public override string GetStatusText()
-    {
-        if (!IsGameActive) return null;
-        int mine = Runner.LocalPlayer.IsRealPlayer ? ScoreOf(Runner.LocalPlayer) : 0;
-        int best = ConnectedPlayers().Select(ScoreOf).DefaultIfEmpty(0).Max();
-        return mine >= best && best > 0 ? $"You: <b>{mine}</b> {ScoreUnit} - in the lead!" : $"You: <b>{mine}</b> {ScoreUnit}   Leader: {best}";
-    }
+    // Scores live on the side scoreboard; the status line stays free for the game's own short notes.
+    public override string GetStatusText() => null;
+    public override string ScoreboardValue(PlayerRef player) => IsGameActive || Phase == MinigamePhase.Finished ? ScoreOf(player).ToString() : null;
+    public override float ScoreboardRank(PlayerRef player) => ScoreOf(player);
 
     public override bool HandlePlayerFell(Player player)
     {

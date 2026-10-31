@@ -79,6 +79,10 @@ public class CourseHazard : MonoBehaviour
             if (player == null || player.Object == null || player.ControlsLocked) continue;
             if (mc is TilefallMinigameController tilefall && tilefall.IsProtected(player.Object.InputAuthority)) continue;   // just respawned
             if (_cooldown.TryGetValue(player, out var until) && Time.time < until) continue;
+            // Low sweeper bars are jumped: anyone in the air or above the bar is clear. (The host sees a client's
+            // jump a moment late, and the old full-radius test hit players who had cleared it on their screen.)
+            if (_kind == Kind.Spinner && player.TryGetComponent<PlayerMovement>(out var mover)
+                && (!mover.IsGrounded || player.transform.position.y > pos.y - 0.25f)) continue;
             _cooldown[player] = Time.time + 1f;
 
             // Push along the striker's motion; fall back to "away from the striker" when it barely moves.
