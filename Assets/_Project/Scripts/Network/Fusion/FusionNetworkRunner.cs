@@ -40,6 +40,12 @@ namespace Networking
         private string _disconnectReason;
 
         private const int CREATE_ATTEMPTS = 5;
+
+        [Header("Recovering a lost session")]
+        [SerializeField, Tooltip("Times a dropped client tries to get back into the same lobby (the host may be reopening it)")]
+        private int _rejoinAttempts = 4;
+        [SerializeField, Tooltip("Seconds between those attempts")]
+        private float _rejoinDelay = 3f;
         private const string CODE_PROPERTY = "code";
         private const string STEAM_LOBBY_PROPERTY = "steamLobby";
 
@@ -55,9 +61,12 @@ namespace Networking
             await JoinSessionLobbyAsync();
         }
 
+        private SessionSettings _lastSettings = SessionSettings.Default(false);
+
         public async Task<string> CreateLobbyAsync(SessionSettings settings)
         {
             LastError = null;
+            _lastSettings = settings;
 
             // Steam stays optional: without it the session works, only invites and "Join Game" do not.
             await _steam.CreateAsync(settings.IsPublic, settings.MaxPlayers);
@@ -348,16 +357,82 @@ namespace Networking
 
             // Unexpected: host left, connection lost, kicked...
             Debug.LogWarning($"[Session] Session ended unexpectedly: {shutdownReason}");
+            string code = CurrentLobbyCode;
             CurrentLobbyCode = null;
+            if (runner.IsServer && code != null)
+            {
+                // The host lost the session (game servers unreachable, a long freeze...): everyone was dropped with it.
+                // Reopen the lobby under the same code and keep the Steam lobby, so the others can come straight back.
+                RecoverAsHostAsync(code, shutdownReason).Forget();
+                return;
+            }
             _steam.Leave();
             _disconnectReason = DescribeShutdown(shutdownReason);
             Disconnected?.Invoke(_disconnectReason);
-            ReturnToMenuAsync().Forget();
+            if (code != null && IsWorthRejoining(shutdownReason))
+                RejoinAsync(code, shutdownReason).Forget();
+            else
+                ReturnToMenuAsync().Forget();
         }
 
         private async UniTaskVoid ReturnToMenuAsync()
         {
             await SceneManager.LoadSceneAsync(GameScenes.MainMenu);
+            await JoinSessionLobbyAsync();
+        }
+
+        /// <summary>A lobby that is full or mid-match will not take a dropped player back yet; anything else might.</summary>
+        private static bool IsWorthRejoining(ShutdownReason reason) =>
+            reason is not (ShutdownReason.GameIsFull or ShutdownReason.GameClosed or ShutdownReason.ConnectionRefused);
+
+        /// <summary>Host: a fresh session with the same code (back in the lobby; the match in progress is lost).</summary>
+        private async UniTaskVoid RecoverAsHostAsync(string code, ShutdownReason reason)
+        {
+            Debug.LogWarning($"[Session] Reopening lobby {code} after {reason}");
+            await SceneManager.LoadSceneAsync(GameScenes.MainMenu);
+            var properties = new Dictionary<string, SessionProperty> { { CODE_PROPERTY, code } };
+            if (_steam.IsInLobby)
+                properties[STEAM_LOBBY_PROPERTY] = _steam.Current.m_SteamID.ToString();
+            var runner = await GetFreshRunnerAsync();
+            var result = await runner.StartGame(new StartGameArgs
+            {
+                GameMode = GameMode.Host,
+                SessionName = code,
+                IsVisible = _lastSettings.IsPublic,
+                PlayerCount = _lastSettings.MaxPlayers,
+                Scene = SceneRef.FromIndex(GameScenes.LobbyBuildIndex),
+                SceneManager = runner.GetComponent<INetworkSceneManager>(),
+                ObjectProvider = PooledProvider(runner),
+                SessionProperties = properties,
+            });
+            if (result.Ok)
+            {
+                // Back in the lobby with the same code; the others rejoin on their own (RejoinAsync).
+                CurrentLobbyCode = code;
+                _steam.SetSessionCode(code);
+                Debug.LogWarning($"[Session] Lobby {code} reopened");
+                return;
+            }
+            Debug.LogWarning($"[Session] Could not reopen lobby {code}: {result.ShutdownReason}");
+            _steam.Leave();
+            _disconnectReason = $"{DescribeShutdown(reason)} Could not reopen the lobby: {DescribeShutdown(result.ShutdownReason)}";
+            Disconnected?.Invoke(_disconnectReason);
+            await JoinSessionLobbyAsync();
+        }
+
+        /// <summary>Client: back to the menu, then a few tries to get into the same lobby again (the host may be reopening it).</summary>
+        private async UniTaskVoid RejoinAsync(string code, ShutdownReason reason)
+        {
+            await SceneManager.LoadSceneAsync(GameScenes.MainMenu);
+            for (int attempt = 1; attempt <= _rejoinAttempts; attempt++)
+            {
+                await UniTask.Delay(System.TimeSpan.FromSeconds(_rejoinDelay));
+                if (IsConnected) return;   // the player joined something else meanwhile
+                Debug.Log($"[Session] Rejoining {code} ({attempt}/{_rejoinAttempts})");
+                if (await JoinAsync(code)) return;
+            }
+            _disconnectReason = $"{DescribeShutdown(reason)} Could not get back into lobby {code}.";
+            Disconnected?.Invoke(_disconnectReason);
             await JoinSessionLobbyAsync();
         }
 
