@@ -12,7 +12,9 @@ using UnityEngine;
 public class SkyRingsMinigameController : RaceMinigameController
 {
     private const int RINGS = 10, LAPS = 2;
-    private const float RING_RADIUS = 4.2f;
+    private const float RING_RADIUS = 4.2f, NEXT_HOOP_SCALE = 1.25f;
+    [SerializeField, Tooltip("Metres outside the (drawn) next hoop that still count as through it: the plane's wings")]
+    private float _ringMargin = 0.8f;
 
     [SerializeField] private float _height = 14f;
 
@@ -129,11 +131,13 @@ public class SkyRingsMinigameController : RaceMinigameController
             var now = player.transform.position + Vector3.up * 0.6f;
             if (_last.TryGetValue(entry.Key, out var before))
             {
-                // Only the next hoop counts: it has to be flown through, the right way, inside the hoop.
+                // Only the next hoop counts, flown through in either direction anywhere inside it. The next hoop is
+                // drawn 1.25x bigger than the others, so it counts out to that size plus a margin for the wings
+                // (passes through its outer part used not to register).
                 int slot = entry.Key.PlayerId & 31;
                 var (centre, normal) = _rings[Passed[slot] % RINGS];
                 float a = Vector3.Dot(before - centre, normal), b = Vector3.Dot(now - centre, normal);
-                if (a < 0f && b >= 0f && (Vector3.Lerp(before, now, a / (a - b)) - centre).magnitude <= RING_RADIUS + 0.4f)
+                if (a * b <= 0f && a != b && (Vector3.Lerp(before, now, a / (a - b)) - centre).magnitude <= RING_RADIUS * NEXT_HOOP_SCALE + _ringMargin)
                 {
                     Passed.Set(slot, (short)(Passed[slot] + 1));
                     RPC_Ring(centre, entry.Key);
@@ -181,7 +185,7 @@ public class SkyRingsMinigameController : RaceMinigameController
             bool target = i == next;
             // The tint multiplies the hoop's own colour: push the next one bright gold and a size up, dim the rest.
             if (_ringBaseScale.Count <= i) _ringBaseScale.Add(_ringViews[i].localScale);
-            _ringViews[i].localScale = _ringBaseScale[i] * (target ? 1.25f : 1f);
+            _ringViews[i].localScale = _ringBaseScale[i] * (target ? NEXT_HOOP_SCALE : 1f);
             foreach (var renderer in _ringViews[i].GetComponentsInChildren<Renderer>())
             {
                 renderer.GetPropertyBlock(block);
