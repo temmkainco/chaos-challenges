@@ -24,7 +24,7 @@ public struct ConsoleTuning
 public abstract class ConsoleGame
 {
     public const int W = 128, H = 96;
-    public const int COUNT = 5;
+    public const int COUNT = 8;
 
     public int Score { get; protected set; }
     public bool Over { get; protected set; }
@@ -41,7 +41,10 @@ public abstract class ConsoleGame
         1 => new FlapGame(),
         2 => new RunnerGame(),
         3 => new BrickGame(),
-        _ => new HopperGame(),
+        4 => new HopperGame(),
+        5 => new AstroGame(),
+        6 => new FrogGame(),
+        _ => new StackGame(),
     };
 
     public abstract string Title { get; }

@@ -88,8 +88,8 @@ public class ConsoleRoundMinigameController : MinigameController
         };
     }
 
-    /// <summary>Fastest honest scoring per cartridge (points per second): snake, flap, runner, bricks, hopper.</summary>
-    private static readonly float[] MaxRate = { 4f, 2.5f, 14f, 8f, 30f };
+    /// <summary>Fastest honest scoring per cartridge (points per second): snake, flap, runner, bricks, hopper, astro, frog, stack.</summary>
+    private static readonly float[] MaxRate = { 6f, 2.5f, 14f, 8f, 30f, 6f, 8f, 4f };
 
     public int BestOf(PlayerRef player) => Best.TryGet(player, out var v) ? v : 0;
 

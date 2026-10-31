@@ -23951,6 +23951,9 @@ MonoBehaviour:
   _PendingChaos: 0
   _minigameDefinition: {fileID: 11400000, guid: 5e2de15b92a5f604a92c7df5ec5a875e, type: 2}
   _hasCountdown: 1
+  _boundaryMargin: 1
+  _boundaryHeight: 4
+  _boundarySlack: 1.5
   _room: {fileID: 1858252621}
   _cartridges:
   - {fileID: 11400000, guid: 29bdb9633e692f14fba11b1f3306a989, type: 2}
@@ -23958,6 +23961,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 338095f73b088c44896e53a370a688c5, type: 2}
   - {fileID: 11400000, guid: 46fbf73c30dd00f488cd74c26a2f9953, type: 2}
   - {fileID: 11400000, guid: d9e66a798c741104980ffcdbeefa063e, type: 2}
+  - {fileID: 11400000, guid: 60178c45558165f4d8cb66a3be43c887, type: 2}
+  - {fileID: 11400000, guid: 490a9fe08bfebd644b86edc43e803af6, type: 2}
+  - {fileID: 11400000, guid: 81357006e2dc80042b1a96ff95b35674, type: 2}
   _tvModel: {fileID: 1368020379167398387, guid: 64f793e040e30624b89a6a08e31953a0, type: 3}
   _consoleModel: {fileID: 455956944937271468, guid: 5186d50455f7b644b97f1060ce80528a, type: 3}
   _seatModel: {fileID: 1032394045072962571, guid: c84e56bfcd9d6e945b9781a759cad020, type: 3}
@@ -23970,6 +23976,7 @@ MonoBehaviour:
   _screenSize: {x: 0.56, y: 0.42}
   _tvYaw: 0
   _eyeHeight: 1.25
+  _snakeHoldSpeedUp: 0.5
   _Cartridge: 0
 --- !u!1 &1920880449
 GameObject:
