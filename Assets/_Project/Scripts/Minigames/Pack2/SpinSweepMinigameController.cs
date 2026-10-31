@@ -16,6 +16,8 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
     [SerializeField] private Transform _centre;
     [SerializeField] private float _height = 6f;
     [SerializeField] private float _hexRadius = 1.7f;
+    [SerializeField, Tooltip("Height of the pillar in the middle (taller than any jump, so nobody stands on it)")]
+    private float _pillarHeight = 8f;
 
     /// <summary>Bar angles in degrees (A turns forward, B backward in Counter-Spin).</summary>
     /// <summary>The bars' yaw in degrees, evaluated per tick and per frame (smooth on every screen).</summary>
@@ -44,9 +46,27 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
 
     protected override Vector3 ArenaSpawn(int slot, int count)
     {
-        // Between the bars (they start along the axes), never on one.
-        float angle = (slot + 0.5f) / Mathf.Max(1, count) * Mathf.PI * 2f + Mathf.PI * 0.25f;
+        // Evenly round the floor, turned so every spot is as far as possible from the bars' starting positions (with
+        // four players the old fixed offset put one spawn right on a bar).
+        count = Mathf.Max(1, count);
+        float best = 0f, bestClearance = -1f;
+        for (int offset = 0; offset < 360; offset += 2)
+        {
+            float clearance = 360f;
+            for (int i = 0; i < count; i++)
+                foreach (float bar in BarStartAngles())
+                    clearance = Mathf.Min(clearance, Mathf.Abs(Mathf.DeltaAngle(offset + i * 360f / count, bar)));
+            if (clearance > bestClearance) { bestClearance = clearance; best = offset; }
+        }
+        float angle = (best + slot * 360f / count) * Mathf.Deg2Rad;
         return Floor + Vector3.up * 0.5f + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * Reach * 0.55f;
+    }
+
+    /// <summary>Where the bars point before the round starts, as angles round the floor (degrees from +X toward +Z).</summary>
+    private IEnumerable<float> BarStartAngles()
+    {
+        for (int a = 0; a < Arms; a++) yield return 90f - a * 360f / Arms;   // yaw 0 points along +Z
+        if (Variant == 2) yield return 90f;
     }
 
     public override void Spawned()
@@ -76,8 +96,8 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
             Tint(i, TileColor(i));
         }
 
-        // The hub the bars turn on (you can't stand in the middle) and the bars themselves.
-        ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, Floor, new Vector3(2.4f, 1.6f, 2.4f), ArenaProps.Yellow), "Tower", true);
+        // A tall pillar in the middle the bars turn on: too tall to jump onto, so nobody waits out the round on top.
+        ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cylinder, Floor, new Vector3(2.4f, _pillarHeight, 2.4f), ArenaProps.Yellow), "Tower");
         _barsA = BuildBars(Variant == 1 ? 4 : Variant == 2 ? 1 : 2, ArenaProps.Pink);
         if (Variant == 2) _barsB = BuildBars(1, ArenaProps.Blue);
         ArenaProps.Done();
