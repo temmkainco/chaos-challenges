@@ -45,7 +45,7 @@ public class Nameplate : MonoBehaviour
             return;
 
         // Your own name is never useful to you.
-        bool visible = !_player.Object.HasInputAuthority && _player.gameObject.activeInHierarchy;
+        bool visible = !_player.Object.HasInputAuthority && _player.gameObject.activeInHierarchy && !ContestantReveal.IsHidden(_player);
         var camera = Camera.main;
         if (_head == null)
             _head = PlayerRig.For(_player.gameObject).Head;

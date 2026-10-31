@@ -52,6 +52,10 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
 
     // Scene load handshake: every peer reports once the scene for the current load id is active.
     [Networked] private int SceneLoadId { get; set; }
+    /// <summary>A round or the lobby is loading and the host is waiting for every player to finish (the curtain stays down).</summary>
+    [Networked] public NetworkBool WaitingForPlayers { get; private set; }
+    /// <summary>Players who have finished loading the scene being waited for.</summary>
+    [Networked] public int LoadedCount { get; private set; }
     [Networked] private int PendingSceneIndex { get; set; }
 
     [Header("Match")]
@@ -227,6 +231,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
                     Debug.LogWarning("[Match] Scene load timed out; continuing without the slow players.");
 
                 _waitingForLoad = false;
+                WaitingForPlayers = false;
                 OnSceneReady();
             }
             return;
@@ -418,6 +423,8 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         PendingSceneIndex = buildIndex;
         _loadedPlayers.Clear();
         _waitingForLoad = true;
+        WaitingForPlayers = true;
+        LoadedCount = 0;
         _loadTimeout = TickTimer.CreateFromSeconds(Runner, _sceneLoadTimeout);
 
         Runner.LoadScene(SceneRef.FromIndex(buildIndex));
@@ -470,7 +477,10 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     private void MarkLoaded(PlayerRef player, int loadId)
     {
         if (loadId == SceneLoadId)
+        {
             _loadedPlayers.Add(player);
+            LoadedCount = _loadedPlayers.Count;
+        }
     }
 
     /// <summary>Closes the session and its Steam lobby during a match, so joins and invites fail with a clear message.</summary>

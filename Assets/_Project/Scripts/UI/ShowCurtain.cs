@@ -7,7 +7,8 @@ using UnityEngine.UI;
 /// <summary>
 /// The show's "please stand by" curtain. It lives for the whole session (DontDestroyOnLoad), drops over the screen
 /// whenever the network scene manager is loading (lobby, every round, back to the lobby) and lifts once the new scene
-/// is ready, so loads never show blank frames or half-built scenes. A cheap animated TV-static texture runs behind
+/// is ready on every player's machine (it says how many have loaded meanwhile), so loads never show blank frames or
+/// half-built scenes and nobody starts looking at a round before the others are in. A cheap animated TV-static texture runs behind
 /// the show logo while it is down.
 /// </summary>
 public class ShowCurtain : MonoBehaviour
@@ -16,6 +17,9 @@ public class ShowCurtain : MonoBehaviour
     private const int NOISE_W = 96, NOISE_H = 54;
 
     private RectTransform _panel;
+    private TextMeshProUGUI _text;
+    private string _shownWait;
+    private const string LOGO = "DON'T STOP\nTHE PAR<color=#FF8A3D><size=130%>TV</size></color>\n<size=30%><color=#FFF6E3>PLEASE STAND BY</color></size>";
     private RawImage _noise;
     private Texture2D _noiseTexture;
     private Color32[] _noisePixels;
@@ -73,8 +77,9 @@ public class ShowCurtain : MonoBehaviour
         text.alignment = TextAlignmentOptions.Center;
         text.fontSize = 110f;
         text.color = UiKit.Pink;
-        text.text = "DON'T STOP\nTHE PAR<color=#FF8A3D><size=130%>TV</size></color>\n<size=30%><color=#FFF6E3>PLEASE STAND BY</color></size>";
+        text.text = LOGO;
         text.raycastTarget = false;
+        _text = text;
 
         // Start lifted.
         _panel.anchoredPosition = new Vector2(0f, 1200f);
@@ -87,6 +92,20 @@ public class ShowCurtain : MonoBehaviour
         foreach (var runner in NetworkRunner.Instances)
             if (runner != null && runner.IsRunning && runner.IsSceneManagerBusy)
                 loading = true;
+
+        // Loaded here, but the others are still loading: stay down and say so.
+        var match = NetworkGameManager.Instance;
+        string wait = null;
+        if (match != null && match.Object != null && match.Object.IsValid && match.WaitingForPlayers)
+        {
+            loading = true;
+            wait = $"\n<size=22%><color=#FFF6E3>WAITING FOR PLAYERS  {match.LoadedCount}/{Mathf.Max(match.LoadedCount, match.ConnectedPlayerCount)}</color></size>";
+        }
+        if (wait != _shownWait && _text != null)
+        {
+            _shownWait = wait;
+            _text.text = LOGO + wait;
+        }
 
         if (loading)
         {
