@@ -134,7 +134,7 @@ public class BombRushMinigameController : MinigameController
             _supply[who] = TickTimer.CreateFromSeconds(Runner, SuddenDeath ? 2f : 3.2f);
             if (stocked) continue;
             Runner.Spawn(_bombPrefab, top + Vector3.up * 1.6f + Random.insideUnitSphere.WithY(0f), Quaternion.identity, null,
-                (runner, obj) => obj.GetComponent<Bomb>().Initialize(this, -1));
+                (runner, obj) => obj.GetComponent<Bomb>().Initialize(this, -1, who));
         }
     }
 

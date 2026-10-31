@@ -6,7 +6,10 @@ using UnityEngine;
 /// <summary>
 /// Bomb Rush bomb. Rides a conveyor (host-driven) until it drops into the arena or someone grabs it; from then
 /// the fuse burns. A thrown bomb is armed for a moment and goes off when it reaches another player.
-/// Grabbing and throwing are handled by <see cref="GrabbableObject"/>.
+/// Grabbing and throwing are handled by <see cref="GrabbableObject"/>. Dropped bombs (island supply, the sky) float
+/// down slowly; a lit bomb shows its fuse burning by pulsing faster and redder (no numbers: the fuse length varies a
+/// little, so you know it is soon but not exactly when); a bomb glows in its owner's colour (whose island it landed on,
+/// then who carried it last).
 /// </summary>
 [RequireComponent(typeof(GrabbableObject))]
 public class Bomb : NetworkBehaviour
@@ -22,8 +25,18 @@ public class Bomb : NetworkBehaviour
     [Networked] private float BeltProgress { get; set; }
     [Networked] private TickTimer ArmedTimer { get; set; }
     [Networked] private PlayerRef Thrower { get; set; }
+    /// <summary>Whose bomb it is: the island's player for a supply bomb, then whoever carried it last (its glow).</summary>
+    [Networked] public PlayerRef Owner { get; private set; }
+    /// <summary>Dropped (supply or sky) and not thrown yet: falls no faster than <see cref="_dropSpeed"/>.</summary>
+    [Networked] private NetworkBool Dropping { get; set; }
 
     [SerializeField] private float _fuseSeconds = 7f;
+    [SerializeField, Range(0f, 0.5f), Tooltip("Each fuse is this much longer or shorter at random, so it can't be timed exactly")]
+    private float _fuseJitter = 0.2f;
+    [SerializeField, Tooltip("Fastest a dropped bomb (island supply, Bomb Bonanza) falls, metres per second")]
+    private float _dropSpeed = 4f;
+    [SerializeField, Tooltip("Reach of the glow in the owner's colour (metres)")]
+    private float _glowRange = 3.5f;
     [SerializeField] private float _armedSeconds = 1.5f;
     [SerializeField] private float _contactRadius = 1.1f;
     [SerializeField] private Transform _visual;
@@ -53,8 +66,11 @@ public class Bomb : NetworkBehaviour
     }
 
     /// <summary>Host only, right after spawning.</summary>
-    public void Initialize(BombRushMinigameController controller, int beltIndex)
+    public void Initialize(BombRushMinigameController controller, int beltIndex, PlayerRef owner = default)
     {
+        Owner = owner;
+        Thrower = PlayerRef.None;
+        Dropping = beltIndex < 0;
         _controller = controller;
         BeltIndex = beltIndex;
         BeltProgress = 0f;
@@ -89,6 +105,11 @@ public class Bomb : NetworkBehaviour
             _body.Rigidbody.useGravity = true;
         }
 
+        // Dropped bombs float down slowly, so you see where they land.
+        var body = _body.Rigidbody;
+        if (Dropping && !body.isKinematic && body.linearVelocity.y < -_dropSpeed)
+            body.linearVelocity = new Vector3(body.linearVelocity.x, -_dropSpeed, body.linearVelocity.z);
+
         if (Lit && Fuse.Expired(Runner))
         {
             Explode();
@@ -114,6 +135,8 @@ public class Bomb : NetworkBehaviour
                     Fuse = TickTimer.CreateFromSeconds(Runner, MIN_FUSE_ON_PICKUP);
             }
             _lastHolder = _grabbable.CurrentHolder;
+            Owner = _lastHolder;
+            Dropping = false;
             if (BeltIndex >= 0) LeaveBelt(Vector3.zero);
             Light();
         }
@@ -163,7 +186,7 @@ public class Bomb : NetworkBehaviour
     {
         if (Lit) return;
         Lit = true;
-        Fuse = TickTimer.CreateFromSeconds(Runner, _fuseSeconds);
+        Fuse = TickTimer.CreateFromSeconds(Runner, _fuseSeconds * (1f + Random.Range(-_fuseJitter, _fuseJitter)));
     }
 
     private void Explode()
@@ -176,6 +199,7 @@ public class Bomb : NetworkBehaviour
     public override void Render()
     {
         _grabbable.Blocked = FromSky;   // sky bombs are a hazard, not ammo
+        ShowOwnerGlow();
         if (_visual == null)
             return;
 
@@ -204,43 +228,46 @@ public class Bomb : NetworkBehaviour
         if (_spark != null)
             _spark.localScale = Vector3.one * (0.6f + Random.value * 0.6f) * 0.25f;
         ShowBlastRing(true, 1f - remaining);
-        ShowCountdown(FuseRemaining);
+        // The last couple of seconds tick faster and louder (instead of the old numbers).
+        if (remaining < 0.35f && Time.time >= _nextTick)
+        {
+            _nextTick = Time.time + Mathf.Lerp(0.12f, 0.45f, remaining / 0.35f);
+            var cam = Camera.main;
+            float distance = cam != null ? Vector3.Distance(cam.transform.position, transform.position) : 10f;
+            Sfx.Play(Sound.Tick, Mathf.Clamp01(1.2f - distance / 30f) * 0.6f, 0.05f);
+        }
     }
 
-    private TMPro.TextMeshPro _countdown;
-    private int _shownSeconds = -1;
+    private float _nextTick;
+    private Light _glow;
+    private PlayerRef _glowFor = PlayerRef.None;
 
-    /// <summary>
-    /// The last three seconds are counted down over the bomb with a tick (louder close by): playtesters could not
-    /// tell when a bomb would go off.
-    /// </summary>
-    private void ShowCountdown(float seconds)
+    /// <summary>A light in the owner's colour, so everyone can see whose bomb is whose.</summary>
+    private void ShowOwnerGlow()
     {
-        int whole = seconds > 3f ? -1 : Mathf.Max(1, Mathf.CeilToInt(seconds));
-        if (_countdown == null)
+        if (_glow == null)
         {
-            var go = new GameObject("FuseCountdown");
-            _countdown = go.AddComponent<TMPro.TextMeshPro>();
-            _countdown.alignment = TMPro.TextAlignmentOptions.Center;
-            _countdown.fontSize = 9f;
-            _countdown.fontStyle = TMPro.FontStyles.Bold;
-            _countdown.outlineWidth = 0.25f;
-            _countdown.outlineColor = new Color32(40, 10, 10, 255);
-            _countdown.rectTransform.sizeDelta = new Vector2(3f, 2f);
+            var go = new GameObject("OwnerGlow");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = Vector3.up * 0.6f;
+            _glow = go.AddComponent<Light>();
+            _glow.type = LightType.Point;
+            _glow.shadows = LightShadows.None;
+            _glow.intensity = 3f;
         }
-        _countdown.gameObject.SetActive(whole > 0);
-        if (whole <= 0) { _shownSeconds = -1; return; }
-        var cam = Camera.main;
-        _countdown.transform.position = transform.position + Vector3.up * 1.3f;
-        if (cam != null) _countdown.transform.rotation = Quaternion.LookRotation(_countdown.transform.position - cam.transform.position);
-        float beat = seconds - Mathf.Floor(seconds);
-        _countdown.transform.localScale = Vector3.one * (1f + 0.35f * beat);
-        _countdown.color = whole == 1 ? new Color(1f, 0.25f, 0.2f) : new Color(1f, 0.79f, 0.24f);
-        if (whole == _shownSeconds) return;
-        _shownSeconds = whole;
-        _countdown.text = whole.ToString();
-        float distance = cam != null ? Vector3.Distance(cam.transform.position, transform.position) : 10f;
-        Sfx.Play(Sound.Tick, Mathf.Clamp01(1.2f - distance / 30f) * 0.8f, 0.05f);
+        bool show = Owner != PlayerRef.None && !FromSky;
+        if (_glow.enabled != show) _glow.enabled = show;
+        if (!show || Owner == _glowFor) return;
+        _glowFor = Owner;
+        var match = NetworkGameManager.Instance;
+        _glow.color = match != null && match.TryGetPlayerColor(Owner, out var color) ? color : Color.white;
+        _glow.range = _glowRange;
+        if (_spark != null && _spark.TryGetComponent<Renderer>(out var spark))
+        {
+            spark.GetPropertyBlock(_block);
+            _block.SetColor(BaseColor, _glow.color);
+            spark.SetPropertyBlock(_block);
+        }
     }
 
     private Transform _blastRing;
@@ -282,13 +309,11 @@ public class Bomb : NetworkBehaviour
     {
         if (_blastRing != null) Destroy(_blastRing.gameObject);
         if (_blastMaterial != null) Destroy(_blastMaterial);
-        if (_countdown != null) Destroy(_countdown.gameObject);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
         Active.Remove(this);
         ShowBlastRing(false, 0f);
-        if (_countdown != null) _countdown.gameObject.SetActive(false);   // pooled: hidden until the next fuse
     }
 }
