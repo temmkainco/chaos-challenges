@@ -130,6 +130,7 @@ public class MinigameController : NetworkBehaviour
     public override void Spawned()
     {
         Current = this;
+        if (SimulatedOnClients && !HasStateAuthority) Runner.SetIsSimulated(Object, true);
         StartCoroutine(DressArena());
     }
 
@@ -140,6 +141,13 @@ public class MinigameController : NetworkBehaviour
         var stage = GameObject.Find("StageCentre") ?? GameObject.Find("Stage");
         ArenaTheme.Apply(Theme, stage != null ? stage.transform.position : transform.position, transform, LocationGround);
     }
+
+    /// <summary>
+    /// Clients run this minigame's FixedUpdateNetwork too (predicting it), for games whose obstacles change on network
+    /// ticks (tiles dropping, walls moving), so a client's predicted contestant meets them on the same tick as the
+    /// host does. Host-only work in those games stays behind HasStateAuthority.
+    /// </summary>
+    protected virtual bool SimulatedOnClients => false;
 
     /// <summary>Height of the place's ground or water around the arena (null: the studio floor).</summary>
     protected virtual float? LocationGround => null;

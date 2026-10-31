@@ -8,7 +8,7 @@ using UnityEngine;
 /// Last contestant standing wins. Layouts: Classic Stack, Tall Tower, Twin Peaks, Donut. Chaos: during ICE FLOOR or SPEED RUSH tiles drop faster; its own twist,
 /// EARTHQUAKE, cracks random tiles on every floor.
 /// </summary>
-public class HexDropMinigameController : EliminationMinigameController
+public class HexDropMinigameController : EliminationMinigameController, IBeforeTick
 {
     public const int LAYERS = 3, RINGS = 4;
     private const int PER_LAYER = 1 + 3 * RINGS * (RINGS + 1);   // 61
@@ -138,6 +138,8 @@ public class HexDropMinigameController : EliminationMinigameController
     /// <summary>At least 0.75 s before a stepped tile drops: with lag, players saw tiles fall under them early.</summary>
     private float Delay => (ActiveChaos is ChaosModifier.IceFloor or ChaosModifier.SpeedRush ? 0.6f : 1f) * Mathf.Max(_dropDelay, 0.75f);
 
+    protected override bool SimulatedOnClients => true;
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
@@ -182,28 +184,31 @@ public class HexDropMinigameController : EliminationMinigameController
             }
             else if (state == 2)
             {
-                _colliders[i].enabled = false;
-                _tiles[i].gameObject.SetActive(false);
+                _renderers[i].enabled = false;
                 Sfx.Play(Sound.Crack, 0.4f, 0.2f);
             }
             else
             {
-                _colliders[i].enabled = true;
-                _tiles[i].gameObject.SetActive(true);
+                _renderers[i].enabled = true;
                 _tiles[i].localScale = Vector3.one;
                 Tint(i, LayerColors[_layerOf[i] % LayerColors.Length]);
             }
         }
     }
 
-    // Host physics must lose dropped tiles even when nothing is rendering (e.g. a minimised host window).
-    private void LateUpdate()
+    /// <summary>
+    /// Every peer, before every tick is simulated (contestants included): a stepped tile stops being solid on its drop
+    /// tick, on the host and in each client's prediction alike (and on a minimised host, which renders nothing).
+    /// </summary>
+    public void BeforeTick()
     {
-        if (_tiles == null || !HasStateAuthority || Object == null || !Object.IsValid) return;
+        if (_colliders == null) return;
         int delayTicks = Mathf.CeilToInt(Delay / Runner.DeltaTime);
-        for (int i = 0; i < _tiles.Length; i++)
-            if (SteppedTick[i] != 0 && Runner.Tick - SteppedTick[i] >= delayTicks && _colliders[i].enabled)
-                _colliders[i].enabled = false;
+        for (int i = 0; i < _colliders.Length; i++)
+        {
+            bool solid = SteppedTick[i] == 0 || Runner.Tick - SteppedTick[i] < delayTicks;
+            if (_colliders[i].enabled != solid) _colliders[i].enabled = solid;
+        }
     }
 
     public static Mesh HexMesh(float radius, float height)

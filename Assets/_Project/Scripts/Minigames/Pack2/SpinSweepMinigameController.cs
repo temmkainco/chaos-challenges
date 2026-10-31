@@ -8,7 +8,7 @@ using UnityEngine;
 /// drop. Last one standing wins. Layouts: Two Bars, Cross, Counter-Spin (two bars turning opposite ways).
 /// Twist: OVERDRIVE, the bars spin twice as fast.
 /// </summary>
-public class SpinSweepMinigameController : EliminationMinigameController
+public class SpinSweepMinigameController : EliminationMinigameController, IBeforeTick
 {
     private const int RINGS = 4, TILES = 61;
     private const float BAR_TOP = 0.6f;
@@ -123,6 +123,21 @@ public class SpinSweepMinigameController : EliminationMinigameController
         _hitTick.Clear();
     }
 
+    protected override bool SimulatedOnClients => true;
+
+    private int CrackTicks => Mathf.CeilToInt(1.3f / Runner.DeltaTime);
+
+    /// <summary>Every peer, before every tick is simulated (contestants included): cracked tiles stop being solid on their drop tick.</summary>
+    public void BeforeTick()
+    {
+        if (_colliders == null) return;
+        for (int i = 0; i < _colliders.Length; i++)
+        {
+            bool solid = CrackTick[i] == 0 || Runner.Tick - CrackTick[i] < CrackTicks;
+            if (_colliders[i].enabled != solid) _colliders[i].enabled = solid;
+        }
+    }
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
@@ -195,28 +210,16 @@ public class SpinSweepMinigameController : EliminationMinigameController
         if (_barsA == null) return;
         _barsA.rotation = Quaternion.Euler(0f, BarA.Render(Runner), 0f);
         if (_barsB != null) _barsB.rotation = Quaternion.Euler(0f, BarB.Render(Runner), 0f);
-        int crackTicks = Mathf.CeilToInt(1.3f / Runner.DeltaTime);
         for (int i = 0; i < _tiles.Length; i++)
         {
             int tick = CrackTick[i];
-            byte state = tick == 0 ? (byte)0 : Runner.Tick - tick < crackTicks ? (byte)1 : (byte)2;
+            byte state = tick == 0 ? (byte)0 : Runner.Tick - tick < CrackTicks ? (byte)1 : (byte)2;
             if (state == _shown[i]) continue;
             _shown[i] = state;
-            _tiles[i].gameObject.SetActive(state != 2);
-            _colliders[i].enabled = state != 2;
+            _tiles[i].GetComponent<Renderer>().enabled = state != 2;
             Tint(i, state == 1 ? new Color(1f, 0.37f, 0.36f) : TileColor(i));
             if (state == 2) Sfx.Play(Sound.Crack, 0.4f, 0.2f);
         }
-    }
-
-    // Host physics loses dropped tiles even when nothing renders (minimised host window).
-    private void LateUpdate()
-    {
-        if (_tiles == null || !HasStateAuthority || Object == null || !Object.IsValid) return;
-        int crackTicks = Mathf.CeilToInt(1.3f / Runner.DeltaTime);
-        for (int i = 0; i < _tiles.Length; i++)
-            if (CrackTick[i] != 0 && Runner.Tick - CrackTick[i] >= crackTicks && _colliders[i].enabled)
-                _colliders[i].enabled = false;
     }
 
     private void Tint(int i, Color color)

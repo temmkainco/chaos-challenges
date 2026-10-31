@@ -8,16 +8,19 @@ public struct TileState : INetworkStruct
     public byte Health;
     public NetworkBool Hole;
     public NetworkBool Checkpoint;
-    public int CollapsedTick;
+    /// <summary>Tick the tile drops (set ahead of time, when its health runs out); it comes back a while later.</summary>
+    public int FallTick;
 }
 
 /// <summary>
 /// The Tilefall course: parallel lanes of tiles between a start and a finish platform, built locally on every
 /// peer from replicated tile states. On the host, tiles lose health while players stand on them, faster the
-/// more players share a tile, collapse at zero and come back after a while. Checkpoint rows never crack.
+/// more players share a tile. At zero a tile shakes for a short warning and drops on a tick fixed in advance:
+/// every peer (clients predict this object) drops its collider on that same tick, so a client never stands on a
+/// tile the host has already removed. Tiles come back after a while. Checkpoint rows never crack.
 /// Layout is fixed by the serialized settings, so spawn points and the finish line can sit in the scene.
 /// </summary>
-public class TileCourse : NetworkBehaviour
+public class TileCourse : NetworkBehaviour, IBeforeTick
 {
     public const int MAX_TILES = 6 * 24;
 
@@ -35,6 +38,9 @@ public class TileCourse : NetworkBehaviour
     [SerializeField, Tooltip("Seconds one player can stand on a tile")] private float _secondsToCollapse = 1.4f;
     [SerializeField, Tooltip("Each extra player on the same tile adds this much speed")] private float _crowdFactor = 0.75f;
     [SerializeField] private float _respawnSeconds = 4f;
+    [SerializeField, Tooltip("Shaking warning between a tile running out of health and dropping. Longer than a typical " +
+        "ping, so every screen learns the drop tick before it comes")]
+    private float _warningSeconds = 0.35f;
 
     [Header("Look")]
     [SerializeField] private Material _tileMaterial;
@@ -108,6 +114,23 @@ public class TileCourse : NetworkBehaviour
 
         if (HasStateAuthority && !Generated)
             Generate();
+        else if (!HasStateAuthority)
+            Runner.SetIsSimulated(Object, true);   // drop tiles on their tick in the client's prediction too
+    }
+
+    /// <summary>Whether the tile has dropped at <paramref name="tick"/> (and not come back yet).</summary>
+    private bool IsDown(TileState tile, int tick) =>
+        tile.Health == 0 && tile.FallTick != 0 && tick >= tile.FallTick && tick - tile.FallTick < RespawnTicks;
+
+    private int RespawnTicks => Mathf.CeilToInt(_respawnSeconds * Runner.TickRate);
+
+    /// <summary>Every peer, before every tick is simulated (contestants included): colliders follow that tick.</summary>
+    public void BeforeTick()
+    {
+        if (!_built) return;
+        for (int i = 0; i < _views.Count; i++)
+            if (_views[i] != null)
+                _views[i].SetSolid(!IsDown(Tiles[i], Runner.Tick));
     }
 
     /// <summary>Hole patterns, one per round (<see cref="MinigameController.VariantOf"/>).</summary>
@@ -150,9 +173,10 @@ public class TileCourse : NetworkBehaviour
             if (i >= 0) _occupants[i]++;
         }
 
-        // Tiles felt like they never fell: at most 0.7 s under one contestant.
-        float damagePerTick = Runner.DeltaTime / Mathf.Clamp(_secondsToCollapse, 0.1f, 0.7f);
-        int respawnTicks = Mathf.CeilToInt(_respawnSeconds * Runner.TickRate);
+        // Tiles felt like they never fell: at most 0.7 s under one contestant, warning included.
+        float secondsToWarning = Mathf.Max(0.1f, Mathf.Clamp(_secondsToCollapse, 0.1f, 0.7f) - _warningSeconds);
+        float damagePerTick = Runner.DeltaTime / secondsToWarning;
+        int warningTicks = Mathf.CeilToInt(_warningSeconds * Runner.TickRate);
 
         for (int i = 0; i < TileCount; i++)
         {
@@ -162,10 +186,11 @@ public class TileCourse : NetworkBehaviour
 
             if (tile.Health == 0)
             {
-                if (Runner.Tick - tile.CollapsedTick >= respawnTicks)
+                if (Runner.Tick - tile.FallTick >= RespawnTicks)
                 {
                     _health[i] = 1f;
                     tile.Health = 255;
+                    tile.FallTick = 0;
                     Tiles.Set(i, tile);
                 }
                 continue;
@@ -180,7 +205,7 @@ public class TileCourse : NetworkBehaviour
             {
                 _health[i] = 0f;
                 tile.Health = 0;
-                tile.CollapsedTick = Runner.Tick;
+                tile.FallTick = Runner.Tick + warningTicks;
             }
             else
             {
@@ -225,7 +250,7 @@ public class TileCourse : NetworkBehaviour
         {
             var view = _views[i];
             if (view != null)
-                view.Apply(Tiles[i].Health / 255f);
+                view.Apply(Tiles[i].Health / 255f, IsDown(Tiles[i], Runner.Tick));
         }
     }
 

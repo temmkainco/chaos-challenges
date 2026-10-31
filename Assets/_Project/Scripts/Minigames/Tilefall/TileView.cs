@@ -2,8 +2,9 @@ using DG.Tweening;
 using UnityEngine;
 
 /// <summary>
-/// Local visual and collider of one Tilefall tile. Driven every frame by the replicated health:
-/// it darkens and shakes as it cracks, drops away at zero and pops back when the tile respawns.
+/// Local visual and collider of one Tilefall tile. The visual follows the replicated health every frame: it darkens
+/// and shakes as it cracks, drops away when the tile falls and pops back when it respawns. The collider is set per
+/// network tick by <see cref="TileCourse"/> (<see cref="SetSolid"/>), so prediction and the host agree.
 /// </summary>
 public class TileView : MonoBehaviour
 {
@@ -52,8 +53,17 @@ public class TileView : MonoBehaviour
         return view;
     }
 
-    public void Apply(float health)
+    public void SetSolid(bool solid)
     {
+        if (!_solid && _collider.enabled != solid) _collider.enabled = solid;
+    }
+
+    public void Apply(float health, bool down)
+    {
+        if (down && !_collapsed && !_solid)
+            Collapse();
+        else if (!down && _collapsed)
+            Restore();
         if (_solid || Mathf.Approximately(health, _shownHealth))
         {
             Shake(health);
@@ -61,10 +71,6 @@ public class TileView : MonoBehaviour
         }
 
         _shownHealth = health;
-        if (health <= 0f && !_collapsed)
-            Collapse();
-        else if (health > 0f && _collapsed)
-            Restore();
 
         if (!_collapsed)
             SetColor(Color.Lerp(_crackColor, _color, Mathf.Clamp01(health * 1.15f)));
@@ -87,7 +93,6 @@ public class TileView : MonoBehaviour
     {
         Sfx.Play(Sound.Crack, 0.6f, 0.15f);
         _collapsed = true;
-        _collider.enabled = false;
         _visual.DOKill();
         _visual.localPosition = Vector3.zero;
         DOTween.Sequence()
@@ -106,7 +111,6 @@ public class TileView : MonoBehaviour
         _visual.localRotation = Quaternion.identity;
         _visual.localScale = Vector3.zero;
         _visual.DOScale(1f, 0.35f).SetEase(Ease.OutBack).SetLink(gameObject);
-        _collider.enabled = true;
         SetColor(_color);
     }
 
