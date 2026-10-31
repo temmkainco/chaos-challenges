@@ -99,8 +99,8 @@ public class GamePackPanel : MonoBehaviour
             var name = MakeText(tile.transform, "Name", 24f * scale, UiKit.Ink, false, 0f, -tileH * 0.35f, tileW - 16f * scale, 40f * scale);
             name.text = def.DisplayName.ToUpperInvariant();
             name.enableAutoSizing = true;
-            name.fontSizeMin = 14f;
-            name.fontSizeMin = 12f;
+            name.enableWordWrapping = false;
+            name.fontSizeMin = 9f;
             name.fontSizeMax = 24f * scale;
             var badgeBack = MakeImage(tile.transform, "Badge", UiKit.Instance.Button, UiKit.Mint);
             badgeBack.type = Image.Type.Sliced;
