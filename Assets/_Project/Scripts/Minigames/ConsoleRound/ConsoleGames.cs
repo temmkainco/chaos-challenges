@@ -105,6 +105,9 @@ public sealed class SnakeGame : ConsoleGame
     private Vector2Int _dir, _queued, _food;
     private float _timer;
 
+    /// <summary>Step time while the direction you're going is held (classic Snake: hold to speed up). Set by the round.</summary>
+    public static float HoldSpeedUp = 0.5f;
+
     public override string Title => "SNAKE PIT";
 
     protected override void Reset()
@@ -139,6 +142,8 @@ public sealed class SnakeGame : ConsoleGame
         else if (input.Y != 0 && _dir.y == 0) _queued = new Vector2Int(0, -input.Y);
 
         float step = Mathf.Max(0.06f, 0.13f - _length * 0.0022f);
+        bool holding = (input.X != 0 && input.X == _dir.x) || (input.Y != 0 && -input.Y == _dir.y);
+        if (holding) step *= Mathf.Clamp(HoldSpeedUp, 0.2f, 1f);
         _timer += dt;
         while (_timer >= step && !Over)
         {

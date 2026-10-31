@@ -35,6 +35,8 @@ public class ConsoleRoundMinigameController : MinigameController
     [SerializeField] private Vector2 _screenSize = new(0.56f, 0.42f);
     [SerializeField] private float _tvYaw = 0f;
     [SerializeField] private float _eyeHeight = 1.25f;
+    [SerializeField, Range(0.2f, 1f), Tooltip("Snake Pit: step time while the direction you're going is held (0.5 = twice as fast)")]
+    private float _snakeHoldSpeedUp = 0.5f;
 
     [Networked] public byte Cartridge { get; private set; }
     [Networked] private int Seed { get; set; }
@@ -82,7 +84,9 @@ public class ConsoleRoundMinigameController : MinigameController
         if (!base.SupportsChaos(modifier)) return false;
         return modifier switch
         {
-            ChaosModifier.SpeedRush or ChaosModifier.SlowMotion or ChaosModifier.ReversedControls or ChaosModifier.Blackout or ChaosModifier.Twist => true,
+            ChaosModifier.SpeedRush or ChaosModifier.SlowMotion or ChaosModifier.Blackout or ChaosModifier.Twist => true,
+            // Playtesters: no reversed controls in Flap Dash or Pixel Runner (one-button timing games).
+            ChaosModifier.ReversedControls => Cartridge is not (1 or 2),
             ChaosModifier.LowGravity or ChaosModifier.SuperJump => ConsoleGame.HasGravity(Cartridge),
             _ => false,
         };
@@ -134,6 +138,7 @@ public class ConsoleRoundMinigameController : MinigameController
     public override void Spawned()
     {
         base.Spawned();
+        SnakeGame.HoldSpeedUp = _snakeHoldSpeedUp;
         if (HasStateAuthority)
         {
             int count = Mathf.Min(ConsoleGame.COUNT, _cartridges != null && _cartridges.Length > 0 ? _cartridges.Length : ConsoleGame.COUNT);
