@@ -46,6 +46,12 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField, Tooltip("Share of air control kept while flying from a hit")] private float _launchControl = 0.25f;
     [SerializeField, Tooltip("Horizontal speed lost per second while flying")] private float _airDrag = 0.6f;
 
+    [Header("Other contestants")]
+    [SerializeField, Tooltip("Closer than this (centre to centre, metres) contestants are eased apart; karts use twice it")]
+    private float _separationRadius = 0.9f;
+    [SerializeField, Tooltip("Speed (m/s) at which two fully overlapping contestants are eased apart")]
+    private float _separationSpeed = 4f;
+
     private NetworkCharacterController _characterController;
     private CharacterController _unityController;
     private Player _player;
@@ -196,7 +202,7 @@ public class PlayerMovement : NetworkBehaviour
         var wind = minigame != null && !_player.ControlsLocked ? minigame.ChaosWind : Vector3.zero;
         // A moving floor (rolling log) carries whoever stands on it.
         if (minigame != null && IsGrounded) wind += minigame.GroundDrift(transform.position);
-        _unityController.Move((velocity + wind) * dt);
+        _unityController.Move((velocity + wind + Separation(_separationRadius)) * dt);
 
         bool grounded = _unityController.isGrounded && velocity.y <= 0.5f;
         if (grounded)
@@ -226,6 +232,32 @@ public class PlayerMovement : NetworkBehaviour
     /// Kart: W/S throttle and brake, A/D steer (sharper the faster you go), tyres grip sideways, Space hops.
     /// Knockbacks still throw the kart around.
     /// </summary>
+    /// <summary>
+    /// A soft push away from other contestants closer than <paramref name="radius"/>. Contestants' colliders no longer
+    /// block each other (<see cref="PhysicsSetup"/>): a client sees the others a moment in the past, so hard contacts
+    /// came out differently on the host and were snapped back (most of TailTag's desync, karts stuck in each other).
+    /// Not stored in the velocity, like wind.
+    /// </summary>
+    private Vector3 Separation(float radius)
+    {
+        if (_player.IsSpectator || radius <= 0f || _separationSpeed <= 0f) return Vector3.zero;
+        var push = Vector3.zero;
+        var me = transform.position;
+        foreach (var other in Controllers)
+        {
+            if (other == null || other == _unityController || !other.enabled) continue;
+            var rel = me - other.transform.position;
+            if (Mathf.Abs(rel.y) > 1.6f) continue;
+            rel.y = 0f;
+            float distance = rel.magnitude;
+            if (distance >= radius) continue;
+            if (other.TryGetComponent<Player>(out var them) && them.IsSpectator) continue;
+            var away = distance > 0.001f ? rel / distance : (Object.InputAuthority.PlayerId % 2 == 0 ? Vector3.right : Vector3.left);
+            push += away * ((1f - distance / radius) * _separationSpeed);
+        }
+        return push;
+    }
+
     private void Drive(NetworkInputData data, float dt, float speedScale, float gravityScale, bool ice, MinigameController minigame)
     {
         float throttle = Mathf.Clamp(data.Direction.z, -1f, 1f), steer = Mathf.Clamp(data.Direction.x, -1f, 1f);
@@ -263,7 +295,7 @@ public class PlayerMovement : NetworkBehaviour
         if (IsGrounded && velocity.y < 0f) velocity.y = -2f;
         velocity = new Vector3(flat.x, velocity.y, flat.z);
         var wind = !_player.ControlsLocked ? minigame.ChaosWind : Vector3.zero;
-        _unityController.Move((velocity + wind) * dt);
+        _unityController.Move((velocity + wind + Separation(_separationRadius * 2f)) * dt);
         // Barriers bounce the kart back off them (instead of letting it grind along or stick).
         if (_unityController.collisionFlags.HasFlag(CollisionFlags.Sides))
         {
