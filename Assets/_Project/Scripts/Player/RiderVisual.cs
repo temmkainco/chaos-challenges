@@ -74,7 +74,7 @@ public class RiderVisual : MonoBehaviour
     {
         if (_hips == null) return;
         Vector3 up = _visuals.up, fwd = _visuals.forward, right = _visuals.right;
-        float seat = kind == VehicleKind.Kart ? 1.12f : 0.62f;   // on the toy car's roof; in the plane's body
+        float seat = kind == VehicleKind.Kart ? 0.8f : 0.7f;   // in the kart's seat; in the speeder's cockpit
         _hips.position = _visuals.TransformPoint(new Vector3(0f, seat, -0.25f));
         Tilt(_spine, right, -10f);
         Aim(_lUpperLeg, _lLowerLeg, (fwd + up * 0.15f - right * 0.12f).normalized);
@@ -114,38 +114,35 @@ public class RiderVisual : MonoBehaviour
         _vehicle = new GameObject(kind + "Vehicle").transform;
         _vehicle.SetParent(_visuals, false);
         var paint = _player.OutfitColor;
-        var dark = new Color(0.14f, 0.13f, 0.18f);
-        var trim = Color.Lerp(paint, Color.white, 0.45f);
         if (kind == VehicleKind.Kart)
         {
-            // A toy car in the outfit colour; the contestant rides on top, hands on a steering wheel.
-            Model("ToyCar", new Vector3(0f, 0.55f, 0.1f), Vector3.zero, new Vector3(1.6f, 1.1f, 2.7f), Color.Lerp(Color.white, paint, 0.7f));
-            Model("SteeringWheel", new Vector3(0f, 1.45f, 0.42f), new Vector3(-60f, 0f, 0f), new Vector3(0.45f, 0.45f, 0.12f), null);
+            // A kart from the car kit (five colours, one per contestant); its own driver makes way for ours.
+            var kart = Model("Kart" + (_player.Object.InputAuthority.PlayerId % 5), new Vector3(0f, 1.13f, 0.05f), Vector3.zero, new Vector3(1.6f, 2.26f, 2.45f), null, true);
+            var driver = kart != null ? FindChild(kart, "character") : null;
+            if (driver != null) driver.gameObject.SetActive(false);
         }
         else
         {
-            // A plane built from toy bricks: a long brick body, a plate for wings and tail, a spinning propeller.
-            Model("BrickLong", new Vector3(0f, 0.5f, 0.1f), new Vector3(0f, 90f, 0f), new Vector3(2.9f, 0.85f, 0.9f), paint);
-            Model("BrickPlate", new Vector3(0f, 0.62f, 0.35f), Vector3.zero, new Vector3(4.4f, 0.14f, 1f), trim);
-            Model("BrickPlate", new Vector3(0f, 0.75f, -1.25f), Vector3.zero, new Vector3(1.7f, 0.12f, 0.55f), trim);
-            Model("Brick2", new Vector3(0f, 1.05f, -1.3f), new Vector3(0f, 0f, 90f), new Vector3(0.7f, 0.12f, 0.6f), paint);
-            var spinner = new GameObject("Propeller").transform;
-            spinner.SetParent(_vehicle, false);
-            spinner.localPosition = new Vector3(0f, 0.5f, 1.68f);
-            spinner.localRotation = Quaternion.Euler(90f, 0f, 0f);   // spins round the plane's forward axis
-            var blade = Part(PrimitiveType.Cube, Vector3.zero, Vector3.zero, new Vector3(1.4f, 0.04f, 0.14f), dark);
-            blade.SetParent(spinner, false);
-            spinner.gameObject.AddComponent<CosmeticSpin>();
+            // A space speeder, tinted a little toward the outfit colour.
+            Model("Speeder", new Vector3(0f, 0.55f, 0.1f), Vector3.zero, new Vector3(3.6f, 1.45f, 3.8f), Color.Lerp(Color.white, paint, 0.35f), true);
         }
     }
 
-    /// <summary>A prop-pack model fitted to <paramref name="size"/> at a spot on the vehicle (falls back to a box).</summary>
-    private void Model(string key, Vector3 position, Vector3 euler, Vector3 size, Color? tint)
+    private static Transform FindChild(Transform root, string name)
     {
-        var model = ArenaModels.Spawn(key, null, _vehicle.TransformPoint(position), _vehicle.rotation * Quaternion.Euler(euler), size, false, tint);
-        if (model == null) { Part(PrimitiveType.Cube, position, euler, size, tint ?? Color.white); return; }
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            if (t.name == name) return t;
+        return null;
+    }
+
+    /// <summary>A prop-pack model fitted to <paramref name="size"/> at a spot on the vehicle (falls back to a box).</summary>
+    private Transform Model(string key, Vector3 position, Vector3 euler, Vector3 size, Color? tint, bool uniform = false)
+    {
+        var model = ArenaModels.Spawn(key, null, _vehicle.TransformPoint(position), _vehicle.rotation * Quaternion.Euler(euler), size, uniform, tint);
+        if (model == null) return Part(PrimitiveType.Cube, position, euler, size, tint ?? Color.white);
         model.SetParent(_vehicle, true);
-        foreach (var renderer in model.GetComponentsInChildren<Renderer>()) renderer.gameObject.layer = gameObject.layer;
+        foreach (var renderer in model.GetComponentsInChildren<Renderer>(true)) renderer.gameObject.layer = gameObject.layer;
+        return model;
     }
 
     private Transform Part(PrimitiveType shape, Vector3 position, Vector3 euler, Vector3 scale, Color color)

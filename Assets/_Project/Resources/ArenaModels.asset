@@ -75,3 +75,75 @@ MonoBehaviour:
     Prefab: {fileID: 2734429954931301448, guid: eddfbf3e0c17d7b4fa015e69cd558c23, type: 3}
   - Key: Wheel
     Prefab: {fileID: 7804432928702270659, guid: da67bce8f48647a489a13e575f30dccc, type: 3}
+  - Key: Kart0
+    Prefab: {fileID: 919132149155446097, guid: c363b91e1eae49a439a9e37dae34dbe9, type: 3}
+  - Key: Kart1
+    Prefab: {fileID: 919132149155446097, guid: 88b5ee758c588504082d26eab594ceb4, type: 3}
+  - Key: Kart2
+    Prefab: {fileID: 919132149155446097, guid: 595634dec827e24429ce9ecb1602b4ee, type: 3}
+  - Key: Kart3
+    Prefab: {fileID: 919132149155446097, guid: 4ae23f8b7a2f0014e8d4c74635ba8e65, type: 3}
+  - Key: Kart4
+    Prefab: {fileID: 919132149155446097, guid: e740817a8ccc88b4aacfc492fc335538, type: 3}
+  - Key: Formula
+    Prefab: {fileID: 919132149155446097, guid: 764287211446b57429598b5ade8461a9, type: 3}
+  - Key: ItemBox
+    Prefab: {fileID: 919132149155446097, guid: 890d72e801badc54a9f7edf81a85c1c5, type: 3}
+  - Key: Banana
+    Prefab: {fileID: 919132149155446097, guid: d527dad75bc1250488c683d6ac93823b, type: 3}
+  - Key: GateFinish
+    Prefab: {fileID: 919132149155446097, guid: 0fa02192c4d51a24682e25d705ebb4b3, type: 3}
+  - Key: TrackStraight
+    Prefab: {fileID: 919132149155446097, guid: 8054a0070ea6d7347927daacb0ee0cf6, type: 3}
+  - Key: TrackCorner
+    Prefab: {fileID: 919132149155446097, guid: 24be21f8a2b75384c962cd7765e7f70d, type: 3}
+  - Key: BarrierWall
+    Prefab: {fileID: 919132149155446097, guid: f26f1a777001a0d41992e366da8ff369, type: 3}
+  - Key: BarrierRed
+    Prefab: {fileID: 919132149155446097, guid: 3b1c89fd4b811224384f72150f50d5e9, type: 3}
+  - Key: GrandStand
+    Prefab: {fileID: 919132149155446097, guid: 6d0d2621028760647ada9128af8bee78, type: 3}
+  - Key: OverheadLights
+    Prefab: {fileID: 919132149155446097, guid: 096766eee5803544cbab7fcf4d4581ca, type: 3}
+  - Key: FlagCheckers
+    Prefab: {fileID: 919132149155446097, guid: 544df5bf93bdd184aaa50e3cc0fe02ab, type: 3}
+  - Key: ShipSmall
+    Prefab: {fileID: 919132149155446097, guid: 40861062f3785c24390e47d07efd7192, type: 3}
+  - Key: ShipLarge
+    Prefab: {fileID: 919132149155446097, guid: 8fedd936b21e4df439963463270e8c48, type: 3}
+  - Key: ShipWreck
+    Prefab: {fileID: 919132149155446097, guid: aa54dcc1c8a922b4386698bf8af60ef0, type: 3}
+  - Key: SandPatch
+    Prefab: {fileID: 919132149155446097, guid: e62d79b5e89f9304495963da0e5790b4, type: 3}
+  - Key: GrassPatch
+    Prefab: {fileID: 919132149155446097, guid: 98d658efeef4b3d4596f5715138e3552, type: 3}
+  - Key: Palm
+    Prefab: {fileID: 919132149155446097, guid: cd1e968c00f27ee47bb1da54e32427b6, type: 3}
+  - Key: PalmStraight
+    Prefab: {fileID: 919132149155446097, guid: fd456db89d5e1f642b8ac4dafdc3cd56, type: 3}
+  - Key: Planks
+    Prefab: {fileID: 919132149155446097, guid: 7f52f13e61960ab40a448063650bae9c, type: 3}
+  - Key: Dock
+    Prefab: {fileID: 919132149155446097, guid: af17c0a1f27e7234cb0d48b003478034, type: 3}
+  - Key: RocksSand
+    Prefab: {fileID: 919132149155446097, guid: b6b52578d28039e40a493b420b3de3c8, type: 3}
+  - Key: Barrel
+    Prefab: {fileID: 919132149155446097, guid: 3700939956bb380499cbff763132c8e9, type: 3}
+  - Key: PirateCannon
+    Prefab: {fileID: 919132149155446097, guid: 8213cb4ae1ce4cd49affd5afa38f3868, type: 3}
+  - Key: Speeder
+    Prefab: {fileID: 919132149155446097, guid: 73dc9a500760e6d41ab0206404862e16, type: 3}
+  - Key: Racer
+    Prefab: {fileID: 919132149155446097, guid: d223154f8937a414f86d9c5a694cf27c, type: 3}
+  - Key: Meteor
+    Prefab: {fileID: 919132149155446097, guid: 052be0bb7c849b644936459dee166ceb, type: 3}
+  - Key: SpaceGate
+    Prefab: {fileID: 919132149155446097, guid: 12b3bdbe91521354fbeaaf0b56fa1516, type: 3}
+  - Key: SpacePlatform
+    Prefab: {fileID: 919132149155446097, guid: 4b5b3680edf62a74199336494c3d76c0, type: 3}
+  - Key: Crater
+    Prefab: {fileID: 919132149155446097, guid: 47ab7c9314d997d479f133c291ad9222, type: 3}
+  - Key: Hangar
+    Prefab: {fileID: 919132149155446097, guid: e23a61b69ecebd8498ed7ad739da71ba, type: 3}
+  - Key: Rocket
+    Prefab: {fileID: 919132149155446097, guid: c0aad5e72318a6443b988f3e49a8535e, type: 3}

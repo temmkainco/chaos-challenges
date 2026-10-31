@@ -130,6 +130,8 @@ public class MinigameController : NetworkBehaviour
     public override void Spawned()
     {
         Current = this;
+        var stage = GameObject.Find("StageCentre") ?? GameObject.Find("Stage");
+        ArenaTheme.Apply(Theme, stage != null ? stage.transform.position : transform.position, transform);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -217,6 +219,12 @@ public class MinigameController : NetworkBehaviour
     }
 
     public string VariantName => Variants is { Length: > 1 } variants ? variants[Variant] : null;
+
+    /// <summary>
+    /// Where this round's arena is set (<see cref="ArenaTheme"/>): by default the three layouts are the studio, a
+    /// tropical ocean and outer space.
+    /// </summary>
+    public virtual ArenaThemeKind Theme => Variants is { Length: >= 3 } ? (ArenaThemeKind)(Variant % 3) : ArenaThemeKind.Studio;
 
     #endregion
 

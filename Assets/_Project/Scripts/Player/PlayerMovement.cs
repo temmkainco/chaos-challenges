@@ -264,9 +264,23 @@ public class PlayerMovement : NetworkBehaviour
         velocity = new Vector3(flat.x, velocity.y, flat.z);
         var wind = !_player.ControlsLocked ? minigame.ChaosWind : Vector3.zero;
         _unityController.Move((velocity + wind) * dt);
-        // Walls take the speed off instead of letting the kart grind along at full tilt.
+        // Barriers bounce the kart back off them (instead of letting it grind along or stick).
         if (_unityController.collisionFlags.HasFlag(CollisionFlags.Sides))
-            velocity = new Vector3(velocity.x * 0.6f, velocity.y, velocity.z * 0.6f);
+        {
+            var flatVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            var origin = transform.position + Vector3.up * 0.6f;
+            if (flatVelocity.sqrMagnitude > 1f && Runner.GetPhysicsScene().SphereCast(origin, 0.35f, flatVelocity.normalized, out var hit, 1.2f,
+                    ~(1 << ArenaProps.PLAYER_LAYER), QueryTriggerInteraction.Ignore))
+            {
+                var normal = new Vector3(hit.normal.x, 0f, hit.normal.z).normalized;
+                if (Vector3.Dot(flatVelocity, normal) < 0f)
+                {
+                    var bounced = Vector3.Reflect(flatVelocity, normal) * 0.55f + normal * 2f;
+                    velocity = new Vector3(bounced.x, velocity.y, bounced.z);
+                }
+            }
+            else velocity = new Vector3(velocity.x * 0.6f, velocity.y, velocity.z * 0.6f);
+        }
         bool grounded = _unityController.isGrounded && velocity.y <= 0.5f;
         if (grounded)
         {

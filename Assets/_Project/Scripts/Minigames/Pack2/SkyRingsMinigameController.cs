@@ -6,12 +6,13 @@ using UnityEngine;
 /// Sky Rings: a plane race. Everyone flies a little toy plane (always moving; W/S nose up and down, A/D turn, Shift
 /// boost) through the hoops in order - your next one glows gold - for two laps. Miss one and you have to turn back
 /// for it. Hit the ground and you crash back at the last hoop you made. Finish order wins; at the bell the rest by
-/// hoops. Layouts: Big Loop, Slalom, Tower. Twist: TAILWIND, everyone flies faster.
+/// hoops. Layouts: Island Loop, Space Eight, Studio Circuit (gentle curves: every gate can be turned into).
+/// Twist: TAILWIND, everyone flies faster.
 /// </summary>
 public class SkyRingsMinigameController : RaceMinigameController
 {
     private const int RINGS = 14, LAPS = 2;
-    private const float RING_RADIUS = 3.2f;
+    private const float RING_RADIUS = 4.2f;
 
     [SerializeField] private float _height = 14f;
 
@@ -22,7 +23,8 @@ public class SkyRingsMinigameController : RaceMinigameController
     public override bool AllowShove => false;
     public override bool UsesDefaultControls => false;
     public override float MaxAltitude => Sky.y + 26f;
-    public override string[] Variants => new[] { "Big Loop", "Slalom", "Tower" };
+    public override string[] Variants => new[] { "Island Loop", "Space Eight", "Studio Circuit" };
+    public override ArenaThemeKind Theme => Variant switch { 0 => ArenaThemeKind.Islands, 1 => ArenaThemeKind.Space, _ => ArenaThemeKind.Studio };
     public override string TwistTitle => "TAILWIND";
     public override string TwistKind => "BUFF";
     public override string TwistDescription => "Everyone flies faster for a while.";
@@ -44,16 +46,17 @@ public class SkyRingsMinigameController : RaceMinigameController
     public override void Spawned()
     {
         base.Spawned();
-        ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, Pad + Vector3.down * 0.5f, new Vector3(24f, 0.5f, 8f), ArenaProps.Purple), "BrickPlate");
+        ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, Pad + Vector3.down * 0.5f, new Vector3(24f, 0.5f, 8f), ArenaProps.Purple), Theme == ArenaThemeKind.Space ? "SpacePlatform" : "Planks");
         ArenaProps.Fence(transform, _centre.position, 62f, 60f, 56);
+        // Smooth closed curves, wide enough everywhere for the plane's turning circle (about 12 m).
         for (int i = 0; i < RINGS; i++)
         {
-            float t = i / (float)RINGS * Mathf.PI * 2f;
+            float t = (i + 0.5f) / RINGS * Mathf.PI * 2f;
             Vector3 position = Variant switch
             {
-                1 => Sky + new Vector3(Mathf.Sin(t) * 40f, 5f + Mathf.Sin(t * 3f) * 4f, -Mathf.Cos(t) * 22f + Mathf.Sin(t * 4f) * 6f),
-                2 => Sky + new Vector3(Mathf.Sin(t) * 24f, 3f + i * 1.6f, -Mathf.Cos(t) * 24f),
-                _ => Sky + new Vector3(Mathf.Sin(t) * 38f, 6f + Mathf.Sin(t * 2f) * 6f, -Mathf.Cos(t) * 30f),
+                1 => Sky + new Vector3(Mathf.Sin(t) * 55f, 9f + Mathf.Cos(t) * 3f, Mathf.Sin(t * 2f) * 30f),
+                2 => Sky + new Vector3(Mathf.Sin(t) * 34f, 10f + Mathf.Sin(t) * 6f, -Mathf.Cos(t) * 34f),
+                _ => Sky + new Vector3(Mathf.Sin(t) * 48f, 8f + Mathf.Sin(t * 2f) * 5f, -Mathf.Cos(t) * 36f),
             };
             _rings.Add((position, Vector3.forward));
         }
@@ -61,9 +64,9 @@ public class SkyRingsMinigameController : RaceMinigameController
         {
             var normal = (_rings[(i + 1) % RINGS].position - _rings[(i + RINGS - 1) % RINGS].position).normalized;
             _rings[i] = (_rings[i].position, normal);
-            // A hula hoop stood up across the course (the model lies flat: its up turns to face along the course).
-            var view = ArenaModels.Spawn("Hoop", transform, _rings[i].position, Quaternion.FromToRotation(Vector3.up, normal),
-                new Vector3(RING_RADIUS * 2.1f, 0.4f, RING_RADIUS * 2.1f));
+            // A race gate across the course, its opening facing along it.
+            var view = ArenaModels.Spawn("SpaceGate", transform, _rings[i].position + Vector3.down * 0.4f, Quaternion.LookRotation(normal),
+                new Vector3(RING_RADIUS * 2.3f, RING_RADIUS * 2.5f, 1.2f));
             _ringViews.Add(view);
         }
         ArenaProps.Done();

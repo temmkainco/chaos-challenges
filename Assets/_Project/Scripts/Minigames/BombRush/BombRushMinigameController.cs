@@ -77,7 +77,9 @@ public class BombRushMinigameController : MinigameController
         {
             var top = Island(i);
             float yaw = (i + 0.5f) / ISLANDS * -360f;
-            ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top + Vector3.down * 1.2f, new Vector3(ISLAND_SIZE, 1.2f, ISLAND_SIZE), ArenaProps.Green, yaw), "Grass");
+            ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top + Vector3.down * 1.2f, new Vector3(ISLAND_SIZE, 1.2f, ISLAND_SIZE), ArenaProps.Green, yaw), "SandPatch");
+            var outwardPalm = (top - _arenaCentre).WithY(0f).normalized;
+            ArenaModels.Spawn("Palm", transform, top + outwardPalm * 2.3f + Vector3.up * 2.2f, Quaternion.Euler(0f, yaw, 0f), new Vector3(3f, 4.5f, 3f), true);
             if (Variant == 2)
             {
                 var outward = (top - _arenaCentre).WithY(0f).normalized;
@@ -85,8 +87,22 @@ public class BombRushMinigameController : MinigameController
                     new Vector3(1.3f, 1.3f, 1.3f), ArenaProps.Yellow, yaw), "Crate");
             }
         }
+        // The ocean hides the scrapyard below; knocked-out contestants watch from a raft in the middle.
+        var ocean = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(ocean.GetComponent<Collider>());
+        ocean.transform.SetParent(transform, true);
+        ocean.transform.SetPositionAndRotation(new Vector3(_arenaCentre.x, IslandY - 2.6f, _arenaCentre.z), Quaternion.identity);
+        ocean.transform.localScale = new Vector3(400f, 0.2f, 400f);
+        var renderer = ocean.GetComponent<Renderer>();
+        renderer.sharedMaterial = ArenaProps.Material;
+        var block = new MaterialPropertyBlock();
+        block.SetColor("_BaseColor", new Color(0.18f, 0.55f, 0.8f));
+        renderer.SetPropertyBlock(block);
+        ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, Raft + Vector3.down * 0.5f, new Vector3(6f, 0.5f, 6f), ArenaProps.Yellow), "Dock");
         ArenaProps.Done();
     }
+
+    private Vector3 Raft => _arenaCentre + Vector3.up * (ISLAND_HEIGHT - 0.4f);
 
     /// <summary>Host. Everyone onto their own island, spread round the ring, facing the middle.</summary>
     protected override void OnIntro()
@@ -155,7 +171,7 @@ public class BombRushMinigameController : MinigameController
         // Blown off your island (below it) is out; ghosts watch from the scrapyard and are put back if they fall out of it.
         if (HasStateAuthority && IsGameActive && Runner.Tick % 10 == 0)
         {
-            float off = IslandY - 3f, floor = _arenaCentre.y - 1f;
+            float off = IslandY - 3f, floor = IslandY - 4f;
             for (int i = _alive.Count - 1; i >= 0; i--)
             {
                 if (!_playerSpawner.Players.TryGet(_alive[i], out var p) || p == null) continue;
@@ -256,8 +272,8 @@ public class BombRushMinigameController : MinigameController
     private void SendToLounge(PlayerRef who)
     {
         if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) return;
-        var flat = Random.insideUnitCircle * 8f;
-        ReleaseAsGhost(player, _arenaCentre + new Vector3(flat.x, 1f, flat.y));
+        var flat = Random.insideUnitCircle * 2f;
+        ReleaseAsGhost(player, Raft + new Vector3(flat.x, 1f, flat.y));
     }
 
     public override void HandlePlayerLeft(PlayerRef player)

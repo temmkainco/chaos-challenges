@@ -3,151 +3,168 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Kart Kup: everyone drives a toy car (W/S throttle and brake, A/D steer, Space hops) three laps round a road-tile
-/// track raised above the studio. Yellow pads give a burst of speed; bumping rivals is fair game. Fall off and you're
-/// put back on the track. Finishers place in order; at the bell the rest by laps and distance. Layouts: Oval, Hook,
-/// Long Oval. Twist: TURBO, everyone gets a speed boost.
-/// The track is a loop of 10 m grid cells (straights and corners) built the same way on every peer: a box collider
-/// and a road-tile model per cell, a solid wall dressed with fences on every outside edge.
+/// Kart Kup: everyone drives a kart (W/S throttle and brake, A/D steer, Space hops) round a race track raised above
+/// the arena. Karts bounce off the barriers. Drive through item boxes for a BANANA (drop it behind you; whoever hits
+/// it spins out), a BOOST, or a SHOCKWAVE (shoves every nearby kart away) and press E to use it. Finish order wins;
+/// at the bell the rest by laps and distance. Layouts: Grand Prix, Chicane, Esses. Twist: TURBO.
+/// The track is a loop of race-kit pieces on a 10 m grid (straights and 20 m corners, left or right) built the same
+/// way on every peer; a list of waypoints along its middle measures everyone's progress.
 /// </summary>
 public class KartKupMinigameController : RaceMinigameController
 {
-    private const float CELL = 10f, WALL_HEIGHT = 1.4f;
-    private const int LAPS = 3;
+    private const float CELL = 10f, WALL_HEIGHT = 1.3f, BOX_RESPAWN = 5f;
+    private const int MAX_BANANAS = 12;
+    public const byte NO_ITEM = 0, BANANA = 1, BOOST = 2, SHOCK = 3;
 
     [SerializeField] private float _height = 12f;
 
     public override VehicleKind Vehicle => VehicleKind.Kart;
     public override bool AllowShove => false;
     public override bool UsesDefaultControls => false;
-    public override string[] Variants => new[] { "Oval", "Hook", "Long Oval" };
+    public override string[] Variants => new[] { "Grand Prix", "Chicane", "Esses" };
     public override string TwistTitle => "TURBO";
     public override string TwistKind => "BUFF";
     public override string TwistDescription => "Everyone gets a burst of speed.";
 
-    private readonly List<Vector2Int> _cells = new();
-    private readonly List<int> _pads = new();
+    /// <summary>Per player slot: the item in hand.</summary>
+    [Networked, Capacity(32)] private NetworkArray<byte> Items { get; }
+    /// <summary>Tick each item box was taken (0 = there).</summary>
+    [Networked, Capacity(16)] private NetworkArray<int> BoxTaken { get; }
+    /// <summary>Bananas on the track (y below -9000 = none) and who dropped each.</summary>
+    [Networked, Capacity(MAX_BANANAS)] private NetworkArray<Vector3> Bananas { get; }
+
+    private static readonly string[] Layouts = { "SSSSSLSSLSSSSSLSSL", "SSSRSSSSRRLLSRRSSRLR", "SSLRLSSLSLSSRSSLLS" };
+    private static readonly Vector2Int[] Headings = { new(1, 0), new(0, 1), new(-1, 0), new(0, -1) };   // E N W S
+
+    private readonly List<Vector3> _points = new();     // waypoints along the middle of the track, in driving order
+    private readonly List<Vector3> _boxes = new();
     private readonly Dictionary<PlayerRef, int> _index = new();
     private readonly Dictionary<PlayerRef, int> _lap = new();
+    private readonly Dictionary<PlayerRef, int> _hitTick = new();
+    private readonly Transform[] _bananaViews = new Transform[MAX_BANANAS];
+    private Transform[] _boxViews;
     private Vector3 _origin;
+    private int Laps => Variant == 0 ? 3 : 2;
 
-    private int Count => _cells.Count;
+    private int Count => _points.Count;
     protected override float FallHeight => _origin.y - 5f;
-
-    private static readonly Vector2Int[] Oval = Loop(6, 3);
-    private static readonly Vector2Int[] LongOval = Loop(8, 2);
-    private static readonly Vector2Int[] Hook =
-    {
-        new(0, 0), new(1, 0), new(2, 0), new(3, 0), new(4, 0), new(4, 1), new(4, 2), new(3, 2), new(2, 2), new(2, 3),
-        new(2, 4), new(1, 4), new(0, 4), new(0, 3), new(0, 2), new(0, 1),
-    };
-
-    /// <summary>The cells round the edge of a w x h rectangle, in driving order.</summary>
-    private static Vector2Int[] Loop(int w, int h)
-    {
-        var cells = new List<Vector2Int>();
-        for (int x = 0; x < w; x++) cells.Add(new Vector2Int(x, 0));
-        for (int z = 1; z < h; z++) cells.Add(new Vector2Int(w - 1, z));
-        for (int x = w - 2; x >= 0; x--) cells.Add(new Vector2Int(x, h - 1));
-        for (int z = h - 2; z >= 1; z--) cells.Add(new Vector2Int(0, z));
-        return cells.ToArray();
-    }
-
-    private Vector3 CellCentre(int i) => _origin + new Vector3(_cells[(i % Count + Count) % Count].x * CELL, 0f, _cells[(i % Count + Count) % Count].y * CELL);
-    private Vector3 Forward(int i) => (CellCentre(i + 1) - CellCentre(i)).normalized;
+    private static Vector3 Dir(int heading) => new(Headings[heading].x, 0f, Headings[heading].y);
 
     public override void Spawned()
     {
         base.Spawned();
-        var loop = Variant switch { 1 => Hook, 2 => LongOval, _ => Oval };
-        // Start the list on a straight with a straight behind it (the grid lines up there).
-        int start = 0;
-        for (int i = 0; i < loop.Length; i++)
-        {
-            var a = loop[(i - 1 + loop.Length) % loop.Length]; var b = loop[i]; var c = loop[(i + 1) % loop.Length]; var d = loop[(i + 2) % loop.Length];
-            if (b - a == c - b && c - b == d - c) { start = i; break; }
-        }
-        for (int i = 0; i < loop.Length; i++) _cells.Add(loop[(start + i) % loop.Length]);
-        var min = new Vector2(float.MaxValue, float.MaxValue); var max = -min;
-        foreach (var c in _cells) { min = Vector2.Min(min, c); max = Vector2.Max(max, c); }
-        var middle = (min + max) * 0.5f * CELL;
-        _origin = _centre.position + Vector3.up * _height - new Vector3(middle.x, 0f, middle.y);
-        Build();
+        _origin = _centre.position + Vector3.up * _height;
+        Build(Layouts[Variant % Layouts.Length]);
     }
 
-    private void Build()
+    /// <summary>Lays the pieces, barriers and waypoints; the track is then shifted so it sits over the arena centre.</summary>
+    private void Build(string layout)
     {
-        var neighbours = new HashSet<(Vector2Int, Vector2Int)>();
-        for (int i = 0; i < Count; i++)
+        var pieces = new List<(bool corner, Vector2Int cell, int heading, int exit, bool right)>();
+        var cells = new List<Vector2Int>();
+        var at = Vector2Int.zero;
+        int h = 0;
+        foreach (char c in layout)
         {
-            neighbours.Add((_cells[i], _cells[(i + 1) % Count]));
-            neighbours.Add((_cells[(i + 1) % Count], _cells[i]));
-        }
-        var sides = new[] { Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down };
-        for (int i = 0; i < Count; i++)
-        {
-            var cell = _cells[i];
-            var centre = CellCentre(i);
-            var floor = ArenaProps.Block(transform, PrimitiveType.Cube, centre + Vector3.down * 0.6f, new Vector3(CELL, 0.6f, CELL), new Color(0.3f, 0.3f, 0.36f));
-            floor.GetComponent<Renderer>().enabled = false;
-            var into = cell - _cells[(i - 1 + Count) % Count];
-            var outOf = _cells[(i + 1) % Count] - cell;
-            bool straight = into == outOf;
-            // The road tiles run along their local X (straights) and turn from -X round to -Z (corners).
-            float yaw;
-            if (straight) yaw = outOf.x != 0 ? 0f : 90f;
-            else yaw = CornerYaw(-into, outOf);
-            ArenaModels.Spawn(straight ? "RoadStraight" : "RoadCorner", transform, centre + Vector3.down * 0.08f, Quaternion.Euler(0f, yaw, 0f), new Vector3(CELL, 0.16f, CELL));
-
-            // Walls on every edge that doesn't lead to the next or previous cell.
-            foreach (var side in sides)
+            if (c == 'S')
             {
-                if (neighbours.Contains((cell, cell + side))) continue;
-                var normal = new Vector3(side.x, 0f, side.y);
-                var wallCentre = centre + normal * (CELL * 0.5f + 0.25f);
-                var wall = ArenaProps.Block(transform, PrimitiveType.Cube, wallCentre, new Vector3(CELL + 0.5f, WALL_HEIGHT, 0.5f), Color.white,
-                    Quaternion.LookRotation(normal).eulerAngles.y);
-                wall.GetComponent<Renderer>().enabled = false;
-                var along = Vector3.Cross(Vector3.up, normal);
-                for (int f = 0; f < 5; f++)
-                    ArenaModels.Spawn("WoodFence", transform, wallCentre + along * ((f - 2f) * 2f) + Vector3.up * WALL_HEIGHT * 0.5f,
-                        Quaternion.LookRotation(normal), new Vector3(2f, WALL_HEIGHT, 0.15f));   // fence runs along its X = along
+                pieces.Add((false, at, h, h, false));
+                cells.Add(at);
+                at += Headings[h];
+                continue;
+            }
+            bool right = c == 'R';
+            int side = right ? (h + 3) % 4 : (h + 1) % 4;
+            pieces.Add((true, at, h, side, right));
+            var exitCell = at + Headings[h] + Headings[side];
+            cells.Add(at); cells.Add(at + Headings[h]); cells.Add(at + Headings[side]); cells.Add(exitCell);
+            at = exitCell + Headings[side];
+            h = side;
+        }
+        var min = new Vector2(float.MaxValue, float.MaxValue); var max = -min;
+        foreach (var cell in cells) { min = Vector2.Min(min, cell); max = Vector2.Max(max, cell); }
+        var middle = (min + max) * 0.5f * CELL;
+        _origin -= new Vector3(middle.x, 0f, middle.y);
+        Vector3 Centre(Vector2Int cell) => _origin + new Vector3(cell.x * CELL, 0f, cell.y * CELL);
+
+        foreach (var (corner, cell, heading, exit, right) in pieces)
+        {
+            var entry = Centre(cell);
+            if (!corner)
+            {
+                Floor(entry, CELL, CELL);
+                ArenaModels.Spawn("TrackStraight", transform, entry + Vector3.down * 0.1f, Quaternion.Euler(0f, heading % 2 == 0 ? 90f : 0f, 0f), new Vector3(CELL, 0.2f, CELL));
+                var across = Vector3.Cross(Vector3.up, Dir(heading));
+                foreach (float s in new[] { -1f, 1f }) Wall(entry + across * s * (CELL * 0.5f + 0.4f), Dir(heading), CELL);
+                _points.Add(entry - Dir(heading) * (CELL * 0.25f));
+                _points.Add(entry + Dir(heading) * (CELL * 0.25f));
+                continue;
+            }
+            // A 2x2-cell corner: the arc's centre is the back corner of the block on the turning side.
+            var fwd = Dir(heading);
+            var side = Dir(exit);
+            var block = entry + (fwd + side) * (CELL * 0.5f);
+            Floor(block, CELL * 2f, CELL * 2f);
+            // The model turns right from heading north at yaw 0; a left turn is the same piece driven backwards.
+            int entryHeading = right ? heading : (heading + 3) % 4;
+            ArenaModels.Spawn("TrackCorner", transform, block + Vector3.down * 0.1f, Quaternion.Euler(0f, entryHeading switch { 1 => 0f, 0 => 90f, 3 => 180f, _ => 270f }, 0f),
+                new Vector3(CELL * 2f, 0.2f, CELL * 2f));
+            var pivot = entry - fwd * (CELL * 0.5f) + side * (CELL * 1.5f);
+            for (int k = 0; k <= 5; k++)
+            {
+                float a = k / 6f * Mathf.PI * 0.5f;
+                // From the entry (pointing from the pivot back to the entry side) round to the exit.
+                var radial = -side * Mathf.Cos(a) + fwd * Mathf.Sin(a);
+                if (k < 5) _points.Add(pivot + radial * (CELL * 1.5f));
+            }
+            // Barriers: an outer arc and a short inner arc, as straight segments.
+            for (int k = 0; k < 6; k++)
+            {
+                float a0 = k / 6f * Mathf.PI * 0.5f, a1 = (k + 1) / 6f * Mathf.PI * 0.5f;
+                foreach (float radius in new[] { CELL * 2f + 0.4f, CELL - 0.4f })
+                {
+                    var p0 = pivot + (-side * Mathf.Cos(a0) + fwd * Mathf.Sin(a0)) * radius;
+                    var p1 = pivot + (-side * Mathf.Cos(a1) + fwd * Mathf.Sin(a1)) * radius;
+                    Wall((p0 + p1) * 0.5f, (p1 - p0).normalized, (p1 - p0).magnitude + 0.3f);
+                }
             }
         }
-        // Start line, speed pads on two straights (no colliders: the host checks who drives over them).
-        var line = ArenaProps.Block(transform, PrimitiveType.Cube, CellCentre(0) + Vector3.up * 0.03f, new Vector3(CELL, 0.03f, 0.8f), Color.white,
-            Quaternion.LookRotation(Forward(0)).eulerAngles.y);
-        Destroy(line.GetComponent<Collider>());
-        ArenaModels.Spawn("Flag", transform, CellCentre(0) + Vector3.Cross(Vector3.up, Forward(0)) * (CELL * 0.5f - 0.6f) + Vector3.up * 1.2f,
-            Quaternion.LookRotation(Forward(0)), new Vector3(1.4f, 2.4f, 0.4f), true);
-        for (int i = 2; i < Count; i++)
+
+        // Start/finish gate, item boxes on two straights, scenery.
+        var start = _points[0];
+        var startDir = (_points[1] - _points[0]).normalized;
+        ArenaModels.Spawn("GateFinish", transform, start + Vector3.up * 3.6f, Quaternion.LookRotation(startDir), new Vector3(CELL + 1.5f, 7f, 1.2f), true);
+        ArenaModels.Spawn("OverheadLights", transform, start + startDir * 6f + Vector3.up * 5.5f, Quaternion.LookRotation(startDir), new Vector3(CELL, 3f, 1.5f), true);
+        for (int i = Count / 3; i < Count && _boxes.Count < 8; i += Count / 3)
         {
-            if (_pads.Count >= 2) break;
-            if (Forward(i - 1) != Forward(i) || (_pads.Count > 0 && i - _pads[0] < Count / 3)) continue;
-            _pads.Add(i);
-            var pad = ArenaProps.Block(transform, PrimitiveType.Cube, CellCentre(i) + Vector3.up * 0.04f, new Vector3(CELL * 0.4f, 0.05f, 3f), ArenaProps.Yellow,
-                Quaternion.LookRotation(Forward(i)).eulerAngles.y);
-            Destroy(pad.GetComponent<Collider>());
+            var dir = (_points[(i + 1) % Count] - _points[i]).normalized;
+            var across = Vector3.Cross(Vector3.up, dir);
+            for (int k = -1; k <= 1; k += 2) _boxes.Add(_points[i] + across * k * 2.4f + Vector3.up * 1f);
         }
+        _boxViews = new Transform[_boxes.Count];
+        for (int b = 0; b < _boxes.Count; b++)
+            _boxViews[b] = ArenaModels.Spawn("ItemBox", transform, _boxes[b], Quaternion.identity, new Vector3(1.4f, 1.4f, 1.4f), true);
         ArenaProps.Done();
     }
 
-    /// <summary>Yaw for a corner tile joining the sides <paramref name="a"/> and <paramref name="b"/> of the cell.</summary>
-    private static float CornerYaw(Vector2Int a, Vector2Int b)
+    private void Floor(Vector3 centre, float x, float z)
     {
-        bool Has(Vector2Int side) => a == side || b == side;
-        if (Has(Vector2Int.left) && Has(Vector2Int.down)) return 0f;
-        if (Has(Vector2Int.left) && Has(Vector2Int.up)) return 90f;
-        if (Has(Vector2Int.right) && Has(Vector2Int.up)) return 180f;
-        return 270f;
+        var floor = ArenaProps.Block(transform, PrimitiveType.Cube, centre + Vector3.down * 0.6f, new Vector3(x, 0.6f, z), Color.grey);
+        floor.GetComponent<Renderer>().enabled = false;
+    }
+
+    private void Wall(Vector3 centre, Vector3 along, float length)
+    {
+        var wall = ArenaProps.Block(transform, PrimitiveType.Cube, centre, new Vector3(0.8f, WALL_HEIGHT, length), Color.white, Quaternion.LookRotation(along).eulerAngles.y);
+        ArenaProps.Skin(wall, "BarrierWall", yawOffset: 90f);
     }
 
     protected override Vector3 StartPosition(int slot, int count, out float yaw)
     {
-        var forward = Forward(0);
+        var forward = (_points[1] - _points[0]).normalized;
         yaw = Quaternion.LookRotation(forward).eulerAngles.y;
         int row = slot / 2, column = slot % 2;
-        return CellCentre(0) - forward * (2.5f + row * 3.5f) + Vector3.Cross(Vector3.up, forward) * (column == 0 ? -2.2f : 2.2f) + Vector3.up * 0.6f;
+        return _points[0] - forward * (3f + row * 3.5f) + Vector3.Cross(Vector3.up, forward) * (column == 0 ? -2.2f : 2.2f) + Vector3.up * 0.6f;
     }
 
     protected override void StartGame()
@@ -156,30 +173,31 @@ public class KartKupMinigameController : RaceMinigameController
         if (!HasStateAuthority) return;
         _index.Clear();
         _lap.Clear();
+        for (int i = 0; i < 32; i++) Items.Set(i, NO_ITEM);
+        for (int i = 0; i < 16; i++) BoxTaken.Set(i, 0);
+        for (int i = 0; i < MAX_BANANAS; i++) Bananas.Set(i, Vector3.down * 10000f);
     }
 
-    /// <summary>The cell under <paramref name="position"/>, searched near the last one (cells never repeat).</summary>
     private int Nearest(PlayerRef player, Vector3 position)
     {
         bool known = _index.TryGetValue(player, out int last);
         int best = 0;
         float bestDistance = float.MaxValue;
-        int from = known ? last - 2 : 0, to = known ? last + 3 : Count;
+        int from = known ? last - 3 : 0, to = known ? last + 5 : Count;
         for (int k = from; k < to; k++)
         {
             int i = (k % Count + Count) % Count;
-            var offset = position - CellCentre(i);
-            float d = Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.z));
+            float d = (position.WithY(0f) - _points[i].WithY(0f)).sqrMagnitude;
             if (d < bestDistance) { bestDistance = d; best = i; }
         }
         return best;
     }
 
-    /// <summary>Laps times cells plus the cell and how far through it. The grid starts behind the line on lap -1.</summary>
+    /// <summary>Laps times waypoints plus the waypoint reached. The grid starts behind the line on lap -1.</summary>
     protected override float Progress(PlayerRef player, Vector3 position)
     {
         int index = Nearest(player, position);
-        if (!_lap.TryGetValue(player, out int lap)) lap = Vector3.Dot(position - CellCentre(0), Forward(0)) < 0f ? -1 : 0;
+        if (!_lap.TryGetValue(player, out int lap)) lap = Vector3.Dot(position - _points[0], _points[1] - _points[0]) < 0f ? -1 : 0;
         if (_index.TryGetValue(player, out int last))
         {
             if (last > Count * 3 / 4 && index < Count / 4) lap++;
@@ -187,19 +205,17 @@ public class KartKupMinigameController : RaceMinigameController
         }
         _index[player] = index;
         _lap[player] = lap;
-        float through = Mathf.Clamp(Vector3.Dot(position - CellCentre(index), Forward(index)) / CELL, -0.5f, 0.5f);
-        return lap * Count + index + through;
+        return lap * Count + index;
     }
 
-    protected override bool IsFinished(float progress) => progress >= LAPS * Count;
-
-    protected override string ProgressLabel(float progress) => $"Lap {Mathf.Clamp(Mathf.FloorToInt(progress / Mathf.Max(1, Count)) + 1, 1, LAPS)}/{LAPS}";
+    protected override bool IsFinished(float progress) => progress >= Laps * Count;
+    protected override string ProgressLabel(float progress) => $"Lap {Mathf.Clamp(Mathf.FloorToInt(progress / Mathf.Max(1, Count)) + 1, 1, Laps)}/{Laps}";
 
     protected override Vector3 RespawnPoint(PlayerRef player, float bestProgress, out float yaw)
     {
         int i = _index.TryGetValue(player, out int last) ? last : 0;
-        yaw = Quaternion.LookRotation(Forward(i)).eulerAngles.y;
-        return CellCentre(i) + Vector3.up * 0.6f;
+        yaw = Quaternion.LookRotation(_points[(i + 1) % Count] - _points[i]).eulerAngles.y;
+        return _points[i] + Vector3.up * 0.6f;
     }
 
     protected override void OnChaosStarted(ChaosModifier modifier)
@@ -209,18 +225,129 @@ public class KartKupMinigameController : RaceMinigameController
             if (entry.Value != null && entry.Value.TryGetComponent<PlayerMovement>(out var movement)) movement.Boost(4f);
     }
 
+    /// <summary>Host. E uses the item in hand.</summary>
+    public override bool HandlePrimaryAction(Player player)
+    {
+        if (!IsGameActive) return false;
+        var who = player.Object.InputAuthority;
+        int slot = who.PlayerId & 31;
+        byte item = Items[slot];
+        if (item == NO_ITEM) return true;
+        Items.Set(slot, NO_ITEM);
+        var movement = player.GetComponent<PlayerMovement>();
+        switch (item)
+        {
+            case BANANA:
+                for (int i = 0; i < MAX_BANANAS; i++)
+                    if (Bananas[i].y < -9000f) { Bananas.Set(i, player.transform.position - player.transform.forward * 2.2f); break; }
+                _hitTick[who] = Runner.Tick;   // your own banana can't get you straight away
+                break;
+            case BOOST:
+                movement.Boost(2.2f);
+                break;
+            case SHOCK:
+                foreach (var entry in _playerSpawner.Players)
+                {
+                    if (entry.Value == null || entry.Key == who) continue;
+                    var away = entry.Value.transform.position - player.transform.position;
+                    if (away.magnitude > 8f || !entry.Value.TryGetComponent<PlayerMovement>(out var other)) continue;
+                    other.Launch(away.WithY(0f).normalized * 12f + Vector3.up * 5f);
+                }
+                RPC_Shock(player.transform.position);
+                break;
+        }
+        return true;
+    }
+
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
         if (!HasStateAuthority || !IsGameActive) return;
+        int respawn = Mathf.CeilToInt(BOX_RESPAWN * Runner.TickRate);
+        for (int b = 0; b < _boxes.Count && b < 16; b++)
+            if (BoxTaken[b] != 0 && Runner.Tick - BoxTaken[b] > respawn) BoxTaken.Set(b, 0);
+
         foreach (var entry in _playerSpawner.Players)
         {
             var player = entry.Value;
-            if (player == null || !_index.TryGetValue(entry.Key, out int index) || !_pads.Contains(index)) continue;
-            var rel = player.transform.position - CellCentre(index);
-            if (Mathf.Abs(Vector3.Dot(rel, Vector3.Cross(Vector3.up, Forward(index)))) < CELL * 0.22f && Mathf.Abs(Vector3.Dot(rel, Forward(index))) < 2f
-                && player.TryGetComponent<PlayerMovement>(out var movement) && !movement.IsBoosted)
-                movement.Boost(1.4f);
+            if (player == null || player.ControlsLocked) continue;
+            var position = player.transform.position;
+            int slot = entry.Key.PlayerId & 31;
+            // Item boxes.
+            for (int b = 0; b < _boxes.Count && b < 16; b++)
+            {
+                if (BoxTaken[b] != 0 || (position - _boxes[b]).magnitude > 2.2f) continue;
+                BoxTaken.Set(b, Runner.Tick);
+                if (Items[slot] == NO_ITEM) Items.Set(slot, (byte)Random.Range(BANANA, SHOCK + 1));
+                RPC_Box(_boxes[b], entry.Key);
+            }
+            // Bananas spin you out.
+            if (_hitTick.TryGetValue(entry.Key, out int last) && Runner.Tick - last < Runner.TickRate) continue;
+            for (int i = 0; i < MAX_BANANAS; i++)
+            {
+                var banana = Bananas[i];
+                if (banana.y < -9000f || (position - banana).WithY(0f).magnitude > 1.4f || Mathf.Abs(position.y - banana.y) > 1.5f) continue;
+                Bananas.Set(i, Vector3.down * 10000f);
+                _hitTick[entry.Key] = Runner.Tick;
+                if (player.TryGetComponent<PlayerMovement>(out var movement)) movement.Launch(Vector3.up * 5f + player.transform.right * 2f);
+                RPC_Slip(position, entry.Key);
+                break;
+            }
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Box(Vector3 position, PlayerRef player)
+    {
+        if (player == Runner.LocalPlayer) Sfx.Play(Sound.Pop, 1f, 0.1f);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Slip(Vector3 position, PlayerRef player)
+    {
+        Sfx.Play(Sound.Whoosh, 1f, 0.1f);
+        WorldPopup.Show(position + Vector3.up * 2.4f, "SLIP!", new Color(1f, 0.85f, 0.2f), 8f);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Shock(Vector3 position)
+    {
+        Sfx.Play(Sound.Boom, 0.7f, 0.1f);
+        LowPolyExplosion.Play(position + Vector3.up, 2.5f, Resources.Load<Material>("ThrowArc"));
+    }
+
+    public override string GetStatusText()
+    {
+        if (!IsGameActive || !Runner.LocalPlayer.IsRealPlayer) return null;
+        return Items[Runner.LocalPlayer.PlayerId & 31] switch
+        {
+            BANANA => "Item: <b>BANANA</b> - press E to drop it behind you",
+            BOOST => "Item: <b>BOOST</b> - press E",
+            SHOCK => "Item: <b>SHOCKWAVE</b> - press E near rivals",
+            _ => "Drive through a box for an item",
+        };
+    }
+
+    public override void Render()
+    {
+        base.Render();
+        if (_boxViews == null) return;
+        float spin = Time.time * 90f;
+        for (int b = 0; b < _boxViews.Length && b < 16; b++)
+        {
+            if (_boxViews[b] == null) continue;
+            bool there = !IsGameActive || BoxTaken[b] == 0;
+            if (_boxViews[b].gameObject.activeSelf != there) _boxViews[b].gameObject.SetActive(there);
+            _boxViews[b].rotation = Quaternion.Euler(0f, spin, 0f);
+        }
+        for (int i = 0; i < MAX_BANANAS; i++)
+        {
+            var banana = IsGameActive ? Bananas[i] : Vector3.down * 10000f;
+            bool on = banana.y > -9000f;
+            if (on && _bananaViews[i] == null) _bananaViews[i] = ArenaModels.Spawn("Banana", transform, banana, Quaternion.identity, new Vector3(1f, 0.7f, 1f), true);
+            if (_bananaViews[i] == null) continue;
+            if (_bananaViews[i].gameObject.activeSelf != on) _bananaViews[i].gameObject.SetActive(on);
+            if (on) _bananaViews[i].position = banana + Vector3.up * 0.3f;
         }
     }
 }

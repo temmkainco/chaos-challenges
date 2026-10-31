@@ -33,7 +33,7 @@ Each round draws one layout for its arena (shown on the rules card as **MAP** an
 | Cannon Barrage | Full Circle · Crossfire (two batteries) · Firing Line (one side) |
 | Hot Potato | Open Stage · Pillars · Crossroads (low walls) |
 | Tilefall | Classic · Swiss Cheese (more holes) · Stepping Stones (checkerboard) |
-| Bomb Rush | Open Floor · Crates · Pillars (cover blocks thrown bombs) |
+| Bomb Rush | Islands · Close Islands · Crate Islands (island wars: everyone on their own island) |
 | Prize Grab | Open Stage · Hurdles · Towers |
 | Mines | Classic · Wide Field · Danger Zone |
 
@@ -49,10 +49,14 @@ Each round draws one layout for its arena (shown on the rules card as **MAP** an
 | Paint Party | points: paint the most tiles | Square · Ring · Islands |
 | Tail Tag | grab a tail, hold it at the bell | Open Stage · Pillars · Hedges |
 | Door Dash | race through real and fake doors | Classic · Fake Out · Long Hall |
-| Kart Kup | 3-lap kart race (you drive a kart) | Oval · Clover · Long Oval |
-| Sky Rings | points: fly a plane through rings | Big Loop · Slalom · Tower |
+| Kart Kup | kart race on a race-kit track with item boxes (banana, boost, shockwave) | Grand Prix · Chicane · Esses |
+| Sky Rings | race: fly a speeder through the gates in order | Island Loop · Space Eight · Studio Circuit |
 
 Vehicles are a movement mode of the contestant (`MinigameController.Vehicle`, `PlayerMovement.Drive/Fly`), so they are predicted and networked like running; `RiderVisual` seats the character in a kart or plane and steers the camera behind it. Points games derive from `ScoreMinigameController`, races from `RaceMinigameController`.
+
+### Themes
+
+Studio arenas are dressed per layout (`MinigameController.Theme`, `ArenaTheme`): by default layout 1 is the studio, layout 2 a tropical ocean with islands and pirate ships, layout 3 outer space. Models come from `ArenaModels` (see `docs/CREDITS.md`).
 
 Scoring: each round awards points by place (ties share the better place); the most points after all rounds wins.
 
