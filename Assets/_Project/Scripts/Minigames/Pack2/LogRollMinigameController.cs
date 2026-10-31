@@ -115,62 +115,56 @@ public class LogRollMinigameController : EliminationMinigameController
         return Vector3.zero;
     }
 
-    protected override bool SimulatedOnClients => true;
-
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!IsGameActive) return;
+        if (!HasStateAuthority || !IsGameActive) return;
         float dt = Runner.DeltaTime;
-        if (HasStateAuthority)
+        float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
+        float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
+        // Speeding up a little at a time: re-anchored every half second rather than every tick.
+        float spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt * Runner.TickRate / 2f);
+        if (Runner.Tick % (Runner.TickRate / 2) == 0 && !Mathf.Approximately(spin, Spin)) SetSpin(spin);
+        if (NextFlip.Expired(Runner) && !TwistActive)
         {
-            float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-            float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
-            // Speeding up a little at a time: re-anchored every half second rather than every tick.
-            float spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt * Runner.TickRate / 2f);
-            if (Runner.Tick % (Runner.TickRate / 2) == 0 && !Mathf.Approximately(spin, Spin)) SetSpin(spin);
-            if (NextFlip.Expired(Runner) && !TwistActive)
-            {
-                NextFlip = TickTimer.CreateFromSeconds(Runner, Random.Range(9f, 14f));
-                SetSpin(-Spin);
-                Announce("SWITCH!");
-            }
+            NextFlip = TickTimer.CreateFromSeconds(Runner, Random.Range(9f, 14f));
+            SetSpin(-Spin);
+            Announce("SWITCH!");
         }
-        float roll = Roll.AtTick(Runner);
-        float previous = roll - Roll.Rate * dt;
+    }
 
-        // Ridges rolling over the top knock off anyone standing low in their way.
-        foreach (var who in HitTestedContestants(_alive))
+    /// <summary>Ridges rolling over the top knock off anyone standing low in their way.</summary>
+    public override void SimulateContestant(Player player, PlayerMovement movement)
+    {
+        var who = player.Object.InputAuthority;
+        if (HasStateAuthority && !_alive.Contains(who) || CoolingDown(_hitTick, who, Runner.TickRate / 2)) return;
+        float roll = Roll.AtTick(Runner);
+        float previous = roll - Roll.Rate * Runner.DeltaTime;
+        for (int log = 0; log < LogCount; log++)
         {
-            if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-            if (CoolingDown(_hitTick, who, Runner.TickRate / 2)) continue;
-            for (int log = 0; log < LogCount; log++)
+            var rel = player.transform.position - Axis(log);
+            float distance = new Vector2(rel.y, rel.z).magnitude;
+            // Only feet down on the log, below the ridge's top (0.5 m), can be caught; anyone in the air is clear.
+            if (distance > Radius + 0.35f || Mathf.Abs(rel.x) > LENGTH * 0.5f) continue;
+            if (!movement.IsGrounded) continue;
+            // Angle round the log's axis (0 = straight up, growing toward +Z like the log's own rotation).
+            float at = Mathf.Atan2(rel.z, rel.y) * Mathf.Rad2Deg;
+            float sign = log == 0 ? 1f : -1f;
+            float from = previous * sign, to = roll * sign;
+            bool hit = false;
+            for (int r = 0; r < RIDGES; r++)
             {
-                var rel = player.transform.position - Axis(log);
-                float distance = new Vector2(rel.y, rel.z).magnitude;
-                // Only feet down on the log, below the ridge's top (0.5 m), can be caught; anyone in the air is clear
-                // (the host sees a client's jump a moment late).
-                if (distance > Radius + 0.35f || Mathf.Abs(rel.x) > LENGTH * 0.5f) continue;
-                if (!player.TryGetComponent<PlayerMovement>(out var movement) || !movement.IsGrounded) continue;
-                // Angle round the log's axis (0 = straight up, growing toward +Z like the log's own rotation).
-                float at = Mathf.Atan2(rel.z, rel.y) * Mathf.Rad2Deg;
-                float sign = log == 0 ? 1f : -1f;
-                float from = previous * sign, to = roll * sign;
-                bool hit = false;
-                for (int r = 0; r < RIDGES; r++)
-                {
-                    float offset = r * 360f / RIDGES;
-                    float travel = Mathf.DeltaAngle(from + offset, to + offset);
-                    float start = Mathf.DeltaAngle(from + offset, at);
-                    // The ridge's half-width (0.3 m) plus a little of the body, as an angle at this log's radius.
-                    float width = 0.5f / Radius * Mathf.Rad2Deg;
-                    if (travel >= 0f ? start >= -width && start <= travel + width : start <= width && start >= travel - width) hit = true;
-                }
-                if (!hit) continue;
-                _hitTick[who] = Runner.Tick;
-                movement.Launch(new Vector3(0f, 6f, Mathf.Sign(SpinOf(log)) * 6f));
-                break;
+                float offset = r * 360f / RIDGES;
+                float travel = Mathf.DeltaAngle(from + offset, to + offset);
+                float start = Mathf.DeltaAngle(from + offset, at);
+                // The ridge's half-width (0.3 m) plus a little of the body, as an angle at this log's radius.
+                float width = 0.5f / Radius * Mathf.Rad2Deg;
+                if (travel >= 0f ? start >= -width && start <= travel + width : start <= width && start >= travel - width) hit = true;
             }
+            if (!hit) continue;
+            _hitTick[who] = Runner.Tick;
+            movement.Launch(new Vector3(0f, 6f, Mathf.Sign(SpinOf(log)) * 6f));
+            break;
         }
     }
 

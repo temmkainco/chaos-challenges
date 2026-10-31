@@ -115,14 +115,12 @@ public class BlockPartyMinigameController : EliminationMinigameController
         WallCount++;
     }
 
-    protected override bool SimulatedOnClients => true;
-
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!IsGameActive) return;
+        if (!HasStateAuthority || !IsGameActive) return;
 
-        if (HasStateAuthority && NextWall.Expired(Runner))
+        if (NextWall.Expired(Runner))
         {
             NextWall = TickTimer.CreateFromSeconds(Runner, Mathf.Lerp(4.2f, 2.4f, Mathf.Clamp01(Elapsed / 70f)));
             byte side = (byte)Random.Range(0, Variant == 2 || Elapsed > 30f ? 4 : 2);
@@ -135,32 +133,36 @@ public class BlockPartyMinigameController : EliminationMinigameController
         {
             var wall = Walls[w];
             if (wall.StartTick == 0) continue;
+            if (Travel(wall) > SEGMENTS * SEGMENT + 3f) Walls.Set(w, default);
+        }
+    }
+
+    /// <summary>A wall reaching you shoves you along ahead of it, unless you are in a gap or over its low bricks.</summary>
+    public override void SimulateContestant(Player player, PlayerMovement movement)
+    {
+        var who = player.Object.InputAuthority;
+        if (HasStateAuthority && !_alive.Contains(who) || CoolingDown(_hitTick, who, Runner.TickRate / 4)) return;
+        for (int w = 0; w < MAX_WALLS; w++)
+        {
+            var wall = Walls[w];
+            if (wall.StartTick == 0) continue;
             float travel = Travel(wall);
-            if (travel > SEGMENTS * SEGMENT + 3f)
-            {
-                if (HasStateAuthority) Walls.Set(w, default);
-                continue;
-            }
+            if (travel > SEGMENTS * SEGMENT + 3f) continue;
             var dir = Direction(wall.Side);
-            foreach (var who in HitTestedContestants(_alive))
-            {
-                if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-                if (CoolingDown(_hitTick, who, Runner.TickRate / 4)) continue;
-                var rel = player.transform.position - Floor;
-                if (rel.y > WALL_HEIGHT || rel.y < -1f) continue;
-                // Along the wall's travel, measured from its start edge; across it, which segment.
-                float along = Vector3.Dot(rel, dir) + HALF;
-                float across = Vector3.Dot(rel, Vector3.Cross(Vector3.up, dir)) + HALF;
-                if (Mathf.Abs(along - travel) > 0.75f) continue;
-                int segment = Mathf.FloorToInt(across / SEGMENT);
-                if (segment == wall.GapA || segment == wall.GapB) continue;
-                // Low bricks only catch you on the ground (jump them).
-                if ((segment == wall.LowA || segment == wall.LowB) && rel.y > LOW_HEIGHT - 0.3f) continue;
-                if (!player.TryGetComponent<PlayerMovement>(out var movement)) continue;
-                _hitTick[who] = Runner.Tick;
-                // A shove ahead of the wall, not a launch: it keeps catching you until you find a gap or the edge.
-                movement.Launch(dir * (wall.Speed * 0.1f + 3f) + Vector3.up * 2f);
-            }
+            var rel = player.transform.position - Floor;
+            if (rel.y > WALL_HEIGHT || rel.y < -1f) continue;
+            // Along the wall's travel, measured from its start edge; across it, which segment.
+            float along = Vector3.Dot(rel, dir) + HALF;
+            float across = Vector3.Dot(rel, Vector3.Cross(Vector3.up, dir)) + HALF;
+            if (Mathf.Abs(along - travel) > 0.75f) continue;
+            int segment = Mathf.FloorToInt(across / SEGMENT);
+            if (segment == wall.GapA || segment == wall.GapB) continue;
+            // Low bricks only catch you on the ground (jump them).
+            if ((segment == wall.LowA || segment == wall.LowB) && rel.y > LOW_HEIGHT - 0.3f) continue;
+            _hitTick[who] = Runner.Tick;
+            // A shove ahead of the wall, not a launch: it keeps catching you until you find a gap or the edge.
+            movement.Launch(dir * (wall.Speed * 0.1f + 3f) + Vector3.up * 2f);
+            return;
         }
     }
 

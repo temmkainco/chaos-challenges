@@ -132,35 +132,30 @@ public class LavaRiseMinigameController : EliminationMinigameController
         ArenaProps.Done();
     }
 
-    protected override bool SimulatedOnClients => true;
-
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!IsGameActive) return;
-        if (HasStateAuthority)
-        {
-            float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-            float speed = (0.16f + 0.011f * elapsed) * (TwistActive ? 3f : 1f);
-            if (LavaY >= LavaTop) speed = 0f;
-            // The rate creeps up over the round: re-anchored every half second rather than every tick.
-            if (Runner.Tick % (Runner.TickRate / 2) == 0 || speed == 0f && Lava.Rate != 0f) Lava = Lava.Retarget(Runner, speed);
-        }
+        if (!HasStateAuthority || !IsGameActive) return;
+        float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
+        float speed = (0.16f + 0.011f * elapsed) * (TwistActive ? 3f : 1f);
+        if (LavaY >= LavaTop) speed = 0f;
+        // The rate creeps up over the round: re-anchored every half second rather than every tick.
+        if (Runner.Tick % (Runner.TickRate / 2) == 0 || speed == 0f && Lava.Rate != 0f) Lava = Lava.Retarget(Runner, speed);
+    }
 
-        foreach (var who in HitTestedContestants(_alive))
+    /// <summary>Springs throw whoever steps on them up to the next level.</summary>
+    public override void SimulateContestant(Player player, PlayerMovement movement)
+    {
+        var who = player.Object.InputAuthority;
+        if (HasStateAuthority && !_alive.Contains(who) || CoolingDown(_bouncedTick, who, Runner.TickRate)) return;
+        var position = player.transform.position;
+        foreach (var spring in _bouncers)
         {
-            if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-            if (CoolingDown(_bouncedTick, who, Runner.TickRate)) continue;
-            var position = player.transform.position;
-            foreach (var spring in _bouncers)
-            {
-                if (new Vector2(position.x - spring.x, position.z - spring.z).magnitude > 0.9f || position.y < spring.y - 0.2f || position.y > spring.y + 1.2f) continue;
-                if (!player.TryGetComponent<PlayerMovement>(out var movement)) break;
-                _bouncedTick[who] = Runner.Tick;
-                movement.Launch(Vector3.up * 15f);
-                if (HasStateAuthority) RPC_Boing(spring);
-                break;
-            }
+            if (new Vector2(position.x - spring.x, position.z - spring.z).magnitude > 0.9f || position.y < spring.y - 0.2f || position.y > spring.y + 1.2f) continue;
+            _bouncedTick[who] = Runner.Tick;
+            movement.Launch(Vector3.up * 15f);
+            if (HasStateAuthority) RPC_Boing(spring);
+            return;
         }
     }
 

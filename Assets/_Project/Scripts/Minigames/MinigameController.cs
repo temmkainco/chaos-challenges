@@ -149,21 +149,13 @@ public class MinigameController : NetworkBehaviour
     /// </summary>
     protected virtual bool SimulatedOnClients => false;
 
-    private readonly List<PlayerRef> _hitTested = new();
-
     /// <summary>
-    /// Contestants whose obstacle hits this peer works out on this tick: all of <paramref name="alive"/> on the host,
-    /// only your own predicted contestant on a client (games with <see cref="SimulatedOnClients"/>). Your knockback then
-    /// lands on your screen at once, on the same tick the host applies it, instead of being snapped in a round trip later.
+    /// Called from each contestant's own network tick, just before it moves (<see cref="PlayerMovement"/>): hit tests
+    /// against moving obstacles go here. The host runs it for every contestant, a client for its own predicted one, at
+    /// the same point of the tick and from the same positions, so the knockback lands on your screen at once and the
+    /// host agrees, instead of being snapped in a round trip later. Not called for spectators or locked contestants.
     /// </summary>
-    protected List<PlayerRef> HitTestedContestants(IEnumerable<PlayerRef> alive)
-    {
-        _hitTested.Clear();
-        if (HasStateAuthority) _hitTested.AddRange(alive);
-        else if (_playerSpawner.Players.TryGet(Runner.LocalPlayer, out var me) && me != null && !me.IsSpectator && !me.ControlsLocked)
-            _hitTested.Add(Runner.LocalPlayer);
-        return _hitTested;
-    }
+    public virtual void SimulateContestant(Player player, PlayerMovement movement) { }
 
     /// <summary>
     /// A per-contestant hit cooldown that survives a client re-simulating past ticks: re-running the tick of the hit

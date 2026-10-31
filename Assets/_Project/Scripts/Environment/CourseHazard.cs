@@ -5,10 +5,10 @@ using UnityEngine;
 /// <summary>
 /// A moving obstacle (pendulum hammer or spinning sweeper bar). Every peer poses it from the network clock, so it
 /// looks the same everywhere without replication: drawn at the local render time (in step with your own predicted
-/// player) and tested at the tick being simulated. Once per network tick (<see cref="SimulateAll"/>, from the
-/// minigame's FixedUpdateNetwork) the host tests the striking part against every contestant, and a client against its
-/// own predicted one, and knocks them away along the hazard's motion with <see cref="PlayerMovement.Launch"/>: the
-/// host's knockback replicates, the client's lands on its own screen at once on the same tick.
+/// player) and tested at the tick being simulated. In each contestant's own network tick (<see cref="TestAll"/>, via
+/// <see cref="MinigameController.SimulateContestant"/>) the striking part is tested against it, on the host for every
+/// contestant and on a client for its own predicted one, and a hit knocks it away along the hazard's motion with
+/// <see cref="PlayerMovement.Launch"/>: the host's knockback replicates, the client's lands on its own screen at once.
 /// </summary>
 public class CourseHazard : MonoBehaviour
 {
@@ -26,7 +26,6 @@ public class CourseHazard : MonoBehaviour
     [SerializeField] private float _knockUp = 6f;
 
     private Quaternion _rest;
-    private readonly Collider[] _hits = new Collider[12];
     private readonly Dictionary<Player, int> _cooldownUntilTick = new();
 
     private static readonly List<CourseHazard> Active = new();
@@ -59,19 +58,24 @@ public class CourseHazard : MonoBehaviour
 
     private void Update() => Pose(Clock());
 
-    /// <summary>Once per network tick on every peer: each hazard is posed at the tick and tested against contestants.</summary>
-    public static void SimulateAll(MinigameController mc)
+    /// <summary>
+    /// From a contestant's own network tick, before it moves (the host for everyone, a client for its own): every hazard
+    /// is posed at the tick and tested against that contestant.
+    /// </summary>
+    public static void TestAll(MinigameController mc, Player player, PlayerMovement movement)
     {
-        if (mc == null || !mc.IsGameActive) return;
         var runner = mc.Runner;
         float now = runner.Tick * runner.DeltaTime;
         foreach (var hazard in Active)
             if (hazard._striker != null)
-                hazard.Simulate(mc, now, runner.DeltaTime, runner.Tick, runner.TickRate);
+                hazard.Test(mc, player, movement, now, runner.DeltaTime, runner.Tick, runner.TickRate);
     }
 
-    private void Simulate(MinigameController mc, float now, float dt, int tick, int tickRate)
+    private void Test(MinigameController mc, Player player, PlayerMovement movement, float now, float dt, int tick, int tickRate)
     {
+        // Cooling down after a hit, but re-running the hit's own tick (client re-simulation) applies it again.
+        if (_cooldownUntilTick.TryGetValue(player, out int until) && tick < until && tick > until - tickRate) return;
+
         // Where the striker was a tick ago and is now: its motion gives the push direction.
         Pose(now - dt);
         Vector3 before = _striker.position;
@@ -79,40 +83,30 @@ public class CourseHazard : MonoBehaviour
         Vector3 pos = _striker.position;
         Vector3 motion = pos - before;
 
-        int count;
+        // Inside the striking part: a capsule along a sweeper bar, a sphere round a hammer head.
+        var body = player.transform.position + Vector3.up;
+        Vector3 closest = pos;
         if (_hitLength > 0f)
         {
             var half = _striker.up * (_hitLength * 0.5f);
-            count = Physics.OverlapCapsuleNonAlloc(pos - half, pos + half, _hitRadius, _hits, ~0, QueryTriggerInteraction.Ignore);
+            var a = pos - half;
+            var ab = half * 2f;
+            closest = a + ab * Mathf.Clamp01(Vector3.Dot(body - a, ab) / ab.sqrMagnitude);
         }
-        else
-            count = Physics.OverlapSphereNonAlloc(pos, _hitRadius, _hits, ~0, QueryTriggerInteraction.Ignore);
+        if ((body - closest).magnitude > _hitRadius + 0.5f) return;
+        // Low sweeper bars are jumped: anyone in the air or above the bar is clear.
+        if (_kind == Kind.Spinner && (!movement.IsGrounded || player.transform.position.y > pos.y - 0.25f)) return;
+        _cooldownUntilTick[player] = tick + tickRate;
 
-        for (int i = 0; i < count; i++)
-        {
-            var player = _hits[i].GetComponentInParent<Player>();
-            if (player == null || player.Object == null || player.ControlsLocked) continue;
-            if (!mc.HasStateAuthority && !player.Object.HasInputAuthority) continue;   // a client predicts only its own
-            if (mc is TilefallMinigameController tilefall && tilefall.IsProtected(player.Object.InputAuthority)) continue;   // just respawned
-            // Cooling down after a hit, but re-running the hit's own tick (client re-simulation) applies it again.
-            if (_cooldownUntilTick.TryGetValue(player, out int until) && tick < until && tick > until - tickRate) continue;
-            // Low sweeper bars are jumped: anyone in the air or above the bar is clear. (The host sees a client's
-            // jump a moment late, and the old full-radius test hit players who had cleared it on their screen.)
-            if (_kind == Kind.Spinner && player.TryGetComponent<PlayerMovement>(out var mover)
-                && (!mover.IsGrounded || player.transform.position.y > pos.y - 0.25f)) continue;
-            _cooldownUntilTick[player] = tick + tickRate;
-
-            // Push along the striker's motion; fall back to "away from the striker" when it barely moves.
-            var push = new Vector3(motion.x, 0f, motion.z);
-            if (push.sqrMagnitude < 0.0001f)
-                push = new Vector3(player.transform.position.x - pos.x, 0f, player.transform.position.z - pos.z);
-            if (push.sqrMagnitude < 0.0001f) push = Vector3.right;
-            if (player.TryGetComponent<PlayerMovement>(out var movement))
-                movement.Launch(push.normalized * _knockback + Vector3.up * _knockUp);
-            if (mc.Runner.IsResimulation) continue;
-            if (mc.HasStateAuthority) Debug.Log($"[Hazard] {name} hit {player.Object.InputAuthority}");
-            HazardHitFx(player.transform.position);
-        }
+        // Push along the striker's motion; fall back to "away from the striker" when it barely moves.
+        var push = new Vector3(motion.x, 0f, motion.z);
+        if (push.sqrMagnitude < 0.0001f)
+            push = new Vector3(player.transform.position.x - pos.x, 0f, player.transform.position.z - pos.z);
+        if (push.sqrMagnitude < 0.0001f) push = Vector3.right;
+        movement.Launch(push.normalized * _knockback + Vector3.up * _knockUp);
+        if (mc.Runner.IsResimulation) return;
+        if (mc.HasStateAuthority) Debug.Log($"[Hazard] {name} hit {player.Object.InputAuthority}");
+        HazardHitFx(player.transform.position);
     }
 
     private static void HazardHitFx(Vector3 position)

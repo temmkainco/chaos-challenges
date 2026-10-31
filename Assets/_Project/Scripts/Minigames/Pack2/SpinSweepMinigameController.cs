@@ -141,19 +141,14 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (!IsGameActive) return;
-        if (HasStateAuthority)
-        {
-            float speed = Speed();
-            // Re-anchored only when the speed has crept up noticeably, so clients rarely have to correct the bars.
-            if (Mathf.Abs(BarA.Rate - speed) > 1f) BarA = BarA.Retarget(Runner, speed, 360f);
-            if (Variant == 2 && Mathf.Abs(BarB.Rate + speed * 0.8f) > 1f) BarB = BarB.Retarget(Runner, -speed * 0.8f, 360f);
-        }
-        float angleA = BarA.AtTick(Runner), angleB = BarB.AtTick(Runner);
-        float prevA = angleA - BarA.Rate * Runner.DeltaTime, prevB = angleB - BarB.Rate * Runner.DeltaTime;
+        if (!HasStateAuthority || !IsGameActive) return;
+        float speed = Speed();
+        // Re-anchored only when the speed has crept up noticeably, so clients rarely have to correct the bars.
+        if (Mathf.Abs(BarA.Rate - speed) > 1f) BarA = BarA.Retarget(Runner, speed, 360f);
+        if (Variant == 2 && Mathf.Abs(BarB.Rate + speed * 0.8f) > 1f) BarB = BarB.Retarget(Runner, -speed * 0.8f, 360f);
 
         // Tiles: a few crack every few seconds (never the ones under the hub), then drop.
-        if (HasStateAuthority && NextCrack.Expired(Runner))
+        if (NextCrack.Expired(Runner))
         {
             NextCrack = TickTimer.CreateFromSeconds(Runner, Mathf.Max(2.5f, 6f - (Definition.GameDuration - TimeRemaining) * 0.04f));
             for (int n = 0, guard = 0; n < 3 && guard < 40; guard++)
@@ -165,30 +160,33 @@ public class SpinSweepMinigameController : EliminationMinigameController, IBefor
             }
         }
 
-        // Sweep: anyone standing low where a bar passed this tick is flung off.
-        foreach (var who in HitTestedContestants(_alive))
+    }
+
+    /// <summary>Sweep: standing low where a bar passed this tick flings you off.</summary>
+    public override void SimulateContestant(Player player, PlayerMovement movement)
+    {
+        var who = player.Object.InputAuthority;
+        if (HasStateAuthority && !_alive.Contains(who) || CoolingDown(_hitTick, who, Runner.TickRate / 2)) return;
+        float angleA = BarA.AtTick(Runner), angleB = BarB.AtTick(Runner);
+        float prevA = angleA - BarA.Rate * Runner.DeltaTime, prevB = angleB - BarB.Rate * Runner.DeltaTime;
+        var rel = player.transform.position - Floor;
+        float radius = new Vector2(rel.x, rel.z).magnitude;
+        if (radius < 1.1f || radius > Reach + 0.5f || rel.y > BAR_TOP + 0.05f) return;
+        float angle = Mathf.Atan2(rel.x, rel.z) * Mathf.Rad2Deg;   // same convention as the bars' yaw
+        float halfWidth = Mathf.Rad2Deg * 0.55f / radius;
+        int dir = 0;
+        for (int a = 0; a < Arms; a++)
         {
-            if (!_playerSpawner.Players.TryGet(who, out var player) || player == null) continue;
-            if (CoolingDown(_hitTick, who, Runner.TickRate / 2)) continue;
-            var rel = player.transform.position - Floor;
-            float radius = new Vector2(rel.x, rel.z).magnitude;
-            if (radius < 1.1f || radius > Reach + 0.5f || rel.y > BAR_TOP + 0.05f) continue;
-            float angle = Mathf.Atan2(rel.x, rel.z) * Mathf.Rad2Deg;   // same convention as the bars' yaw
-            float halfWidth = Mathf.Rad2Deg * 0.55f / radius;
-            int dir = 0;
-            for (int a = 0; a < Arms; a++)
-            {
-                float offset = a * 360f / Arms;
-                if (Swept(prevA + offset, angleA + offset, angle, halfWidth)) dir = 1;
-            }
-            if (Variant == 2 && Swept(prevB, angleB, angle, halfWidth)) dir = -1;
-            if (dir == 0 || !player.TryGetComponent<PlayerMovement>(out var movement)) continue;
-            _hitTick[who] = Runner.Tick;
-            var outward = new Vector3(rel.x, 0f, rel.z).normalized;
-            var tangent = Vector3.Cross(Vector3.up, outward) * dir;
-            movement.Launch(tangent * 6f + outward * 2f + Vector3.up * 5.5f);
-            if (HasStateAuthority) RPC_Swept(player.transform.position);
+            float offset = a * 360f / Arms;
+            if (Swept(prevA + offset, angleA + offset, angle, halfWidth)) dir = 1;
         }
+        if (Variant == 2 && Swept(prevB, angleB, angle, halfWidth)) dir = -1;
+        if (dir == 0) return;
+        _hitTick[who] = Runner.Tick;
+        var outward = new Vector3(rel.x, 0f, rel.z).normalized;
+        var tangent = Vector3.Cross(Vector3.up, outward) * dir;
+        movement.Launch(tangent * 6f + outward * 2f + Vector3.up * 5.5f);
+        if (HasStateAuthority) RPC_Swept(player.transform.position);
     }
 
     /// <summary>Whether a bar turning from <paramref name="from"/> to <paramref name="to"/> passed <paramref name="target"/>.</summary>

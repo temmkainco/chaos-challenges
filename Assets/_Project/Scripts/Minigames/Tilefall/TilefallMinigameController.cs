@@ -52,6 +52,13 @@ public class TilefallMinigameController : MinigameController
         _pendingRespawns.Clear();
     }
 
+    /// <summary>Pendulums and sweepers knock you off the course.</summary>
+    public override void SimulateContestant(Player player, PlayerMovement movement)
+    {
+        if (!IsProtected(player.Object.InputAuthority) && !_pendingRespawns.ContainsKey(player.Object.InputAuthority))
+            CourseHazard.TestAll(this, player, movement);
+    }
+
     /// <summary>Host only (the finish line is checked on the host).</summary>
     public void PlayerFinished(PlayerRef player)
     {
@@ -87,13 +94,9 @@ public class TilefallMinigameController : MinigameController
         return true;
     }
 
-    protected override bool SimulatedOnClients => true;
-
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
-        if (IsGameActive)
-            CourseHazard.SimulateAll(this);
 
         if (!HasStateAuthority || !IsGameActive)
             return;

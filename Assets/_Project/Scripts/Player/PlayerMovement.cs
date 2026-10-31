@@ -129,6 +129,11 @@ public class PlayerMovement : NetworkBehaviour
             data.Buttons = default;
         }
 
+        // Moving obstacles test this contestant first, so a hit this tick already shapes this tick's movement.
+        var current = MinigameController.Current;
+        if (current != null && current.Object != null && current.Object.IsValid && current.IsGameActive && !_player.IsSpectator && !_player.ControlsLocked)
+            current.SimulateContestant(_player, this);
+
         var velocity = CurrentVelocity;
         bool launched = IsLaunched;
 
