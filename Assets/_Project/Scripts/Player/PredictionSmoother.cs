@@ -15,10 +15,6 @@ public class PredictionSmoother : MonoBehaviour
     private Vector3 _modelBase, _lookBase, _offset, _lastPosition;
     private bool _primed;
 
-    /// <summary>Corrections hidden so far on this peer, and their total size (net stats overlay).</summary>
-    public static int Corrections;
-    public static float CorrectedMetres;
-
     public static void Attach(Player player)
     {
         if (!player.TryGetComponent<PredictionSmoother>(out _))
@@ -45,12 +41,7 @@ public class PredictionSmoother : MonoBehaviour
             var error = position - _lastPosition - expected;
             float size = error.magnitude;
             if (size >= MAX_SNAP) _offset = Vector3.zero;          // a real teleport: show it as is
-            else if (size > MIN_SNAP)                                // a correction: hide the jump, then settle
-            {
-                _offset -= error;
-                Corrections++;
-                CorrectedMetres += size;
-            }
+            else if (size > MIN_SNAP) _offset -= error;             // a correction: hide the jump, then settle
         }
         _lastPosition = position;
         _primed = true;

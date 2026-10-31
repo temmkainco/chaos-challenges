@@ -114,6 +114,12 @@ public class PlayerMovement : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        Simulate();
+        if (HasInputAuthority && !HasStateAuthority) PredictionStats.Track(Runner, transform.position);
+    }
+
+    private void Simulate()
+    {
         float dt = Runner.DeltaTime;
         NetworkInputData data = default;
         bool hasInput = GetInput(out data);

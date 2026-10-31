@@ -7,8 +7,9 @@ using UnityEngine.InputSystem;
 namespace Networking
 {
     /// <summary>
-    /// Playtest diagnostics. F3 shows ping, frame rate and how often the host corrects your predicted position (the
-    /// "rubber-banding" behind most desync reports); the host also sees every player's ping. While in a session a
+    /// Playtest diagnostics. F3 shows ping, frame rate and how often your own predicted position turned out wrong once
+    /// the host's data arrived (<see cref="PredictionStats"/>: the "rubber-banding" behind most desync reports); the
+    /// host also sees every player's ping. While in a session a
     /// one-line summary goes to Player.log every <see cref="_logInterval"/> seconds, so a playtest log shows what the
     /// connection was like before a problem.
     /// </summary>
@@ -20,7 +21,7 @@ namespace Networking
         private FusionNetworkRunner _session;
         private bool _visible;
         private float _fps = 60f, _nextLog;
-        private int _correctionsAtLog;
+        private int _mispredictionsAtLog;
         private float _metresAtLog;
         private GUIStyle _style;
         private readonly StringBuilder _text = new();
@@ -37,12 +38,12 @@ namespace Networking
             var runner = Runner;
             if (_logInterval <= 0f || runner == null || !runner.IsRunning || !runner.IsInSession || Time.unscaledTime < _nextLog) return;
             _nextLog = Time.unscaledTime + _logInterval;
-            int corrections = PredictionSmoother.Corrections - _correctionsAtLog;
-            float metres = PredictionSmoother.CorrectedMetres - _metresAtLog;
-            _correctionsAtLog = PredictionSmoother.Corrections;
-            _metresAtLog = PredictionSmoother.CorrectedMetres;
+            int mispredictions = PredictionStats.Mispredictions - _mispredictionsAtLog;
+            float metres = PredictionStats.MispredictedMetres - _metresAtLog;
+            _mispredictionsAtLog = PredictionStats.Mispredictions;
+            _metresAtLog = PredictionStats.MispredictedMetres;
             Debug.Log($"[Net] {(runner.IsServer ? "host" : "client")} players={runner.ActivePlayers.Count()} {Pings(runner)} fps={_fps:0} " +
-                      $"corrections={corrections} ({(corrections > 0 ? metres / corrections * 100f : 0f):0}cm avg) in {_logInterval:0}s");
+                      $"mispredictions={mispredictions} ({(mispredictions > 0 ? metres / mispredictions * 100f : 0f):0}cm avg) in {_logInterval:0}s");
         }
 
         private static string Pings(NetworkRunner runner)
@@ -65,7 +66,7 @@ namespace Networking
             {
                 _text.AppendLine($"{(runner.IsServer ? "HOST" : "CLIENT")}  code {_session.CurrentLobbyCode}  tick {runner.TickRate}/s");
                 _text.AppendLine(Pings(runner));
-                _text.AppendLine($"corrections {PredictionSmoother.Corrections}  avg {(PredictionSmoother.Corrections > 0 ? PredictionSmoother.CorrectedMetres / PredictionSmoother.Corrections * 100f : 0f):0} cm");
+                _text.AppendLine($"mispredictions {PredictionStats.Mispredictions}  avg {(PredictionStats.Mispredictions > 0 ? PredictionStats.MispredictedMetres / PredictionStats.Mispredictions * 100f : 0f):0} cm");
             }
             GUI.Box(new Rect(10f, 10f, 330f, 92f), _text.ToString(), _style);
         }
