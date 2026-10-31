@@ -11,7 +11,7 @@ using UnityEngine;
 /// </summary>
 public class SkyRingsMinigameController : RaceMinigameController
 {
-    private const int RINGS = 14, LAPS = 2;
+    private const int RINGS = 10, LAPS = 2;
     private const float RING_RADIUS = 4.2f;
 
     [SerializeField] private float _height = 14f;
@@ -38,6 +38,7 @@ public class SkyRingsMinigameController : RaceMinigameController
     private readonly List<Transform> _ringViews = new();
     private readonly Dictionary<PlayerRef, Vector3> _last = new();
     private int _shownNext = -1;
+    private readonly List<Vector3> _ringBaseScale = new();
 
     private Vector3 Sky => _centre.position + Vector3.up * _height;
     private Vector3 Pad => Sky + Vector3.back * 34f;
@@ -48,15 +49,16 @@ public class SkyRingsMinigameController : RaceMinigameController
         base.Spawned();
         ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, Pad + Vector3.down * 0.5f, new Vector3(24f, 0.5f, 8f), ArenaProps.Purple), Theme == ArenaThemeKind.Space ? "SpacePlatform" : "Planks");
         ArenaProps.Fence(transform, _centre.position, 62f, 60f, 56);
-        // Smooth closed curves, wide enough everywhere for the plane's turning circle (about 12 m).
+        // Smooth closed 3D curves (sweeping round, swinging side to side, climbing and diving), 25-30 m between hoops,
+        // every bend wider than the plane's turning circle (about 12 m).
         for (int i = 0; i < RINGS; i++)
         {
             float t = (i + 0.5f) / RINGS * Mathf.PI * 2f;
             Vector3 position = Variant switch
             {
-                1 => Sky + new Vector3(Mathf.Sin(t) * 55f, 9f + Mathf.Cos(t) * 3f, Mathf.Sin(t * 2f) * 30f),
-                2 => Sky + new Vector3(Mathf.Sin(t) * 34f, 10f + Mathf.Sin(t) * 6f, -Mathf.Cos(t) * 34f),
-                _ => Sky + new Vector3(Mathf.Sin(t) * 48f, 8f + Mathf.Sin(t * 2f) * 5f, -Mathf.Cos(t) * 36f),
+                1 => Sky + new Vector3(Mathf.Sin(t) * 55f, 10f + Mathf.Sin(t * 3f) * 6f, Mathf.Sin(t * 2f) * 32f),
+                2 => Sky + new Vector3(Mathf.Sin(t) * (40f + 7f * Mathf.Sin(t * 3f)), 9f + Mathf.Sin(t * 2f) * 8f, -Mathf.Cos(t) * (40f + 7f * Mathf.Sin(t * 3f))),
+                _ => Sky + new Vector3(Mathf.Sin(t) * 50f, 10f + Mathf.Sin(t * 3f) * 7f, -Mathf.Cos(t) * 40f),
             };
             _rings.Add((position, Vector3.forward));
         }
@@ -64,9 +66,9 @@ public class SkyRingsMinigameController : RaceMinigameController
         {
             var normal = (_rings[(i + 1) % RINGS].position - _rings[(i + RINGS - 1) % RINGS].position).normalized;
             _rings[i] = (_rings[i].position, normal);
-            // A race gate across the course, its opening facing along it.
-            var view = ArenaModels.Spawn("SpaceGate", transform, _rings[i].position + Vector3.down * 0.4f, Quaternion.LookRotation(normal),
-                new Vector3(RING_RADIUS * 2.3f, RING_RADIUS * 2.5f, 1.2f));
+            // A hoop stood up across the course (the model lies flat: its up turns to face along the course).
+            var view = ArenaModels.Spawn("Hoop", transform, _rings[i].position, Quaternion.FromToRotation(Vector3.up, normal),
+                new Vector3(RING_RADIUS * 2.2f, 0.5f, RING_RADIUS * 2.2f));
             _ringViews.Add(view);
         }
         ArenaProps.Done();
@@ -177,10 +179,13 @@ public class SkyRingsMinigameController : RaceMinigameController
         {
             if (_ringViews[i] == null) continue;
             bool target = i == next;
+            // The tint multiplies the hoop's own colour: push the next one bright gold and a size up, dim the rest.
+            if (_ringBaseScale.Count <= i) _ringBaseScale.Add(_ringViews[i].localScale);
+            _ringViews[i].localScale = _ringBaseScale[i] * (target ? 1.25f : 1f);
             foreach (var renderer in _ringViews[i].GetComponentsInChildren<Renderer>())
             {
                 renderer.GetPropertyBlock(block);
-                block.SetColor("_BaseColor", target ? new Color(1f, 0.8f, 0.2f) : new Color(0.75f, 0.8f, 0.85f));
+                block.SetColor("_BaseColor", target ? new Color(2.4f, 1.9f, 0.35f) : new Color(0.55f, 0.6f, 0.65f));
                 renderer.SetPropertyBlock(block);
             }
         }

@@ -121,6 +121,10 @@ public class MinigameHud : MonoBehaviour
         }
         players.Sort((a, b) => b.rank.CompareTo(a.rank));
         _board.gameObject.SetActive(players.Count > 0);
+        // Always just under the LIVE chip, whose height changes with its lines (it used to cover the chip's text).
+        var chip = (RectTransform)_timer.transform.parent;
+        float chipBottom = chip.anchoredPosition.y - (_chipVisible ? chip.rect.height : 0f);
+        _board.anchoredPosition = new Vector2(-24f, Mathf.Min(-20f, chipBottom - 12f));
         while (_rows.Count < players.Count) _rows.Add(CreateRow());
         for (int i = 0; i < _rows.Count; i++)
         {

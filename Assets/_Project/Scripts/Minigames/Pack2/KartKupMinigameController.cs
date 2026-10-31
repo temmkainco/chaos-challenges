@@ -117,15 +117,16 @@ public class KartKupMinigameController : RaceMinigameController
                 var radial = -side * Mathf.Cos(a) + fwd * Mathf.Sin(a);
                 if (k < 5) _points.Add(pivot + radial * (CELL * 1.5f));
             }
-            // Barriers: an outer arc and a short inner arc, as straight segments.
-            for (int k = 0; k < 6; k++)
+            // Barriers: an outer arc and a short inner arc, as short overlapping straight segments (no gaps at the joins).
+            const int ARC = 12;
+            for (int k = 0; k < ARC; k++)
             {
-                float a0 = k / 6f * Mathf.PI * 0.5f, a1 = (k + 1) / 6f * Mathf.PI * 0.5f;
+                float a0 = k / (float)ARC * Mathf.PI * 0.5f, a1 = (k + 1) / (float)ARC * Mathf.PI * 0.5f;
                 foreach (float radius in new[] { CELL * 2f + 0.4f, CELL - 0.4f })
                 {
                     var p0 = pivot + (-side * Mathf.Cos(a0) + fwd * Mathf.Sin(a0)) * radius;
                     var p1 = pivot + (-side * Mathf.Cos(a1) + fwd * Mathf.Sin(a1)) * radius;
-                    Wall((p0 + p1) * 0.5f, (p1 - p0).normalized, (p1 - p0).magnitude + 0.3f);
+                    Wall((p0 + p1) * 0.5f, (p1 - p0).normalized, (p1 - p0).magnitude + 0.5f);
                 }
             }
         }
@@ -134,7 +135,6 @@ public class KartKupMinigameController : RaceMinigameController
         var start = _points[0];
         var startDir = (_points[1] - _points[0]).normalized;
         ArenaModels.Spawn("GateFinish", transform, start + Vector3.up * 3.6f, Quaternion.LookRotation(startDir), new Vector3(CELL + 1.5f, 7f, 1.2f), true);
-        ArenaModels.Spawn("OverheadLights", transform, start + startDir * 6f + Vector3.up * 5.5f, Quaternion.LookRotation(startDir), new Vector3(CELL, 3f, 1.5f), true);
         for (int i = Count / 3; i < Count && _boxes.Count < 8; i += Count / 3)
         {
             var dir = (_points[(i + 1) % Count] - _points[i]).normalized;
@@ -321,10 +321,10 @@ public class KartKupMinigameController : RaceMinigameController
         if (!IsGameActive || !Runner.LocalPlayer.IsRealPlayer) return null;
         return Items[Runner.LocalPlayer.PlayerId & 31] switch
         {
-            BANANA => "Item: <b>BANANA</b> - press E to drop it behind you",
-            BOOST => "Item: <b>BOOST</b> - press E",
-            SHOCK => "Item: <b>SHOCKWAVE</b> - press E near rivals",
-            _ => "Drive through a box for an item",
+            BANANA => "<b>BANANA</b> [E]",
+            BOOST => "<b>BOOST</b> [E]",
+            SHOCK => "<b>SHOCKWAVE</b> [E]",
+            _ => null,
         };
     }
 
