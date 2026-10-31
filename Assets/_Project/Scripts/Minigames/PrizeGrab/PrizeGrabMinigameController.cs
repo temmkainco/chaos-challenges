@@ -22,13 +22,19 @@ public class PrizeGrabMinigameController : MinigameController
     [SerializeField, Tooltip("Seconds between prizes with 2 players; more players get them faster")] private float _rainInterval = 1.6f;
     [SerializeField] private int _maxPrizesPerPlayer = 2;
     [SerializeField, Range(0f, 1f)] private float _goldenChance = 0.15f;
-    [SerializeField] private float _bonusSeconds = 15f;
+    [Header("Golden Rain (once, mid-round) and the Prize Storm twist")]
+    [SerializeField, Tooltip("How long the mid-round Golden Rain lasts")] private float _goldenRainSeconds = 4f;
+    [SerializeField, Range(0f, 1f), Tooltip("Share of Golden Rain drops that are golden chests (the rest are gift boxes)")]
+    private float _goldenRainShare = 0.5f;
+    [SerializeField, Tooltip("Drop rate during Golden Rain, times the normal rate")] private float _goldenRainRate = 1.4f;
+    [SerializeField, Range(0f, 1f), Tooltip("Share of Prize Storm drops that are golden chests")] private float _stormGoldenShare = 0.4f;
+    [SerializeField, Tooltip("Drop rate during Prize Storm, times the normal rate")] private float _stormRate = 2f;
+    [SerializeField, Tooltip("Prizes allowed on stage during Prize Storm, times the normal cap")] private float _stormCap = 1.5f;
 
     [Networked, Capacity(MAX_PLAYERS)] private NetworkDictionary<PlayerRef, int> Scores => default;
     [Networked] private TickTimer RainTimer { get; set; }
     [Networked] private NetworkBool BonusAnnounced { get; set; }
     [Networked] private float GoldenAt { get; set; }
-    private const float GOLDEN_SECONDS = 6f;
 
     private readonly List<PlayerRef> _order = new();
     private readonly Dictionary<PlayerRef, Transform> _podiums = new();
@@ -92,7 +98,7 @@ public class PrizeGrabMinigameController : MinigameController
         float total = Definition.GameDuration * MatchSettings.LengthMultiplier;
         float elapsed = total - TimeRemaining;
         if (GoldenAt <= 0f) GoldenAt = total * Random.Range(0.35f, 0.65f);
-        bool bonus = IsTimeLimited && elapsed >= GoldenAt && elapsed < GoldenAt + GOLDEN_SECONDS;
+        bool bonus = IsTimeLimited && elapsed >= GoldenAt && elapsed < GoldenAt + _goldenRainSeconds;
         if (bonus && !BonusAnnounced)
         {
             BonusAnnounced = true;
@@ -102,10 +108,13 @@ public class PrizeGrabMinigameController : MinigameController
         int players = Mathf.Max(2, ConnectedPlayers().Count());
         if (RainTimer.ExpiredOrNotRunning(Runner))
         {
-            float interval = _rainInterval * 2f / players * (bonus ? 0.5f : 1f) * (TwistActive ? 0.3f : 1f);
+            // Golden Rain and Prize Storm speed the drops up a little and make some of them golden, not all: a burst
+            // of all-golden chests decided whole matches.
+            float interval = _rainInterval * 2f / players / (bonus ? _goldenRainRate : 1f) / (TwistActive ? _stormRate : 1f);
             RainTimer = TickTimer.CreateFromSeconds(Runner, interval);
-            if (Prize.Active.Count < players * _maxPrizesPerPlayer * (TwistActive ? 2 : 1))
-                DropPrize(bonus || TwistActive || Random.value < _goldenChance);
+            float goldenChance = TwistActive ? _stormGoldenShare : bonus ? _goldenRainShare : _goldenChance;
+            if (Prize.Active.Count < players * _maxPrizesPerPlayer * (TwistActive ? _stormCap : 1f))
+                DropPrize(Random.value < goldenChance);
         }
 
         // Prizes thrown or dropped onto a podium bank for that podium's owner.
