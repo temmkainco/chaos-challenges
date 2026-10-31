@@ -130,9 +130,19 @@ public class MinigameController : NetworkBehaviour
     public override void Spawned()
     {
         Current = this;
-        var stage = GameObject.Find("StageCentre") ?? GameObject.Find("Stage");
-        ArenaTheme.Apply(Theme, stage != null ? stage.transform.position : transform.position, transform);
+        StartCoroutine(DressArena());
     }
+
+    /// <summary>A frame after spawning, once the minigame has built its arena, the place is built around it.</summary>
+    private System.Collections.IEnumerator DressArena()
+    {
+        yield return null;
+        var stage = GameObject.Find("StageCentre") ?? GameObject.Find("Stage");
+        ArenaTheme.Apply(Theme, stage != null ? stage.transform.position : transform.position, transform, LocationGround);
+    }
+
+    /// <summary>Height of the place's ground or water around the arena (null: the studio floor).</summary>
+    protected virtual float? LocationGround => null;
 
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
@@ -221,10 +231,9 @@ public class MinigameController : NetworkBehaviour
     public string VariantName => Variants is { Length: > 1 } variants ? variants[Variant] : null;
 
     /// <summary>
-    /// Where this round's arena is set (<see cref="ArenaTheme"/>): by default the three layouts are the studio, a
-    /// tropical ocean and outer space.
+    /// Where this round's arena is set (<see cref="ArenaTheme"/>): each minigame has its own places, one per layout.
     /// </summary>
-    public virtual ArenaThemeKind Theme => Variants is { Length: >= 3 } ? (ArenaThemeKind)(Variant % 3) : ArenaThemeKind.Studio;
+    public virtual ArenaThemeKind Theme => ArenaTheme.For(gameObject.scene.name, Variant);
 
     #endregion
 

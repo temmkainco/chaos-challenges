@@ -10,25 +10,43 @@ public class ChaosEffects : MonoBehaviour
 {
     private Light _sun;
     private float _sunIntensity = -1f;
-    private Color _ambient;
+    private Color _ambient, _ambientMid, _ambientLow;
+    private float _dim;
     private float _currentScale = 1f;
+
+    private static Light FindSun()
+    {
+        foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            if (light.type == LightType.Directional) return light;
+        return null;
+    }
 
     private void Update()
     {
         var controller = MinigameController.Current;
         var chaos = controller != null && controller.Object != null && controller.Object.IsValid ? controller.ActiveChaos : ChaosModifier.None;
 
-        // Blackout: fade the sun and ambient light down, back up afterwards.
-        if (_sun == null)
+        // Blackout: fade the sun and ambient light down, back up afterwards. The light is read when the blackout starts
+        // (each arena's place sets its own) and left alone otherwise.
+        bool blackout = chaos == ChaosModifier.Blackout;
+        if (blackout && _sunIntensity < 0f)
         {
-            _sun = RenderSettings.sun != null ? RenderSettings.sun : FindFirstObjectByType<Light>();
-            if (_sun != null) { _sunIntensity = _sun.intensity; _ambient = RenderSettings.ambientLight; }
+            _sun = RenderSettings.sun != null ? RenderSettings.sun : FindSun();
+            _sunIntensity = _sun != null ? _sun.intensity : 0f;
+            _ambient = RenderSettings.ambientSkyColor;
+            _ambientMid = RenderSettings.ambientEquatorColor;
+            _ambientLow = RenderSettings.ambientGroundColor;
+            _dim = 0f;
         }
-        if (_sun != null && _sunIntensity >= 0f)
+        if (_sunIntensity >= 0f)
         {
-            float target = chaos == ChaosModifier.Blackout ? _sunIntensity * 0.3f : _sunIntensity;   // dark, but the arena stays readable
-            _sun.intensity = Mathf.MoveTowards(_sun.intensity, target, Time.deltaTime * _sunIntensity * 1.5f);
-            RenderSettings.ambientLight = Color.Lerp(RenderSettings.ambientLight, chaos == ChaosModifier.Blackout ? _ambient * 0.45f : _ambient, Time.deltaTime * 3f);
+            _dim = Mathf.MoveTowards(_dim, blackout ? 1f : 0f, Time.deltaTime * 1.5f);
+            if (_sun != null) _sun.intensity = _sunIntensity * Mathf.Lerp(1f, 0.3f, _dim);   // dark, but the arena stays readable
+            float ambient = Mathf.Lerp(1f, 0.45f, _dim);
+            RenderSettings.ambientSkyColor = _ambient * ambient;
+            RenderSettings.ambientEquatorColor = _ambientMid * ambient;
+            RenderSettings.ambientGroundColor = _ambientLow * ambient;
+            if (!blackout && _dim <= 0f) _sunIntensity = -1f;   // back to normal
         }
 
         // Giants / tiny: scale every contestant's model (the collider stays, so gameplay is unchanged).
@@ -45,6 +63,12 @@ public class ChaosEffects : MonoBehaviour
     private void OnDestroy()
     {
         if (_sun != null && _sunIntensity >= 0f) _sun.intensity = _sunIntensity;
+        if (_sunIntensity >= 0f)
+        {
+            RenderSettings.ambientSkyColor = _ambient;
+            RenderSettings.ambientEquatorColor = _ambientMid;
+            RenderSettings.ambientGroundColor = _ambientLow;
+        }
     }
 
     /// <summary>A meteor: pulsing warning ring for <paramref name="warning"/> seconds, then the rock drops and bursts.</summary>

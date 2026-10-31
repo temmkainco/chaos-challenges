@@ -15,135 +15,664 @@ MonoBehaviour:
   _entries:
   - Key: ToyCar
     Prefab: {fileID: 2468312258021884094, guid: f7795ef49a32a1f448876d068cee1ab1, type: 3}
+    Linear: 0
   - Key: Hoop
     Prefab: {fileID: 7958227791878072094, guid: 761e24fa02fc69e4e949b9f5547dc4e2, type: 3}
+    Linear: 0
   - Key: Hoop2
     Prefab: {fileID: 2235547989614563291, guid: b867725f0364de34fbd8a2984d047cb8, type: 3}
+    Linear: 0
   - Key: Hoop3
     Prefab: {fileID: 7323692442540816446, guid: 38fc058efd0077047ae14b565f48d406, type: 3}
+    Linear: 0
   - Key: BrickPlate
     Prefab: {fileID: 6157252903731777712, guid: d54f30e32b931eb4c94f7b6c229366e4, type: 3}
+    Linear: 0
   - Key: Brick2
     Prefab: {fileID: 968627158428583836, guid: 2d915f7561753534ab37d9a11bfd61ef, type: 3}
+    Linear: 0
   - Key: BrickLong
     Prefab: {fileID: 7738233885785823157, guid: ec904b823e5ad03418510c29ffd927de, type: 3}
+    Linear: 0
   - Key: Brick4
     Prefab: {fileID: 8757509200689261577, guid: 2e93d5fa678210c48bae8e7cdad4e9e6, type: 3}
+    Linear: 0
   - Key: BrickTall
     Prefab: {fileID: 6366195323449610519, guid: 8a5617a53643f1f428c48c2cd06de91e, type: 3}
+    Linear: 0
   - Key: Brick6
     Prefab: {fileID: 6798050338677992578, guid: 72fa29b1e4f69614ba3f04815d7dc643, type: 3}
+    Linear: 0
   - Key: Brick8
     Prefab: {fileID: 2081725533470585214, guid: 2f40e7152dcb17f479adef26a07e2e21, type: 3}
+    Linear: 0
   - Key: RoadStraight
     Prefab: {fileID: 7546371180376575364, guid: 69b6afc22a2bf5143bb43500f6fdc949, type: 3}
+    Linear: 0
   - Key: RoadCorner
     Prefab: {fileID: 6241708434642177863, guid: a123fb8bf915c794da2bea3edfebe933, type: 3}
+    Linear: 0
   - Key: RoadFree
     Prefab: {fileID: 3301257244871238459, guid: bbf6aaa394158294db5535dd05892380, type: 3}
+    Linear: 0
   - Key: Cone
     Prefab: {fileID: 5562890943874257140, guid: b5ec79143a507e74d878f65422c4f863, type: 3}
+    Linear: 0
   - Key: Log
     Prefab: {fileID: 1067067477924061449, guid: 83fd8f54f429a8b499c70dc6be351a61, type: 3}
+    Linear: 0
   - Key: Crate
     Prefab: {fileID: 8408592595719101861, guid: 7c0be212a310e324d9f1c3d0a9ab5182, type: 3}
+    Linear: 0
   - Key: Rock
     Prefab: {fileID: 4016154500641946441, guid: 5058420d97eab5b4bbeb3541905be3e8, type: 3}
+    Linear: 0
   - Key: Bush
     Prefab: {fileID: 2375285377662970038, guid: befc3921877d7224e9e2f6d593627c29, type: 3}
+    Linear: 0
   - Key: WoodFence
     Prefab: {fileID: 6496949655311063091, guid: c754dcd1fe6a015409569af86c7c1863, type: 3}
+    Linear: 0
   - Key: Grass
     Prefab: {fileID: 2046764804822347112, guid: e41f2185f1c11a8409ff3cd219f789a1, type: 3}
+    Linear: 0
   - Key: Door
     Prefab: {fileID: 919132149155446097, guid: 55b92e85646891844ad07805e6c18415, type: 3}
+    Linear: 0
   - Key: Tower
     Prefab: {fileID: 919132149155446097, guid: 56aedf836c4360b488a4aaac749eca5d, type: 3}
+    Linear: 0
   - Key: SpikyRoller
     Prefab: {fileID: 919132149155446097, guid: 2dfd764ee54eac649a8cac7afe0a9fe1, type: 3}
+    Linear: 0
   - Key: Saw
     Prefab: {fileID: 919132149155446097, guid: 46cb106cfea37214baabf19ed93705ba, type: 3}
+    Linear: 0
   - Key: Bouncer
     Prefab: {fileID: 919132149155446097, guid: ea6873464318d3945a7d808ebafe1581, type: 3}
+    Linear: 0
   - Key: Flag
     Prefab: {fileID: 919132149155446097, guid: adb74f47ef94a084285edb69bd29f9d9, type: 3}
+    Linear: 0
   - Key: Bridge
     Prefab: {fileID: 919132149155446097, guid: 5106b09a7053f374b940d55808a34c9d, type: 3}
+    Linear: 0
   - Key: SpikyBall
     Prefab: {fileID: 919132149155446097, guid: c1a701f59bb78c342b8b06e0b3ee0dad, type: 3}
+    Linear: 0
   - Key: SteeringWheel
     Prefab: {fileID: 2734429954931301448, guid: eddfbf3e0c17d7b4fa015e69cd558c23, type: 3}
+    Linear: 0
   - Key: Wheel
     Prefab: {fileID: 7804432928702270659, guid: da67bce8f48647a489a13e575f30dccc, type: 3}
+    Linear: 0
   - Key: Kart0
     Prefab: {fileID: 919132149155446097, guid: c363b91e1eae49a439a9e37dae34dbe9, type: 3}
+    Linear: 0
   - Key: Kart1
     Prefab: {fileID: 919132149155446097, guid: 88b5ee758c588504082d26eab594ceb4, type: 3}
+    Linear: 0
   - Key: Kart2
     Prefab: {fileID: 919132149155446097, guid: 595634dec827e24429ce9ecb1602b4ee, type: 3}
+    Linear: 0
   - Key: Kart3
     Prefab: {fileID: 919132149155446097, guid: 4ae23f8b7a2f0014e8d4c74635ba8e65, type: 3}
+    Linear: 0
   - Key: Kart4
     Prefab: {fileID: 919132149155446097, guid: e740817a8ccc88b4aacfc492fc335538, type: 3}
+    Linear: 0
   - Key: Formula
     Prefab: {fileID: 919132149155446097, guid: 764287211446b57429598b5ade8461a9, type: 3}
+    Linear: 0
   - Key: ItemBox
     Prefab: {fileID: 919132149155446097, guid: 890d72e801badc54a9f7edf81a85c1c5, type: 3}
+    Linear: 0
   - Key: Banana
     Prefab: {fileID: 919132149155446097, guid: d527dad75bc1250488c683d6ac93823b, type: 3}
+    Linear: 0
   - Key: GateFinish
     Prefab: {fileID: 919132149155446097, guid: 0fa02192c4d51a24682e25d705ebb4b3, type: 3}
+    Linear: 0
   - Key: TrackStraight
     Prefab: {fileID: 919132149155446097, guid: 8054a0070ea6d7347927daacb0ee0cf6, type: 3}
+    Linear: 1
   - Key: TrackCorner
     Prefab: {fileID: 919132149155446097, guid: 24be21f8a2b75384c962cd7765e7f70d, type: 3}
+    Linear: 1
   - Key: BarrierWall
     Prefab: {fileID: 919132149155446097, guid: f26f1a777001a0d41992e366da8ff369, type: 3}
+    Linear: 1
   - Key: BarrierRed
     Prefab: {fileID: 919132149155446097, guid: 3b1c89fd4b811224384f72150f50d5e9, type: 3}
+    Linear: 1
   - Key: GrandStand
     Prefab: {fileID: 919132149155446097, guid: 6d0d2621028760647ada9128af8bee78, type: 3}
+    Linear: 1
   - Key: OverheadLights
     Prefab: {fileID: 919132149155446097, guid: 096766eee5803544cbab7fcf4d4581ca, type: 3}
+    Linear: 1
   - Key: FlagCheckers
     Prefab: {fileID: 919132149155446097, guid: 544df5bf93bdd184aaa50e3cc0fe02ab, type: 3}
+    Linear: 1
   - Key: ShipSmall
     Prefab: {fileID: 919132149155446097, guid: 40861062f3785c24390e47d07efd7192, type: 3}
+    Linear: 0
   - Key: ShipLarge
     Prefab: {fileID: 919132149155446097, guid: 8fedd936b21e4df439963463270e8c48, type: 3}
+    Linear: 0
   - Key: ShipWreck
     Prefab: {fileID: 919132149155446097, guid: aa54dcc1c8a922b4386698bf8af60ef0, type: 3}
+    Linear: 0
   - Key: SandPatch
     Prefab: {fileID: 919132149155446097, guid: e62d79b5e89f9304495963da0e5790b4, type: 3}
+    Linear: 0
   - Key: GrassPatch
     Prefab: {fileID: 919132149155446097, guid: 98d658efeef4b3d4596f5715138e3552, type: 3}
+    Linear: 0
   - Key: Palm
     Prefab: {fileID: 919132149155446097, guid: cd1e968c00f27ee47bb1da54e32427b6, type: 3}
+    Linear: 0
   - Key: PalmStraight
     Prefab: {fileID: 919132149155446097, guid: fd456db89d5e1f642b8ac4dafdc3cd56, type: 3}
+    Linear: 0
   - Key: Planks
     Prefab: {fileID: 919132149155446097, guid: 7f52f13e61960ab40a448063650bae9c, type: 3}
+    Linear: 0
   - Key: Dock
     Prefab: {fileID: 919132149155446097, guid: af17c0a1f27e7234cb0d48b003478034, type: 3}
+    Linear: 0
   - Key: RocksSand
     Prefab: {fileID: 919132149155446097, guid: b6b52578d28039e40a493b420b3de3c8, type: 3}
+    Linear: 0
   - Key: Barrel
     Prefab: {fileID: 919132149155446097, guid: 3700939956bb380499cbff763132c8e9, type: 3}
+    Linear: 0
   - Key: PirateCannon
     Prefab: {fileID: 919132149155446097, guid: 8213cb4ae1ce4cd49affd5afa38f3868, type: 3}
+    Linear: 0
   - Key: Speeder
     Prefab: {fileID: 919132149155446097, guid: 73dc9a500760e6d41ab0206404862e16, type: 3}
+    Linear: 1
   - Key: Racer
     Prefab: {fileID: 919132149155446097, guid: d223154f8937a414f86d9c5a694cf27c, type: 3}
+    Linear: 1
   - Key: Meteor
     Prefab: {fileID: 919132149155446097, guid: 052be0bb7c849b644936459dee166ceb, type: 3}
+    Linear: 1
   - Key: SpaceGate
     Prefab: {fileID: 919132149155446097, guid: 12b3bdbe91521354fbeaaf0b56fa1516, type: 3}
+    Linear: 1
   - Key: SpacePlatform
     Prefab: {fileID: 919132149155446097, guid: 4b5b3680edf62a74199336494c3d76c0, type: 3}
+    Linear: 1
   - Key: Crater
     Prefab: {fileID: 919132149155446097, guid: 47ab7c9314d997d479f133c291ad9222, type: 3}
+    Linear: 1
   - Key: Hangar
     Prefab: {fileID: 919132149155446097, guid: e23a61b69ecebd8498ed7ad739da71ba, type: 3}
+    Linear: 1
   - Key: Rocket
     Prefab: {fileID: 919132149155446097, guid: c0aad5e72318a6443b988f3e49a8535e, type: 3}
+    Linear: 1
+  - Key: CastleWall
+    Prefab: {fileID: 919132149155446097, guid: a0152e2b05d28ad4c88422174b08af89, type: 3}
+    Linear: 0
+  - Key: CastleWallCorner
+    Prefab: {fileID: 919132149155446097, guid: 041050209e5ca2c4d914dacb66920596, type: 3}
+    Linear: 0
+  - Key: CastleTower
+    Prefab: {fileID: 919132149155446097, guid: fedf2f4e186d14e4d8ea80b75b4e43eb, type: 3}
+    Linear: 0
+  - Key: CastleTowerHex
+    Prefab: {fileID: 919132149155446097, guid: 5566f33349ac3a24dbb6ad79b58ee48a, type: 3}
+    Linear: 0
+  - Key: CastleTowerHexMid
+    Prefab: {fileID: 919132149155446097, guid: 9de50948ff958924d96a7cbfeace56f5, type: 3}
+    Linear: 0
+  - Key: CastleTowerHexRoof
+    Prefab: {fileID: 919132149155446097, guid: b70f55a4834830743888d5f08d3b91e7, type: 3}
+    Linear: 0
+  - Key: CastleGate
+    Prefab: {fileID: 919132149155446097, guid: c3551cddb224a944eb324bee2a623093, type: 3}
+    Linear: 0
+  - Key: CastleBanner
+    Prefab: {fileID: 919132149155446097, guid: 66ac6c06d52a966499bbd1694c95144a, type: 3}
+    Linear: 0
+  - Key: CastleFlag
+    Prefab: {fileID: 919132149155446097, guid: 78aeecc84751c8f40805baae332ed6ed, type: 3}
+    Linear: 0
+  - Key: Catapult
+    Prefab: {fileID: 919132149155446097, guid: 30cd29ed392aeb243929de6e8c84f2e8, type: 3}
+    Linear: 0
+  - Key: Trebuchet
+    Prefab: {fileID: 919132149155446097, guid: e87d1617da913834a90b164122615a3a, type: 3}
+    Linear: 0
+  - Key: SiegeTower
+    Prefab: {fileID: 919132149155446097, guid: c1176fbbc7c678c459c8c525e88100d0, type: 3}
+    Linear: 0
+  - Key: CastleTree
+    Prefab: {fileID: 919132149155446097, guid: 7671e7061bd82184f9c6249d0e41c738, type: 3}
+    Linear: 0
+  - Key: CastleRocks
+    Prefab: {fileID: 919132149155446097, guid: bde64d25f38bcb748a97f9119d13e5f8, type: 3}
+    Linear: 0
+  - Key: CastleHills
+    Prefab: {fileID: 919132149155446097, guid: 17e71290791f9124eacd50074de294d2, type: 3}
+    Linear: 0
+  - Key: Snowman
+    Prefab: {fileID: 919132149155446097, guid: 09c513622f875204fbb615d1a3462add, type: 3}
+    Linear: 0
+  - Key: TreeSnowA
+    Prefab: {fileID: 919132149155446097, guid: 7ac5451bab777474fa92e6db0e45f612, type: 3}
+    Linear: 0
+  - Key: TreeSnowB
+    Prefab: {fileID: 919132149155446097, guid: 0868f375a8bfcac40955033424a81f89, type: 3}
+    Linear: 0
+  - Key: TreeSnowC
+    Prefab: {fileID: 919132149155446097, guid: 694b92da55ddec242b070b3d58912e7c, type: 3}
+    Linear: 0
+  - Key: TreeXmas
+    Prefab: {fileID: 919132149155446097, guid: ad8f0a624cdef9a40a9cb06a4a0f9b4a, type: 3}
+    Linear: 0
+  - Key: Present
+    Prefab: {fileID: 919132149155446097, guid: 144b3be3152a009499af621aefd425e0, type: 3}
+    Linear: 0
+  - Key: PresentRound
+    Prefab: {fileID: 919132149155446097, guid: 21502c77a760d0e4a8644e23ff8a157f, type: 3}
+    Linear: 0
+  - Key: PresentLong
+    Prefab: {fileID: 919132149155446097, guid: 12b2f2a7eeea2494fa3bbf6dac1bb255, type: 3}
+    Linear: 0
+  - Key: CandyCane
+    Prefab: {fileID: 919132149155446097, guid: 6f882641c8b181f4cafc9f55fe396d2c, type: 3}
+    Linear: 0
+  - Key: CandyCaneG
+    Prefab: {fileID: 919132149155446097, guid: f6c424ae2d988db4db29607e891b1b89, type: 3}
+    Linear: 0
+  - Key: Reindeer
+    Prefab: {fileID: 919132149155446097, guid: 81ebef84a1bf924448df528ddec1ec6b, type: 3}
+    Linear: 0
+  - Key: Sled
+    Prefab: {fileID: 919132149155446097, guid: 77712497d85d0c34c870744e8e4ee6e1, type: 3}
+    Linear: 0
+  - Key: SnowPile
+    Prefab: {fileID: 919132149155446097, guid: 8a912369c9d7bb64f87da952e9a67748, type: 3}
+    Linear: 0
+  - Key: SnowBunker
+    Prefab: {fileID: 919132149155446097, guid: 213e9749c55d80d4189e492b37c3f093, type: 3}
+    Linear: 0
+  - Key: Locomotive
+    Prefab: {fileID: 919132149155446097, guid: 9340ab0c76114a64bb4c7f977d195d9c, type: 3}
+    Linear: 0
+  - Key: Wagon
+    Prefab: {fileID: 919132149155446097, guid: 051085f3a5a41394384081f50caeb2ab, type: 3}
+    Linear: 0
+  - Key: HolidayLantern
+    Prefab: {fileID: 919132149155446097, guid: 54f4dedfb8482e74c89a3df9b79f6401, type: 3}
+    Linear: 0
+  - Key: Nutcracker
+    Prefab: {fileID: 919132149155446097, guid: 5dd9a26e39ee1254096f0d602b5033eb, type: 3}
+    Linear: 0
+  - Key: Gingerbread
+    Prefab: {fileID: 919132149155446097, guid: 83392fd0056b87b48bb61b6c24b9f4ea, type: 3}
+    Linear: 0
+  - Key: HolidayRocks
+    Prefab: {fileID: 919132149155446097, guid: 8cab8c486c290d243a8ab88d7ee1771c, type: 3}
+    Linear: 0
+  - Key: Crypt
+    Prefab: {fileID: 919132149155446097, guid: 7791d756534379442bd5c3c9793c48df, type: 3}
+    Linear: 0
+  - Key: CryptSmall
+    Prefab: {fileID: 919132149155446097, guid: cc75eb61c2a5a9c438d966bd60fdfe9f, type: 3}
+    Linear: 0
+  - Key: GraveCross
+    Prefab: {fileID: 919132149155446097, guid: 05c962d126624cd46b30a20046d621d5, type: 3}
+    Linear: 0
+  - Key: GraveRound
+    Prefab: {fileID: 919132149155446097, guid: 8eda1a9d4e004ff4da9d1719a20e6e46, type: 3}
+    Linear: 0
+  - Key: GraveDeco
+    Prefab: {fileID: 919132149155446097, guid: 143808ea5967bf04ca345d35a97e5098, type: 3}
+    Linear: 0
+  - Key: GraveBroken
+    Prefab: {fileID: 919132149155446097, guid: ba6a5fe9a3d8543418d79cb00326722b, type: 3}
+    Linear: 0
+  - Key: IronFence
+    Prefab: {fileID: 919132149155446097, guid: 1f2c12eafc6abaf4da1b37dd994b1365, type: 3}
+    Linear: 0
+  - Key: Pumpkin
+    Prefab: {fileID: 919132149155446097, guid: ec784c9ab66ce534aba30ae45eb124e9, type: 3}
+    Linear: 0
+  - Key: PumpkinTall
+    Prefab: {fileID: 919132149155446097, guid: d92ba70f0e51a0a438844cd7fb58b9fa, type: 3}
+    Linear: 0
+  - Key: DeadPine
+    Prefab: {fileID: 919132149155446097, guid: ea7f756321f181846998fa4d8db86854, type: 3}
+    Linear: 0
+  - Key: DeadPine2
+    Prefab: {fileID: 919132149155446097, guid: 7eb76e298b22639408eed38d63b7a2fc, type: 3}
+    Linear: 0
+  - Key: Lightpost
+    Prefab: {fileID: 919132149155446097, guid: ba3036b46df736549a9ced25af8906e2, type: 3}
+    Linear: 0
+  - Key: FireBasket
+    Prefab: {fileID: 919132149155446097, guid: 19bb9ec3285bf2840a01ecffff4ae485, type: 3}
+    Linear: 0
+  - Key: Ghost
+    Prefab: {fileID: 919132149155446097, guid: 71db1612a229840449cec05060f7b19a, type: 3}
+    Linear: 0
+  - Key: Skeleton
+    Prefab: {fileID: 919132149155446097, guid: 3ad9d34ecf4366e4bbc5415778b73e0e, type: 3}
+    Linear: 0
+  - Key: Zombie
+    Prefab: {fileID: 919132149155446097, guid: b095ae5df79dcfa41825baec9a0a8a5f, type: 3}
+    Linear: 0
+  - Key: Coffin
+    Prefab: {fileID: 919132149155446097, guid: d3a3c15820044604ebf3c34ede4bd59e, type: 3}
+    Linear: 0
+  - Key: Obelisk
+    Prefab: {fileID: 919132149155446097, guid: 943e9f1c9a20a03409c93e57b37ce386, type: 3}
+    Linear: 0
+  - Key: RocksTall
+    Prefab: {fileID: 919132149155446097, guid: eacbfc869b57a184ab323dfaf7f443e3, type: 3}
+    Linear: 0
+  - Key: StoneWall
+    Prefab: {fileID: 919132149155446097, guid: e8382179583e9d94bb1ac7d1d38323a5, type: 3}
+    Linear: 0
+  - Key: TreeOak
+    Prefab: {fileID: 919132149155446097, guid: c621d780a9ec14341b6fdbe96d525f18, type: 3}
+    Linear: 1
+  - Key: TreeDetailed
+    Prefab: {fileID: 919132149155446097, guid: 0dce73921110220449dee311775ce010, type: 3}
+    Linear: 1
+  - Key: TreeFat
+    Prefab: {fileID: 919132149155446097, guid: b48a8c9837f4ef04eb99f886cdb1f7bc, type: 3}
+    Linear: 1
+  - Key: TreePineTall
+    Prefab: {fileID: 919132149155446097, guid: d04da0dd518fa6649a0d9803d314f93b, type: 3}
+    Linear: 1
+  - Key: TreePineRound
+    Prefab: {fileID: 919132149155446097, guid: 92a38eb6f10085247a174f910ac3b131, type: 3}
+    Linear: 1
+  - Key: TreeFall
+    Prefab: {fileID: 919132149155446097, guid: 9820506350289f04eae669465fe6abc6, type: 3}
+    Linear: 1
+  - Key: TreeDark
+    Prefab: {fileID: 919132149155446097, guid: 74c7d88ca8135504daf22219ea3fcbd2, type: 3}
+    Linear: 1
+  - Key: Cliff
+    Prefab: {fileID: 919132149155446097, guid: 51a5c115dfbc8304d9852ebd604404d2, type: 3}
+    Linear: 1
+  - Key: CliffStone
+    Prefab: {fileID: 919132149155446097, guid: 2808e4061c9267f4fad8cbc408aa0158, type: 3}
+    Linear: 1
+  - Key: CliffBlock
+    Prefab: {fileID: 919132149155446097, guid: d38dfc181f3f0924092c287d67738e75, type: 3}
+    Linear: 1
+  - Key: Waterfall
+    Prefab: {fileID: 919132149155446097, guid: 213f2f7c2719ca24ea6f260906659a08, type: 3}
+    Linear: 1
+  - Key: StoneTall
+    Prefab: {fileID: 919132149155446097, guid: 80961f38c407375448d5241a810eeb63, type: 3}
+    Linear: 1
+  - Key: StoneTall2
+    Prefab: {fileID: 919132149155446097, guid: af0bae9788ec6b849bbde1444c7fe9dc, type: 3}
+    Linear: 1
+  - Key: RockLarge
+    Prefab: {fileID: 919132149155446097, guid: 493e72b7e0d758d488795b9cc55f0417, type: 3}
+    Linear: 1
+  - Key: RockLarge2
+    Prefab: {fileID: 919132149155446097, guid: 1348ee129fbbc664abae38088079dae3, type: 3}
+    Linear: 1
+  - Key: Mushrooms
+    Prefab: {fileID: 919132149155446097, guid: 09e6b49eeb9f44e4386887aee0f5b385, type: 3}
+    Linear: 1
+  - Key: MushroomTall
+    Prefab: {fileID: 919132149155446097, guid: d22047ec5b3978148a1c53b4f1cb6df8, type: 3}
+    Linear: 1
+  - Key: FlowerRed
+    Prefab: {fileID: 919132149155446097, guid: aa98fa6c0d6fc8947b430c9dcc3e05a0, type: 3}
+    Linear: 1
+  - Key: FlowerYellow
+    Prefab: {fileID: 919132149155446097, guid: 20f111f835cab0b44841aba55501422f, type: 3}
+    Linear: 1
+  - Key: FlowerPurple
+    Prefab: {fileID: 919132149155446097, guid: a27c9bd77f8186440acab5ca5d2ce4c2, type: 3}
+    Linear: 1
+  - Key: GrassTuft
+    Prefab: {fileID: 919132149155446097, guid: ec630dbc36c4b004380b1e047180e0af, type: 3}
+    Linear: 1
+  - Key: BushBig
+    Prefab: {fileID: 919132149155446097, guid: 88928a03c5bc7e841903691a8fe6f22d, type: 3}
+    Linear: 1
+  - Key: Campfire
+    Prefab: {fileID: 919132149155446097, guid: 9ec0ef7d5764aa041a4b61869c1274d9, type: 3}
+    Linear: 1
+  - Key: Tent
+    Prefab: {fileID: 919132149155446097, guid: 39cdca5558e81134d8ac9d35ce555293, type: 3}
+    Linear: 1
+  - Key: Canoe
+    Prefab: {fileID: 919132149155446097, guid: f97e2f808dbc13641b20008d8d2c9e2e, type: 3}
+    Linear: 1
+  - Key: LogStack
+    Prefab: {fileID: 919132149155446097, guid: ad91bfe1f6b3dbc4090897e4b8518a35, type: 3}
+    Linear: 1
+  - Key: WoodBridge
+    Prefab: {fileID: 919132149155446097, guid: a0bd2765fbc56a44ebeca44d7db201a5, type: 3}
+    Linear: 1
+  - Key: Lily
+    Prefab: {fileID: 919132149155446097, guid: 31a1c3efcad086841bc05cb6d4654c06, type: 3}
+    Linear: 1
+  - Key: Cactus
+    Prefab: {fileID: 919132149155446097, guid: c877a441cd6b1934eb9a2c6e1e2c937c, type: 3}
+    Linear: 1
+  - Key: StatueHead
+    Prefab: {fileID: 919132149155446097, guid: 37e31ad2718c02a4ea2b57aac7caa409, type: 3}
+    Linear: 1
+  - Key: StatueColumn
+    Prefab: {fileID: 919132149155446097, guid: 3fe7d6389cff0714285bf0a16935aadc, type: 3}
+    Linear: 1
+  - Key: Fountain
+    Prefab: {fileID: 919132149155446097, guid: f725631d09debed4f9eb3c15243383e5, type: 3}
+    Linear: 0
+  - Key: Windmill
+    Prefab: {fileID: 919132149155446097, guid: 370fd8b642842ce4196170b70984cd2d, type: 3}
+    Linear: 0
+  - Key: Watermill
+    Prefab: {fileID: 919132149155446097, guid: dbf8f006e1fc4a54db1d89df31909480, type: 3}
+    Linear: 0
+  - Key: StallRed
+    Prefab: {fileID: 919132149155446097, guid: 330f8707685685b45a528b99802da750, type: 3}
+    Linear: 0
+  - Key: StallGreen
+    Prefab: {fileID: 919132149155446097, guid: d8b235d8b91e25e418d4d57e86d51f65, type: 3}
+    Linear: 0
+  - Key: Cart
+    Prefab: {fileID: 919132149155446097, guid: eff26c9966c852e4ea0fe8f10b3b2171, type: 3}
+    Linear: 0
+  - Key: TownLantern
+    Prefab: {fileID: 919132149155446097, guid: 9edc885e0d7a65a478fd32365e7093ad, type: 3}
+    Linear: 0
+  - Key: Hedge
+    Prefab: {fileID: 919132149155446097, guid: df4600ddce402694ca6f55dc769f25fb, type: 3}
+    Linear: 0
+  - Key: BannerRed
+    Prefab: {fileID: 919132149155446097, guid: bed2d86c896140b45af2b5a3dbdfa100, type: 3}
+    Linear: 0
+  - Key: TownTree
+    Prefab: {fileID: 919132149155446097, guid: e956328413c613c479efb3ca2874772c, type: 3}
+    Linear: 0
+  - Key: House1
+    Prefab: {fileID: 6045110163862441004, guid: fe3b2a494e25ed94fb3ba66807a29c88, type: 3}
+    Linear: 0
+  - Key: House2
+    Prefab: {fileID: 4976880366369161607, guid: 454d6dc1f7e4a464e99f2204dd95c9f0, type: 3}
+    Linear: 0
+  - Key: House3
+    Prefab: {fileID: 2661994169556932180, guid: 0972cd229ac9d20489bbc3a57a51be46, type: 3}
+    Linear: 0
+  - Key: Shop
+    Prefab: {fileID: 1360468252654966213, guid: 47589020b1f8f044082bb38c7f20a651, type: 3}
+    Linear: 0
+  - Key: Shop2
+    Prefab: {fileID: 650591154451796056, guid: 459bf6bc825ea9845822408053e0b7aa, type: 3}
+    Linear: 0
+  - Key: FarmHouse
+    Prefab: {fileID: 167982683308031783, guid: 77d6fa167b9dd4f4aa91eec897b956f3, type: 3}
+    Linear: 0
+  - Key: Barn
+    Prefab: {fileID: 8371394403700878939, guid: 62c0240cc3fc4c143a97d1592b939b05, type: 3}
+    Linear: 0
+  - Key: FarmMill
+    Prefab: {fileID: 3314656766657741337, guid: 6c20b91f6f25ebb499766bb0be6b5f8a, type: 3}
+    Linear: 0
+  - Key: Silo
+    Prefab: {fileID: 2767556043273380635, guid: bc0f28e5bc04ef54a9b56ebeae78ac48, type: 3}
+    Linear: 0
+  - Key: Donut
+    Prefab: {fileID: 919132149155446097, guid: 6bb04c2fffa956048bc1f83f8245ccc3, type: 3}
+    Linear: 0
+  - Key: Cupcake
+    Prefab: {fileID: 919132149155446097, guid: 91749ae5c0dddd543bf98de512b3fc88, type: 3}
+    Linear: 0
+  - Key: Cake
+    Prefab: {fileID: 919132149155446097, guid: 9205d796335257e40a3c472d90c5eec3, type: 3}
+    Linear: 0
+  - Key: IceCream
+    Prefab: {fileID: 919132149155446097, guid: df367b5ef01d6de4aadd5b06f9f0b088, type: 3}
+    Linear: 0
+  - Key: Lollypop
+    Prefab: {fileID: 919132149155446097, guid: c0b024676944c674dbf4d09b188e65e5, type: 3}
+    Linear: 0
+  - Key: Popsicle
+    Prefab: {fileID: 919132149155446097, guid: b884d53c372e7e146be71672a3b50ec5, type: 3}
+    Linear: 0
+  - Key: Cookie
+    Prefab: {fileID: 919132149155446097, guid: 8df4985cf9801594ca5ec7fe30a1c5d5, type: 3}
+    Linear: 0
+  - Key: Sundae
+    Prefab: {fileID: 919132149155446097, guid: 27ec7e39552bc5c4084c3a37af44a3ca, type: 3}
+    Linear: 0
+  - Key: Pancakes
+    Prefab: {fileID: 919132149155446097, guid: d610bb200c7f6b1449abe4bd5d4777ce, type: 3}
+    Linear: 0
+  - Key: Watermelon
+    Prefab: {fileID: 919132149155446097, guid: bb7f5200a95cbec438c431db1b585633, type: 3}
+    Linear: 0
+  - Key: Cherries
+    Prefab: {fileID: 919132149155446097, guid: a699ef62e1255fa408a5fa0cb8164c15, type: 3}
+    Linear: 0
+  - Key: Strawberry
+    Prefab: {fileID: 919132149155446097, guid: 6cb6d672625cfd14c9265642a3fac1ed, type: 3}
+    Linear: 0
+  - Key: Muffin
+    Prefab: {fileID: 919132149155446097, guid: 40c1d56364aa71e4589923d430196684, type: 3}
+    Linear: 0
+  - Key: Burger
+    Prefab: {fileID: 919132149155446097, guid: 968981f45a8312a4b9a99576649b0602, type: 3}
+    Linear: 0
+  - Key: Croissant
+    Prefab: {fileID: 919132149155446097, guid: f203624c837379a4bb2e13b181531bbf, type: 3}
+    Linear: 0
+  - Key: Apple
+    Prefab: {fileID: 919132149155446097, guid: 8a9e98384e77da3409a4869c4aff248e, type: 3}
+    Linear: 0
+  - Key: SkyBlock
+    Prefab: {fileID: 919132149155446097, guid: c652868322386934a9df555853160458, type: 3}
+    Linear: 0
+  - Key: SkyBlockTall
+    Prefab: {fileID: 919132149155446097, guid: 6d6e187df8d272a4c8d7aee47b11c69d, type: 3}
+    Linear: 0
+  - Key: SkyBlockHex
+    Prefab: {fileID: 919132149155446097, guid: 49e7614ab49bc55498f6380425274a44, type: 3}
+    Linear: 0
+  - Key: SkyBlockSnow
+    Prefab: {fileID: 919132149155446097, guid: d6cbe84f7255e40408fa3790bfb657c1, type: 3}
+    Linear: 0
+  - Key: Coin
+    Prefab: {fileID: 919132149155446097, guid: dcf472dd0fdab2c419ad20092b5b7afb, type: 3}
+    Linear: 0
+  - Key: Star
+    Prefab: {fileID: 919132149155446097, guid: bd31c0021899a3c4e8feb9ea9ebe5e24, type: 3}
+    Linear: 0
+  - Key: Heart
+    Prefab: {fileID: 919132149155446097, guid: 5969f4411c7d55f4390c49865cadf82d, type: 3}
+    Linear: 0
+  - Key: PineSmall
+    Prefab: {fileID: 919132149155446097, guid: 578d6608baccc42458641482751604df, type: 3}
+    Linear: 0
+  - Key: PFTree
+    Prefab: {fileID: 919132149155446097, guid: 9baa668710af79044add9fb584489db8, type: 3}
+    Linear: 0
+  - Key: PFFlag
+    Prefab: {fileID: 919132149155446097, guid: 1e75c28f75ccfc8438e79d89ee74d6fd, type: 3}
+    Linear: 0
+  - Key: Chest
+    Prefab: {fileID: 919132149155446097, guid: 6fe05f19a2cd77046900138249de8176, type: 3}
+    Linear: 0
+  - Key: PitsGarage
+    Prefab: {fileID: 919132149155446097, guid: c37e4d11e2cd19342879508679130251, type: 3}
+    Linear: 1
+  - Key: PitsOffice
+    Prefab: {fileID: 919132149155446097, guid: c0a0c49d0049f4e4096eacd7e59b0d50, type: 3}
+    Linear: 1
+  - Key: Billboard
+    Prefab: {fileID: 919132149155446097, guid: a6ae38bdfd10a8d4eb3ddff4352502cd, type: 3}
+    Linear: 1
+  - Key: BannerTower
+    Prefab: {fileID: 919132149155446097, guid: c5a6ba312423795418d5ccf10540a63c, type: 3}
+    Linear: 1
+  - Key: RaceTent
+    Prefab: {fileID: 919132149155446097, guid: 41a433029716f2b4bac920f9bde3fc19, type: 3}
+    Linear: 1
+  - Key: LightPost
+    Prefab: {fileID: 919132149155446097, guid: c6377d29b6255e244a4d427fa83481af, type: 3}
+    Linear: 1
+  - Key: RaceCar
+    Prefab: {fileID: 919132149155446097, guid: d3d93a45e8da1774b88e4be519cc4591, type: 3}
+    Linear: 1
+  - Key: RaceCar2
+    Prefab: {fileID: 919132149155446097, guid: 90dfa3e6abed0884d851ea4e50d491a9, type: 3}
+    Linear: 1
+  - Key: RaceTree
+    Prefab: {fileID: 919132149155446097, guid: 022899fffe934994cb141d7ae55834e4, type: 3}
+    Linear: 1
+  - Key: GrandStandRound
+    Prefab: {fileID: 919132149155446097, guid: f62cfa6b9e29c054fb6445c3a4b09650, type: 3}
+    Linear: 1
+  - Key: Radar
+    Prefab: {fileID: 919132149155446097, guid: b84d0e8f9d8b5de4abe452137b93d7a6, type: 3}
+    Linear: 1
+  - Key: ArenaColumn
+    Prefab: {fileID: 919132149155446097, guid: 4371e655fa4c74241820e193c3a7da53, type: 3}
+    Linear: 0
+  - Key: ArenaColumnBroken
+    Prefab: {fileID: 919132149155446097, guid: a6e79dbf09c671c4c993b264ea344a6b, type: 3}
+    Linear: 0
+  - Key: ArenaWall
+    Prefab: {fileID: 919132149155446097, guid: dc03ef353e80b064d8a061200e76ce14, type: 3}
+    Linear: 0
+  - Key: ArenaGate
+    Prefab: {fileID: 919132149155446097, guid: c760ddf8827f1af4eb8acf2c3341e9fa, type: 3}
+    Linear: 0
+  - Key: ArenaBanner
+    Prefab: {fileID: 919132149155446097, guid: a44ba4e25d0aa1842a9bdebae9890f97, type: 3}
+    Linear: 0
+  - Key: Statue
+    Prefab: {fileID: 919132149155446097, guid: 2603623c5d6fb544499d256deb36bd65, type: 3}
+    Linear: 0
+  - Key: Trophy
+    Prefab: {fileID: 919132149155446097, guid: 6ddce7ac33ef71b41b8337e4639d9ca8, type: 3}
+    Linear: 0
+  - Key: ArenaStairs
+    Prefab: {fileID: 919132149155446097, guid: d4cd9954f6394234a8ca04c043a203bc, type: 3}
+    Linear: 0
+  - Key: WeaponRack
+    Prefab: {fileID: 919132149155446097, guid: 858164a46562674408908984d609b7fd, type: 3}
+    Linear: 0
+  - Key: Soldier
+    Prefab: {fileID: 919132149155446097, guid: b8ecca8ad9c02f444a7ed5f0862d15b8, type: 3}
+    Linear: 0
+  - Key: ArenaTree
+    Prefab: {fileID: 919132149155446097, guid: 83d6aa75a8b5e3647b59dcf19296fac6, type: 3}
+    Linear: 0

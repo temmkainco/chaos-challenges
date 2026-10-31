@@ -50,15 +50,13 @@ Each round draws one layout for its arena (shown on the rules card as **MAP** an
 | Tail Tag | grab a tail, hold it at the bell | Open Stage · Pillars · Hedges |
 | Door Dash | race through real and fake doors | Classic · Fake Out · Long Hall |
 | Kart Kup | kart race on a race-kit track with item boxes (banana, boost, shockwave) | Grand Prix · Chicane · Esses |
-| Sky Rings | race: fly a speeder through the gates in order | Island Loop · Space Eight · Studio Circuit |
+| Sky Rings | race: fly a speeder through the gates in order | Island Loop · Space Eight · Cloud Circuit |
 
 Vehicles are a movement mode of the contestant (`MinigameController.Vehicle`, `PlayerMovement.Drive/Fly`), so they are predicted and networked like running; `RiderVisual` seats the character in a kart or plane and steers the camera behind it. Points games derive from `ScoreMinigameController`, races from `RaceMinigameController`.
 
-### Themes
+### Locations
 
-Studio arenas are dressed per layout (`MinigameController.Theme`, `ArenaTheme`): by default layout 1 is the studio, layout 2 a tropical ocean with islands and pirate ships, layout 3 outer space. Models come from `ArenaModels` (see `docs/CREDITS.md`).
-
-Scoring: each round awards points by place (ties share the better place); the most points after all rounds wins.
+No minigame is played on a bare stage: every arena is set in a place built around it at load time (`MinigameController.Theme`, `ArenaTheme`), and each game has its own places, one per layout (table `ArenaTheme.ByScene`). The studio set goes; the stage, if the game uses one, is recoloured to fit. Places: pirate cove (ocean, sand islands, ships), castle courtyard (curtain wall, towers, siege engines), snowy village (toy train, decorated tree, snowmen), graveyard at night (crypts, iron fence, lamps), forest valley (campsite, mesas), town square (houses, market, mills), candy land (giant treats, chocolate rivers), sky islands (cloud sea, floating blocks), race circuit (grandstands, pits), colosseum (stands with a crowd), volcano (lava rivers, glowing peaks) and outer space. Each has its own sky gradient, fog, sun and ambient light. Scenery has no colliders and is placed outside the play area, measured from what the game built. Models come from `ArenaModels` (see `docs/CREDITS.md`). The warehouse (Key Hunt), western street (Pistol Round) and sky course (Tilefall) keep their own scenes.
 
 ## Building
 

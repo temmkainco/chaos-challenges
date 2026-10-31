@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 /// <summary>
 /// Prop-pack models used to dress the code-built arenas (Resources/ArenaModels). <see cref="ArenaProps.Skin"/> puts one
@@ -14,12 +15,15 @@ public class ArenaModels : ScriptableObject
     {
         public string Key;
         public GameObject Prefab;
+        [Tooltip("Untextured kit whose colours were authored for gamma space (they import washed out): converted at spawn")]
+        public bool Linear;
     }
 
     [SerializeField] private List<Entry> _entries = new();
 
     private static ArenaModels _instance;
     private Dictionary<string, GameObject> _byKey;
+    private HashSet<string> _linear;
 
     public static ArenaModels Instance => _instance != null ? _instance : _instance = Resources.Load<ArenaModels>("ArenaModels");
 
@@ -28,8 +32,12 @@ public class ArenaModels : ScriptableObject
         if (_byKey == null)
         {
             _byKey = new Dictionary<string, GameObject>();
+            _linear = new HashSet<string>();
             foreach (var entry in _entries)
+            {
                 if (entry.Prefab != null) _byKey[entry.Key] = entry.Prefab;
+                if (entry.Linear) _linear.Add(entry.Key);
+            }
         }
         return _byKey.TryGetValue(key, out var prefab) ? prefab : null;
     }
@@ -48,10 +56,10 @@ public class ArenaModels : ScriptableObject
         var model = Instantiate(prefab, holder);
         model.transform.localPosition = Vector3.zero;
         model.transform.localRotation = Quaternion.identity;
-        foreach (var collider in model.GetComponentsInChildren<Collider>(true)) Destroy(collider);
-        foreach (var body in model.GetComponentsInChildren<Rigidbody>(true)) Destroy(body);
+        foreach (var body in model.GetComponentsInChildren<Rigidbody>(true)) Discard(body);
+        foreach (var collider in model.GetComponentsInChildren<Collider>(true)) Discard(collider);
         var renderers = model.GetComponentsInChildren<Renderer>(true);
-        if (renderers.Length == 0) { Destroy(holder.gameObject); return null; }
+        if (renderers.Length == 0) { Discard(holder.gameObject); return null; }
         var bounds = renderers[0].bounds;
         foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
         var scale = new Vector3(size.x / Mathf.Max(0.001f, bounds.size.x), size.y / Mathf.Max(0.001f, bounds.size.y), size.z / Mathf.Max(0.001f, bounds.size.z));
@@ -61,6 +69,21 @@ public class ArenaModels : ScriptableObject
         holder.SetPositionAndRotation(centre, rotation);
         if (parent != null) holder.SetParent(parent, true);
 
+        if (!tint.HasValue && Instance._linear.Contains(key))
+        {
+            var block = new MaterialPropertyBlock();
+            foreach (var renderer in renderers)
+            {
+                var materials = renderer.sharedMaterials;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    if (materials[i] == null || !materials[i].HasProperty("_BaseColor")) continue;
+                    block.Clear();
+                    block.SetColor("_BaseColor", materials[i].GetColor("_BaseColor").linear);
+                    renderer.SetPropertyBlock(block, i);
+                }
+            }
+        }
         if (tint.HasValue)
         {
             var block = new MaterialPropertyBlock();
@@ -72,5 +95,12 @@ public class ArenaModels : ScriptableObject
             }
         }
         return holder;
+    }
+
+    /// <summary>Destroy, or DestroyImmediate outside play mode (editor previews of the arenas).</summary>
+    public static void Discard(Object target)
+    {
+        if (Application.isPlaying) Destroy(target);
+        else DestroyImmediate(target);
     }
 }

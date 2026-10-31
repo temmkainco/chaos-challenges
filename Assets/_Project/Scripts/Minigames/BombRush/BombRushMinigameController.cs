@@ -88,22 +88,18 @@ public class BombRushMinigameController : MinigameController
                     new Vector3(1.3f, 1.3f, 1.3f), ArenaProps.Yellow, yaw), "Crate");
             }
         }
-        // The ocean hides the scrapyard below; knocked-out contestants watch from a raft in the middle.
-        var ocean = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Destroy(ocean.GetComponent<Collider>());
-        ocean.transform.SetParent(transform, true);
-        ocean.transform.SetPositionAndRotation(new Vector3(_arenaCentre.x, IslandY - 2.6f, _arenaCentre.z), Quaternion.identity);
-        ocean.transform.localScale = new Vector3(400f, 0.2f, 400f);
-        var renderer = ocean.GetComponent<Renderer>();
-        renderer.sharedMaterial = ArenaProps.Material;
-        var block = new MaterialPropertyBlock();
-        block.SetColor("_BaseColor", new Color(0.18f, 0.55f, 0.8f));
-        renderer.SetPropertyBlock(block);
+        // The islands stand in the sea (the place's water, LocationGround); the old scrapyard arena below goes, so there
+        // is nothing between the islands to stand on. Knocked-out contestants watch from a raft in the middle.
+        foreach (var name in new[] { "platform-purple", "Conveyors", "Theme Props", "Set" })
+            if (GameObject.Find(name) is { } scrap) scrap.SetActive(false);
         ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, Raft + Vector3.down * 0.5f, new Vector3(6f, 0.5f, 6f), ArenaProps.Yellow), "Dock");
         ArenaProps.Done();
     }
 
     private Vector3 Raft => _arenaCentre + Vector3.up * (ISLAND_HEIGHT - 0.4f);
+
+    /// <summary>The sea: just under the islands' bottoms, so they and the raft sit in the water.</summary>
+    protected override float? LocationGround => IslandY - 1.3f;
 
     /// <summary>Host. Everyone onto their own island, spread round the ring, facing the middle.</summary>
     protected override void OnIntro()

@@ -19,15 +19,15 @@ MonoBehaviour:
   <IsTimeLimited>k__BackingField: 1
   <StartDelay>k__BackingField: 3
   <DisplayName>k__BackingField: Kart Kup
-  <Description>k__BackingField: Three laps in karts round a sky track. Speed pads,
-    bumps and banana-free chaos!
+  <Description>k__BackingField: Three laps in karts round a race circuit. Grab item
+    boxes for bananas, boosts and shocks!
   <PreviewImage>k__BackingField: {fileID: 21300000, guid: 0749c200183a0db4f957ea96de655658, type: 3}
   <Rules>k__BackingField:
-  - Yellow pads give a burst of speed
-  - Brake before tight bends
-  - Bump rivals off the line
+  - Drive through item boxes, then press E to use the item
+  - BANANA spins out whoever hits it, BOOST is a burst of speed, SHOCK shoves nearby karts away
+  - Barriers bounce you back - brake before tight bends
   <Objective>k__BackingField: Finish three laps first.
-  <Danger>k__BackingField: Fly off the track and you're put back - but you lose time.
+  <Danger>k__BackingField: Drive off the track and you're put back - but you lose time.
   <Scoring>k__BackingField: Finish order wins; the rest by laps and distance.
   <Controls>k__BackingField:
   - W / S|Throttle / brake

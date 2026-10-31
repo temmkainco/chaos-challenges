@@ -40,10 +40,10 @@ public class DoorDashMinigameController : RaceMinigameController
         base.Spawned();
         float length = FinishZ + 8f;
         // Floor, side walls and a finish pad.
-        ArenaProps.Block(transform, PrimitiveType.Cube, Origin + Vector3.forward * (length * 0.5f - 2f) + Vector3.down * 0.5f, new Vector3(Width + 1f, 0.5f, length + 4f), new Color(0.85f, 0.8f, 0.98f));
+        ArenaProps.Block(transform, PrimitiveType.Cube, Origin + Vector3.forward * (length * 0.5f - 2f) + Vector3.down * 0.5f, new Vector3(Width + 1f, 0.5f, length + 4f), ArenaTheme.Floor(Theme, new Color(0.85f, 0.8f, 0.98f)));
         foreach (float side in new[] { -1f, 1f })
-            ArenaProps.Block(transform, PrimitiveType.Cube, Origin + Vector3.right * side * (Width * 0.5f + 0.5f) + Vector3.forward * (length * 0.5f - 2f),
-                new Vector3(1f, WALL_HEIGHT, length + 4f), ArenaProps.Purple);
+            ArenaTheme.DressWall(ArenaProps.Block(transform, PrimitiveType.Cube, Origin + Vector3.right * side * (Width * 0.5f + 0.5f) + Vector3.forward * (length * 0.5f - 2f),
+                new Vector3(1f, WALL_HEIGHT, length + 4f), ArenaProps.Purple), Theme);
         ArenaProps.Block(transform, PrimitiveType.Cube, Origin + Vector3.forward * (FinishZ + 4f) + Vector3.down * 0.45f, new Vector3(Width, 0.5f, 7f), ArenaProps.Yellow);
         var stripe = ArenaProps.Block(transform, PrimitiveType.Cube, Origin + Vector3.forward * FinishZ, new Vector3(Width, 0.05f, 0.6f), Color.white);
         Destroy(stripe.GetComponent<Collider>());
@@ -51,7 +51,9 @@ public class DoorDashMinigameController : RaceMinigameController
         _doors = new Transform[Rows * DOORS];
         _doorColliders = new Collider[Rows * DOORS];
         _shown = new byte[Rows * DOORS];
-        var frames = new[] { ArenaProps.Pink, ArenaProps.Blue, ArenaProps.Green };
+        var frames = Theme == ArenaThemeKind.Studio || Theme == ArenaThemeKind.Candy
+            ? new[] { ArenaProps.Pink, ArenaProps.Blue, ArenaProps.Green }
+            : new[] { ArenaTheme.Trim(Theme, ArenaProps.Pink), ArenaTheme.Wall(Theme, ArenaProps.Blue) };
         for (int row = 0; row < Rows; row++)
         {
             var z = Vector3.forward * RowZ(row);

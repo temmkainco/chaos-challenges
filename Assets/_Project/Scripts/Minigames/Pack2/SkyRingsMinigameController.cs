@@ -6,7 +6,7 @@ using UnityEngine;
 /// Sky Rings: a plane race. Everyone flies a little toy plane (always moving; W/S nose up and down, A/D turn, Shift
 /// boost) through the hoops in order - your next one glows gold - for two laps. Miss one and you have to turn back
 /// for it. Hit the ground and you crash back at the last hoop you made. Finish order wins; at the bell the rest by
-/// hoops. Layouts: Island Loop, Space Eight, Studio Circuit (gentle curves: every gate can be turned into).
+/// hoops. Layouts: Island Loop, Space Eight, Cloud Circuit (gentle curves: every gate can be turned into).
 /// Twist: TAILWIND, everyone flies faster.
 /// </summary>
 public class SkyRingsMinigameController : RaceMinigameController
@@ -23,8 +23,8 @@ public class SkyRingsMinigameController : RaceMinigameController
     public override bool AllowShove => false;
     public override bool UsesDefaultControls => false;
     public override float MaxAltitude => Sky.y + 26f;
-    public override string[] Variants => new[] { "Island Loop", "Space Eight", "Studio Circuit" };
-    public override ArenaThemeKind Theme => Variant switch { 0 => ArenaThemeKind.Islands, 1 => ArenaThemeKind.Space, _ => ArenaThemeKind.Studio };
+    public override string[] Variants => new[] { "Island Loop", "Space Eight", "Cloud Circuit" };
+    public override ArenaThemeKind Theme => Variant switch { 0 => ArenaThemeKind.Islands, 1 => ArenaThemeKind.Space, _ => ArenaThemeKind.Sky };
     public override string TwistTitle => "TAILWIND";
     public override string TwistKind => "BUFF";
     public override string TwistDescription => "Everyone flies faster for a while.";
