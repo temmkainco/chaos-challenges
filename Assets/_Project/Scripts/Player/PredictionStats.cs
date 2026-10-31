@@ -4,13 +4,14 @@ using UnityEngine;
 /// <summary>
 /// Measures real mispredictions of your own contestant on a client: where prediction put you at a tick, against where
 /// you are at that same tick once the host's data for it has arrived and the tick has been re-simulated. Walls and
-/// fences blocking you are not counted (that is prediction agreeing with the host). One count per frame, at its largest
-/// error, when that is over 2 cm. Shown by the F3 overlay (<see cref="Networking.NetStatsOverlay"/>).
+/// fences blocking you are not counted (that is prediction agreeing with the host), nor are teleports (respawns, the
+/// lounge: over 3 m). One count per frame, at its largest error, when that is over 2 cm. Shown by the F3 overlay
+/// (<see cref="Networking.NetStatsOverlay"/>).
 /// </summary>
 public static class PredictionStats
 {
     private const int SIZE = 128;
-    private const float MIN_ERROR = 0.02f;
+    private const float MIN_ERROR = 0.02f, TELEPORT = 3f;
 
     public static int Mispredictions;
     public static float MispredictedMetres;
@@ -35,7 +36,10 @@ public static class PredictionStats
         }
         int i = runner.Tick & (SIZE - 1);
         if (runner.IsResimulation && PredictedTick[i] == runner.Tick)
-            _frameError = Mathf.Max(_frameError, (position - Predicted[i]).magnitude);
+        {
+            float error = (position - Predicted[i]).magnitude;
+            if (error < TELEPORT) _frameError = Mathf.Max(_frameError, error);
+        }
         Predicted[i] = position;
         PredictedTick[i] = runner.Tick;
     }
