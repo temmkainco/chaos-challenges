@@ -24,7 +24,7 @@ public static class ArenaTheme
         ["ConsoleRoundMinigame"] = new[] { ArenaThemeKind.Town, ArenaThemeKind.Space, ArenaThemeKind.Winter },
         ["HexDropMinigame"] = new[] { ArenaThemeKind.Sky, ArenaThemeKind.Space, ArenaThemeKind.Volcano, ArenaThemeKind.Candy, ArenaThemeKind.Winter, ArenaThemeKind.Castle, ArenaThemeKind.Forest },
         ["BlockPartyMinigame"] = new[] { ArenaThemeKind.Colosseum, ArenaThemeKind.Candy, ArenaThemeKind.Town },
-        ["DoorDashMinigame"] = new[] { ArenaThemeKind.Castle, ArenaThemeKind.Graveyard, ArenaThemeKind.Candy },
+        ["DoorDashMinigame"] = new[] { ArenaThemeKind.Castle, ArenaThemeKind.Graveyard, ArenaThemeKind.Candy, ArenaThemeKind.Town, ArenaThemeKind.Winter },
         ["KartKupMinigame"] = new[] { ArenaThemeKind.Circuit, ArenaThemeKind.Forest, ArenaThemeKind.Winter },
         ["KingOfTheHillMinigame"] = new[] { ArenaThemeKind.Castle, ArenaThemeKind.Forest, ArenaThemeKind.Islands },
         ["LavaRiseMinigame"] = new[] { ArenaThemeKind.Volcano, ArenaThemeKind.Graveyard, ArenaThemeKind.Sky, ArenaThemeKind.Winter },

@@ -4,27 +4,39 @@ using UnityEngine;
 
 /// <summary>
 /// Door Dash (after Fall Guys): race down a long hall through rows of doors. Real doors burst open when you run into
-/// them; fakes are solid and throw you back for a moment, so don't just try them all. Finishers place in order; at the bell the rest are
-/// ranked by how far they got. Layouts: Classic (3 of 5 real), Fake Out (2 of 5), Long Hall (more rows).
-/// Twist: LOCKDOWN, every burst door slams shut again.
+/// them; fakes are solid, throw you back and stun you for a moment, so don't just try them all. The further down the
+/// hall, the fewer real doors per row. Finishers place in order; at the bell the rest are ranked by how far they got.
+/// Layouts: Classic (3 real of 5, down to 1), Fake Out (2 of 5, down to 1), Long Hall (more rows), Wide Hall (7 doors
+/// a row), Sprint (4 doors, rows close together). Twist: LOCKDOWN, every burst door slams shut again.
 /// </summary>
 public class DoorDashMinigameController : RaceMinigameController
 {
-    private const int DOORS = 5;
-    private const float DOOR_WIDTH = 3f, ROW_GAP = 9f, DOOR_HEIGHT = 3.2f, WALL_HEIGHT = 5.5f, START_LENGTH = 8f;
+    private const float DOOR_WIDTH = 3f, DOOR_HEIGHT = 3.2f, WALL_HEIGHT = 5.5f, START_LENGTH = 8f;
     private const byte FAKE = 0, REAL = 1, BROKEN = 2;
 
     [SerializeField] private float _height = 4f;
+    [SerializeField, Tooltip("Seconds a fake door keeps you on the spot after throwing you back")] private float _fakeStun = 1.5f;
 
     [Networked, Capacity(64)] private NetworkArray<byte> DoorState { get; }
 
     private readonly Dictionary<PlayerRef, int> _bouncedTick = new();
+    /// <summary>Host: contestants stunned by a fake door and the tick they can move again.</summary>
+    private readonly Dictionary<PlayerRef, int> _stunnedUntil = new();
 
-    public override string[] Variants => new[] { "Classic", "Fake Out", "Long Hall" };
+    public override string[] Variants => new[] { "Classic", "Fake Out", "Long Hall", "Wide Hall", "Sprint" };
     public override string TwistTitle => "LOCKDOWN";
     public override string TwistDescription => "Every burst door slams shut again.";
 
-    private int Rows => Variant == 2 ? 9 : 6;
+    private int Rows => Variant switch { 2 => 9, 3 => 7, 4 => 8, _ => 6 };
+    /// <summary>Doors in a row (Rows x DOORS fits the 64 networked door states).</summary>
+    private int DOORS => Variant switch { 3 => 7, 4 => 4, _ => 5 };
+    private float ROW_GAP => Variant == 4 ? 6.5f : 9f;
+    /// <summary>Real doors in a row: the first rows have the most, the last row only one.</summary>
+    private int RealDoors(int row)
+    {
+        int first = Variant switch { 1 => 2, 3 => 4, 4 => 2, _ => 3 };
+        return Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(first, 1f, Rows > 1 ? row / (float)(Rows - 1) : 0f)));
+    }
     private float Width => DOORS * DOOR_WIDTH;
     private Vector3 Origin => _centre.position + Vector3.up * _height + Vector3.back * 30f;   // start line, hall runs along +Z
     private float RowZ(int row) => START_LENGTH + (row + 1) * ROW_GAP;
@@ -80,14 +92,14 @@ public class DoorDashMinigameController : RaceMinigameController
     protected override void OnIntro()
     {
         base.OnIntro();
-        // Real doors per row; at least one, never all.
-        int real = Variant == 1 ? 2 : 3;
+        // Real doors per row (fewer the further down the hall); at least one, never all.
         for (int row = 0; row < Rows; row++)
         {
-            var order = new List<int> { 0, 1, 2, 3, 4 };
+            var order = new List<int>();
+            for (int d = 0; d < DOORS; d++) order.Add(d);
             for (int i = order.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); (order[i], order[j]) = (order[j], order[i]); }
             for (int d = 0; d < DOORS; d++) DoorState.Set(row * DOORS + d, FAKE);
-            for (int k = 0; k < real; k++) DoorState.Set(row * DOORS + order[k], REAL);
+            for (int k = 0; k < RealDoors(row); k++) DoorState.Set(row * DOORS + order[k], REAL);
         }
     }
 
@@ -121,6 +133,13 @@ public class DoorDashMinigameController : RaceMinigameController
     {
         base.FixedUpdateNetwork();
         if (!HasStateAuthority || !IsGameActive) return;
+        // Stunned contestants get their legs back.
+        foreach (var stun in new List<KeyValuePair<PlayerRef, int>>(_stunnedUntil))
+            if (Runner.Tick >= stun.Value)
+            {
+                _stunnedUntil.Remove(stun.Key);
+                if (_playerSpawner.Players.TryGet(stun.Key, out var stunned) && stunned != null) stunned.MovementLocked = false;
+            }
         // A real door bursts when someone runs into it.
         foreach (var entry in _playerSpawner.Players)
         {
@@ -142,9 +161,11 @@ public class DoorDashMinigameController : RaceMinigameController
                          && (!_bouncedTick.TryGetValue(entry.Key, out int last) || Runner.Tick - last > Runner.TickRate)
                          && player.TryGetComponent<PlayerMovement>(out var movement))
                 {
-                    // A fake throws you back: guessing costs time.
+                    // A fake throws you back and stuns you: guessing costs time.
                     _bouncedTick[entry.Key] = Runner.Tick;
                     movement.Launch(Vector3.back * 9f + Vector3.up * 5f);
+                    player.MovementLocked = true;
+                    _stunnedUntil[entry.Key] = Runner.Tick + Mathf.CeilToInt(_fakeStun * Runner.TickRate);
                     RPC_Fake(_doors[i].position);
                 }
             }
