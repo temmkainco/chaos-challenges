@@ -5,23 +5,31 @@ using UnityEngine;
 /// <summary>
 /// Lava Rise (after Stumble Guys' Lava Land): lava creeps up from below and speeds up; climb the tower of platforms
 /// to stay above it, and shove rivals off the ledges on the way. Touch the lava and you're out. Last one standing
-/// wins; survivors tie at the bell. Layouts: Spiral, Twin Spirals, Scatter. Twist: LAVA SURGE, the lava races up.
-/// The tower is the same on every peer (built from a fixed seed per layout), so it needs no networking.
+/// wins; survivors tie at the bell. The climb is a parkour course, not a staircase: stepping stones, narrow beams,
+/// round pillars and wide landings with gaps to jump and rises of different heights, springs now and then. Layouts:
+/// Spiral, Twin Spirals, Scatter, Figure Eight. Twist: LAVA SURGE, the lava races up.
+/// The course is the same on every peer (built from a fixed seed per layout), so it needs no networking.
 /// </summary>
 public class LavaRiseMinigameController : EliminationMinigameController
 {
-    private const float STEP = 1.1f;
     private const int PLATFORMS = 38;
     private const float SIZE = 3f;
+
+    [Header("Parkour course")]
+    [SerializeField, Tooltip("Rise between one platform and the next (metres; a jump clears about 1.7)")]
+    private Vector2 _rise = new(0.9f, 1.35f);
+    [SerializeField, Tooltip("Gap to jump between one platform's edge and the next (metres)")]
+    private Vector2 _gap = new(0.6f, 1.8f);
+    private float _courseTop;
 
     [SerializeField] private Transform _centre;
 
     /// <summary>Lava surface height, rising at a networked rate (smooth on every screen).</summary>
     [Networked] private NetMotion Lava { get; set; }
-    private float LavaTop => Base.y + PLATFORMS * STEP + 2f;
+    private float LavaTop => _courseTop + 2f;
     private float LavaY => Mathf.Min(Lava.AtTick(Runner), LavaTop);
 
-    public override string[] Variants => new[] { "Spiral", "Twin Spirals", "Scatter" };
+    public override string[] Variants => new[] { "Spiral", "Twin Spirals", "Scatter", "Figure Eight" };
     public override string TwistTitle => "LAVA SURGE";
     public override string TwistDescription => "The lava races up for a few seconds.";
 
@@ -63,61 +71,80 @@ public class LavaRiseMinigameController : EliminationMinigameController
         // Ground floor everyone starts on.
         _platforms.Add(Base + Vector3.up * 0.4f);
         ArenaProps.Block(transform, PrimitiveType.Cylinder, Base, new Vector3(16f, 0.4f, 16f), ArenaProps.Purple);
-        var bricks = new[] { "BrickPlate", "Brick2", "Brick4", "Brick6" };
         var placed = new List<Vector3> { Base };
-        var previous = Vector3.zero;
-        // Nothing may hang over a platform within head height, or the jump up bonks into it.
-        bool Clear(Vector3 spot) => placed.TrueForAll(p => Mathf.Abs(p.y - spot.y) > 2.4f || new Vector2(p.x - spot.x, p.z - spot.z).magnitude > SIZE + 0.6f);
-        for (int i = 1; i <= PLATFORMS; i++)
+        // Nothing may hang over a platform within head height, or the jump up bonks into it. (The piece you jump from is
+        // left out: it is behind you and lower.)
+        bool Clear(Vector3 spot, float reach, Vector3 from) => placed.TrueForAll(p => p == from || Mathf.Abs(p.y - spot.y) > 2.4f
+            || new Vector2(p.x - spot.x, p.z - spot.z).magnitude > reach);
+
+        // One or two paths of pieces; each piece is a few metres on from the last along the path, a little higher.
+        int paths = Variant == 1 ? 2 : 1;
+        for (int path = 0; path < paths; path++)
         {
-            float y = Base.y + i * STEP;
-            var spots = new List<Vector3>();
-            switch (Variant)
+            float t = path * Mathf.PI;               // where along its curve the path is
+            float y = Base.y;
+            var position = PathPoint(t);
+            float previousHalf = 1.5f;
+            for (int i = 1; i <= PLATFORMS; i++)
             {
-                case 1:
-                    float a1 = i * 46f * Mathf.Deg2Rad;
-                    spots.Add(new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1)) * 6.8f);
-                    spots.Add(new Vector3(Mathf.Cos(a1 + Mathf.PI), 0f, Mathf.Sin(a1 + Mathf.PI)) * 6.8f);
-                    break;
-                case 2:
-                    // A wandering path: each step within jumping reach of the last, never under another platform.
-                    for (int attempt = 0; attempt < 30; attempt++)
+                // The piece: wide landings with a spring every few steps; otherwise stones, beams and pillars.
+                int kind = i % 7 == 3 ? 3 : random.Next(0, 4);
+                var size = kind switch { 0 => new Vector2(1.8f, 1.8f), 1 => new Vector2(1.1f, 4f), 2 => new Vector2(1.5f, 1.5f), _ => new Vector2(3f, 3f) };
+                float half = kind == 1 ? size.y * 0.5f : size.x * 0.5f;
+                float advance = previousHalf + R(_gap.x, _gap.y) * (kind == 2 ? 0.7f : 1f) + half;
+                y += R(_rise.x, _rise.y);
+                var from = placed[placed.Count - 1];
+                float reach = half + 2f;
+                Vector3 next = position;
+                for (int attempt = 0; attempt < 30; attempt++)
+                {
+                    if (Variant == 2)
                     {
+                        // Scatter: a wandering path, within the fence, never under another piece.
                         float turn = R(0f, Mathf.PI * 2f);
-                        var next = previous + new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * R(3.6f, 4.4f);
+                        next = position + new Vector3(Mathf.Cos(turn), 0f, Mathf.Sin(turn)) * advance;
                         if (next.magnitude > 8.2f || next.magnitude < 3f) continue;
-                        if (!Clear(new Vector3(Base.x + next.x, y, Base.z + next.z))) continue;
-                        spots.Add(next);
+                    }
+                    else
+                    {
+                        // Along the curve to the point exactly `advance` away in a straight line (the jump), a little
+                        // further each retry if that spot sits under another piece.
+                        float want = advance + attempt * 0.6f;
+                        float low = 0f, high = Mathf.PI;
+                        for (int k = 0; k < 24; k++)
+                        {
+                            float mid = (low + high) * 0.5f;
+                            if ((PathPoint(t + mid) - position).magnitude < want) low = mid; else high = mid;
+                        }
+                        next = PathPoint(t + high);
+                        if (!Clear(new Vector3(Base.x + next.x, y, Base.z + next.z), reach, from) && attempt < 8) continue;
+                        t += high;
                         break;
                     }
-                    if (spots.Count == 0) spots.Add(new Vector3(Mathf.Cos(i * 0.8f), 0f, Mathf.Sin(i * 0.8f)) * 6.8f);
+                    if (!Clear(new Vector3(Base.x + next.x, y, Base.z + next.z), reach, from) && attempt < 29) continue;
                     break;
-                default:
-                    float a = i * 46f * Mathf.Deg2Rad;
-                    spots.Add(new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 6.8f);
-                    break;
-            }
-            foreach (var spot in spots)
-            {
-                var ground = new Vector3(Base.x + spot.x, y - 0.5f, Base.z + spot.z);
-                var block = ArenaProps.Block(transform, PrimitiveType.Cube, ground, new Vector3(SIZE, 0.5f, SIZE), ArenaProps.Pink, R(0f, 90f));
-                ArenaProps.Skin(block, bricks[i % bricks.Length]);
-                var top = ground + Vector3.up * 0.5f;
+                }
+                var top = new Vector3(Base.x + next.x, y, Base.z + next.z);
+                var direction = next - position;
+                float yaw = direction.sqrMagnitude > 0.01f ? Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg : 0f;
+                PlacePiece(kind, top, size, yaw, i);
                 _platforms.Add(top);
                 placed.Add(top);
-                // A spring every few steps: it throws you up a couple of levels.
-                if (i % 7 == 3)
+                if (kind == 3 && i % 7 == 3)
                 {
                     _bouncers.Add(top);
                     ArenaModels.Spawn("Bouncer", transform, top + Vector3.up * 0.45f, Quaternion.identity, new Vector3(1.4f, 0.9f, 1.4f), true);
                 }
+                position = next;
+                previousHalf = half;
+                _courseTop = Mathf.Max(_courseTop, y);
             }
-            previous = spots[0];
         }
         // Nobody leaves the tower to wander the studio.
-        ArenaProps.Fence(transform, Base, 10.5f, PLATFORMS * STEP + 8f);
+        ArenaProps.Fence(transform, Base, 10.5f, _courseTop - Base.y + 8f);
         // The tower's spine (it can't be climbed, but it frames the climb).
-        ArenaProps.Block(transform, PrimitiveType.Cylinder, Base, new Vector3(2.4f, PLATFORMS * STEP + 3f, 2.4f), new Color(0.55f, 0.5f, 0.7f));
+        if (Variant != 3)
+            ArenaProps.Block(transform, PrimitiveType.Cylinder, Base, new Vector3(2.4f, _courseTop - Base.y + 3f, 2.4f), new Color(0.55f, 0.5f, 0.7f));
         _platforms.Sort((p, q) => p.y.CompareTo(q.y));
 
         var lava = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -130,6 +157,26 @@ public class LavaRiseMinigameController : EliminationMinigameController
         _lavaRenderer.sharedMaterial = ArenaProps.Material;
         _block = new MaterialPropertyBlock();
         ArenaProps.Done();
+    }
+
+    /// <summary>The course's line in the plane (relative to the base) for the curved layouts, by parameter t.</summary>
+    private Vector3 PathPoint(float t) => Variant == 3
+        ? new Vector3(Mathf.Sin(t) * 7.4f, 0f, Mathf.Sin(t * 2f) * 4.4f)   // figure eight
+        : new Vector3(Mathf.Cos(t), 0f, Mathf.Sin(t)) * 6.8f;               // spiral
+
+    private static readonly string[] Stones = { "BrickPlate", "Brick2" };
+
+    /// <summary>One course piece with its top at <paramref name="top"/>: 0 stone, 1 beam, 2 pillar, 3 wide landing.</summary>
+    private void PlacePiece(int kind, Vector3 top, Vector2 size, float yaw, int index)
+    {
+        if (kind == 2)
+        {
+            // A round pillar standing up from below, so it reads as a post to hop onto.
+            ArenaProps.Block(transform, PrimitiveType.Cylinder, top + Vector3.down * 2.5f, new Vector3(size.x, 2.5f, size.x), ArenaProps.Yellow);
+            return;
+        }
+        var block = ArenaProps.Block(transform, PrimitiveType.Cube, top + Vector3.down * 0.5f, new Vector3(size.x, 0.5f, size.y), ArenaProps.Pink, yaw);
+        ArenaProps.Skin(block, kind == 1 ? "BrickLong" : kind == 3 ? (index % 2 == 0 ? "Brick6" : "Brick4") : Stones[index % Stones.Length]);
     }
 
     public override void FixedUpdateNetwork()
