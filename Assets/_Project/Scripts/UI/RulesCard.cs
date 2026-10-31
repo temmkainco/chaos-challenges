@@ -58,9 +58,10 @@ public class RulesCard : MonoBehaviour
         var back = MakeImage(card.transform, "IllustrationBack", kit.Panel, UiKit.Ink);
         back.type = Image.Type.Sliced;
         Place(back.rectTransform, -300f, 40f, 640f, 340f);
-        var clip = new GameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
+        var clip = new GameObject("Clip", typeof(RectTransform));
         clip.transform.SetParent(card.transform, false);
         Place((RectTransform)clip.transform, -300f, 40f, 612f, 312f);
+        Thumbnail.Round(clip);
         _illustration = MakeImage(clip.transform, "Illustration", null, Color.white);
         Place(_illustration.rectTransform, 0f, 0f, 612f, 312f);
         var frame = MakeImage(card.transform, "IllustrationFrame", kit.Frame != null ? kit.Frame : kit.Panel, UiKit.Ink);
@@ -146,6 +147,7 @@ public class RulesCard : MonoBehaviour
         _scoring.text = def?.Scoring ?? "";
         _illustration.sprite = def != null ? def.PreviewImage : null;
         _illustration.enabled = _illustration.sprite != null;
+        Thumbnail.Cover(_illustration, new Vector2(612f, 312f));
 
         _sb.Clear();
         if (controller.UsesDefaultControls)

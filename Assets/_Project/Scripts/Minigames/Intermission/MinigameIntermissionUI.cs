@@ -63,7 +63,10 @@ public class MinigameIntermissionUI : MonoBehaviour
         _descriptionText.text = text;
 
         if (def.PreviewImage != null)
+        {
             _previewImage.sprite = def.PreviewImage;
+            Thumbnail.Frame(_previewImage);
+        }
 
 
         PlayIntroAnimations();

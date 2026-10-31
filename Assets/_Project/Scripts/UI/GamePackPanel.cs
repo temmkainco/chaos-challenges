@@ -78,11 +78,13 @@ public class GamePackPanel : MonoBehaviour
             tile.raycastTarget = true;
             Place(tile.rectTransform, x, y, tileW, tileH);
             var fade = tile.gameObject.AddComponent<CanvasGroup>();
-            var clip = new GameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
+            var clip = new GameObject("Clip", typeof(RectTransform));
             clip.transform.SetParent(tile.transform, false);
-            Place((RectTransform)clip.transform, 0f, 26f * scale, tileW - 20f * scale, tileH * 0.65f);
+            var clipSize = new Vector2(tileW - 20f * scale, tileH * 0.65f);
+            Place((RectTransform)clip.transform, 0f, 26f * scale, clipSize.x, clipSize.y);
+            Thumbnail.Round(clip);
             var picture = MakeImage(clip.transform, "Picture", def.PreviewImage, Color.white);
-            Place(picture.rectTransform, 0f, 0f, tileW - 20f * scale, (tileW - 20f * scale) * 0.51f);
+            Thumbnail.Cover(picture, clipSize);
             var name = MakeText(tile.transform, "Name", 24f * scale, UiKit.Ink, false, 0f, -tileH * 0.35f, tileW - 16f * scale, 40f * scale);
             name.text = def.DisplayName.ToUpperInvariant();
             name.enableAutoSizing = true;
