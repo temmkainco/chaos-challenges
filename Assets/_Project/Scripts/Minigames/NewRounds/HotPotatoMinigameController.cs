@@ -153,7 +153,8 @@ public class HotPotatoMinigameController : EliminationMinigameController
         {
             if (other == Holder || other == PreviousHolder) continue;
             if (!_playerSpawner.Players.TryGet(other, out var target) || target == null) continue;
-            if (Vector3.Distance(target.transform.position, holder.transform.position) > _passRange) continue;
+            // Bumping as the holder saw it (lag compensation).
+            if (Vector3.Distance(Rewind.PositionSeenBy(holder, target), holder.transform.position) > _passRange) continue;
             PreviousHolder = Holder;
             Holder = other;
             PassCooldown = TickTimer.CreateFromSeconds(Runner, 0.6f);
@@ -180,7 +181,7 @@ public class HotPotatoMinigameController : EliminationMinigameController
         foreach (var other in _alive)
         {
             if (other == Holder || !_playerSpawner.Players.TryGet(other, out var target) || target == null) continue;
-            var to = (target.transform.position - player.transform.position).WithY(0f);
+            var to = (Rewind.PositionSeenBy(player, target) - player.transform.position).WithY(0f);   // as the holder saw it
             float angle = Vector3.Angle(flat, to);
             if (to.magnitude > _handReach || angle > 60f) continue;
             float score = to.magnitude + angle / 30f;

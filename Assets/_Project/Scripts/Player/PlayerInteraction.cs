@@ -268,14 +268,17 @@ public class PlayerInteraction : NetworkBehaviour
 
         var flat = new Vector3(LookDirection.x, 0f, LookDirection.z);
         flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
-        int count = Runner.GetPhysicsScene().OverlapSphere(transform.position + flat * (_shoveRange * 0.6f) + Vector3.up, _shoveRange, _overlap, ~0, QueryTriggerInteraction.Ignore);
+        // Contestants where the shover saw them (lag compensation), within the reach sphere ahead.
+        var reachCentre = transform.position + flat * (_shoveRange * 0.6f) + Vector3.up;
         Player best = null;
         float bestDistance = float.MaxValue;
-        for (int i = 0; i < count; i++)
+        foreach (var controller in PlayerMovement.Controllers)
         {
-            var other = _overlap[i].GetComponentInParent<Player>();
+            var other = controller != null ? controller.GetComponent<Player>() : null;
             if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator != _player.IsSpectator) continue;
-            var to = other.transform.position - transform.position;
+            var seen = Rewind.PositionSeenBy(_player, other);
+            if ((seen + Vector3.up - reachCentre).magnitude > _shoveRange + controller.radius) continue;
+            var to = seen - transform.position;
             to.y = 0f;
             if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;
             best = other;

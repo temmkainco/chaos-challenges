@@ -52,6 +52,20 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField, Tooltip("Speed (m/s) at which two fully overlapping contestants are eased apart")]
     private float _separationSpeed = 4f;
 
+    private const int HISTORY = 64;
+    private readonly Vector3[] _history = new Vector3[HISTORY];
+    private readonly int[] _historyTick = new int[HISTORY];
+
+    /// <summary>Host. The tick this contestant's screen showed the others at, from its latest input (<see cref="Rewind"/>).</summary>
+    public int ViewTick { get; private set; }
+
+    /// <summary>Host. Where this contestant stood at <paramref name="tick"/> (the last second is kept), or now.</summary>
+    public Vector3 PositionAt(int tick)
+    {
+        int i = tick & (HISTORY - 1);
+        return _historyTick[i] == tick ? _history[i] : transform.position;
+    }
+
     private NetworkCharacterController _characterController;
     private CharacterController _unityController;
     private Player _player;
@@ -116,6 +130,12 @@ public class PlayerMovement : NetworkBehaviour
     {
         Simulate();
         if (HasInputAuthority && !HasStateAuthority) PredictionStats.Track(Runner, transform.position);
+        if (HasStateAuthority && Runner.IsForward)
+        {
+            int i = Runner.Tick & (HISTORY - 1);
+            _history[i] = transform.position;
+            _historyTick[i] = Runner.Tick;
+        }
     }
 
     private void Simulate()
@@ -123,6 +143,7 @@ public class PlayerMovement : NetworkBehaviour
         float dt = Runner.DeltaTime;
         NetworkInputData data = default;
         bool hasInput = GetInput(out data);
+        if (hasInput && HasStateAuthority) ViewTick = data.ViewTick;
         if (!hasInput || _player.ControlsLocked || _player.MovementLocked)
         {
             data.Direction = Vector3.zero;

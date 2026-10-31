@@ -99,9 +99,9 @@ public class TailTagMinigameController : ScoreMinigameController
         {
             if (entry.Value == null || entry.Key == me || !HasTail(entry.Key)) continue;
             if (Runner.Tick < ImmuneUntil[entry.Key.PlayerId & 31]) continue;
-            var to = entry.Value.transform.position - player.transform.position;
+            // Where the rival was on the grabber's screen (lag compensation), not where the host has them now.
+            var to = Rewind.PositionSeenBy(player, entry.Value) - player.transform.position;
             to.y = 0f;
-            // Generous: lag makes a rival right next to you look further away to the host.
             if (to.magnitude > GRAB_RANGE || (to.magnitude > 1.4f && Vector3.Angle(flat, to) > 110f)) continue;
             if (to.magnitude < bestDistance) { bestDistance = to.magnitude; best = entry.Key; }
         }

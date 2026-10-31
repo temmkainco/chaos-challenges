@@ -303,7 +303,10 @@ namespace Networking
 
         public void OnInput(NetworkRunner runner, NetworkInput input)
         {
-            var data = new NetworkInputData();
+            var data = new NetworkInputData
+            {
+                ViewTick = runner.IsServer ? runner.Tick : Mathf.RoundToInt(runner.RemoteRenderTime / runner.DeltaTime),
+            };
 
             var localInput = PlayerInput.Local;
             if (localInput != null)
