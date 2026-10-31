@@ -112,7 +112,7 @@ public class TilefallMinigameController : MinigameController
                 continue;
 
             float progress = _course.Progress(player.transform.position);
-            bool offCourse = progress > 0f && _course.IsOffCourse(player.transform.position);
+            bool offCourse = progress > 0f && (_course.IsOffCourse(player.transform.position) || _course.IsOnScenery(player.transform.position));
             bool grounded = player.TryGetComponent<NetworkCharacterController>(out var controller) && controller.IsGrounded;
             // On scenery beside or above the course: treated as a fall (back to the last checkpoint reached on it).
             if (offCourse && grounded)
