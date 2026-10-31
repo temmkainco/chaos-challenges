@@ -10,10 +10,14 @@ using UnityEngine;
 /// </summary>
 public class LogRollMinigameController : EliminationMinigameController
 {
-    private const int RIDGES = 3;
+
 
     [SerializeField] private Transform _centre;
     [SerializeField] private float _height = 7f;
+    [SerializeField, Tooltip("Ridges round each log to jump (more ridges, more jumps)")] private int _ridges = 4;
+    [SerializeField, Tooltip("Spin at the start of the round (radians per second)")] private float _startSpin = 0.25f;
+    [SerializeField, Tooltip("Spin reached after a minute (radians per second)")] private float _topSpin = 1.1f;
+    private int RIDGES => Mathf.Max(1, _ridges);
 
     /// <summary>The first log's roll (degrees; rate in degrees per second, sign = direction), evaluated per tick and per frame.</summary>
     [Networked] private NetMotion Roll { get; set; }
@@ -48,7 +52,7 @@ public class LogRollMinigameController : EliminationMinigameController
     {
         base.Spawned();
         // Start with no ridge on top: everyone spawns up there.
-        if (HasStateAuthority) Roll = NetMotion.Still(Runner, 60f);
+        if (HasStateAuthority) Roll = NetMotion.Still(Runner, 180f / RIDGES);
         for (int log = 0; log < LogCount; log++)
         {
             // Static collider (a cylinder looks the same at any angle); the visual log turns. The mesh comes from a
@@ -68,7 +72,7 @@ public class LogRollMinigameController : EliminationMinigameController
             var view = new GameObject("Log").transform;
             view.SetParent(transform, false);
             view.position = Axis(log);
-            // A wood log (its long side along X, like the collider) with three thinner logs along it as ridges.
+            // A wood log (its long side along X, like the collider) with thinner logs along it as ridges.
             ArenaModels.Spawn("Log", view, Axis(log), Quaternion.identity, new Vector3(LENGTH, Radius * 2f, Radius * 2f));
             for (int r = 0; r < RIDGES; r++)
             {
@@ -85,7 +89,7 @@ public class LogRollMinigameController : EliminationMinigameController
         base.StartGame();
         if (!HasStateAuthority) return;
         // A gentle start (standing still on a fast log threw people off in two seconds), building up over the round.
-        SetSpin(0.15f * (Variant == 2 ? 1.3f : 1f));
+        SetSpin(_startSpin * (Variant == 2 ? 1.3f : 1f));
         NextFlip = TickTimer.CreateFromSeconds(Runner, 12f);
         _hitTick.Clear();
     }
@@ -121,7 +125,7 @@ public class LogRollMinigameController : EliminationMinigameController
         if (!HasStateAuthority || !IsGameActive) return;
         float dt = Runner.DeltaTime;
         float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-        float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
+        float target = Mathf.Lerp(_startSpin, _topSpin, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
         // Speeding up a little at a time: re-anchored every half second rather than every tick.
         float spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt * Runner.TickRate / 2f);
         if (Runner.Tick % (Runner.TickRate / 2) == 0 && !Mathf.Approximately(spin, Spin)) SetSpin(spin);
