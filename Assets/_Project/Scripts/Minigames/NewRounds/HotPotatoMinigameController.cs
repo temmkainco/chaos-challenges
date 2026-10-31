@@ -12,8 +12,8 @@ using UnityEngine;
 public class HotPotatoMinigameController : EliminationMinigameController
 {
     [SerializeField] private Transform _centre;
-    [SerializeField, Tooltip("Bumping into someone (centre to centre) passes the bomb")] private float _passRange = 1.4f;
-    [SerializeField, Tooltip("Click (or E) hands the bomb to the rival in front within this reach")] private float _handReach = 3.2f;
+    [SerializeField, Tooltip("Bumping into someone (centre to centre) passes the bomb")] private float _passRange = 1.2f;
+    [SerializeField, Tooltip("Click (or E) hands the bomb to the rival in front within this reach")] private float _handReach = 1.8f;
     [SerializeField] private Vector2 _fuseSeconds = new(9f, 15f);
 
     [Networked] public PlayerRef Holder { get; private set; }
