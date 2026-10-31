@@ -67,9 +67,19 @@ public class TailTagMinigameController : ScoreMinigameController
         DealTails();
     }
 
-    private void DealTails()
+    /// <summary>Host: the last tick each contestant had a tail (TAIL SHUFFLE hands tails to those who had one longest ago).</summary>
+    private readonly Dictionary<PlayerRef, int> _lastHeld = new();
+
+    /// <summary>
+    /// Host. Hands out the tails: at the start at random; on TAIL SHUFFLE to contestants who don't have one now, those
+    /// who had one longest ago first, so the shuffle never just gives your tail back to you.
+    /// </summary>
+    private void DealTails(bool shuffle = false)
     {
         var players = ConnectedPlayers().OrderBy(_ => Random.value).ToList();
+        if (shuffle)
+            players = players.OrderBy(p => HasTail(p) ? 1 : 0)
+                .ThenBy(p => _lastHeld.TryGetValue(p, out int tick) ? tick : int.MinValue).ToList();
         // Fewer tails than hunters: 2-3 players share one tail, 4-5 two, 6 three.
         int tails = Mathf.Max(1, players.Count / 2);
         int mask = 0;
@@ -79,7 +89,7 @@ public class TailTagMinigameController : ScoreMinigameController
 
     protected override void OnChaosStarted(ChaosModifier modifier)
     {
-        if (modifier == ChaosModifier.Twist) { DealTails(); Announce("TAILS SHUFFLED!"); }
+        if (modifier == ChaosModifier.Twist) { DealTails(shuffle: true); Announce("TAILS SHUFFLED!"); }
     }
 
     public override bool HandlePrimaryAction(Player player) => TryGrab(player);
@@ -125,7 +135,11 @@ public class TailTagMinigameController : ScoreMinigameController
         base.FixedUpdateNetwork();
         if (!HasStateAuthority || !IsGameActive || Runner.Tick % Runner.TickRate != 0) return;
         foreach (var player in ConnectedPlayers())
-            if (HasTail(player)) AddScore(player, 1);
+            if (HasTail(player))
+            {
+                AddScore(player, 1);
+                _lastHeld[player] = Runner.Tick;
+            }
     }
 
     public override string Callout => IsGameActive && Runner.LocalPlayer.IsRealPlayer
