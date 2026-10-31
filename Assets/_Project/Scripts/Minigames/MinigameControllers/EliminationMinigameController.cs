@@ -51,6 +51,11 @@ public abstract class EliminationMinigameController : MinigameController
     {
         base.StartGame();
         if (!HasStateAuthority) return;
+        // Anyone who slipped off during the rules card goes back on rather than being out on the first tick.
+        var players = ConnectedPlayers().OrderBy(p => p.PlayerId).ToList();
+        for (int i = 0; i < players.Count; i++)
+            if (_playerSpawner.Players.TryGet(players[i], out var player) && player != null && player.transform.position.y < OutHeight + 0.5f)
+                _playerSpawner.Teleport(player, ArenaSpawn(i, players.Count));
         _alive.Clear();
         _alive.AddRange(ConnectedPlayers());
         _out.Clear();

@@ -58,6 +58,11 @@ public class Bomb : NetworkBehaviour
         _controller = controller;
         BeltIndex = beltIndex;
         BeltProgress = 0f;
+        // Bombs come from a pool: a recycled one must not come back lit. Supply bombs only light when picked up.
+        Lit = false;
+        Fuse = TickTimer.None;
+        ArmedTimer = TickTimer.None;
+        FromSky = false;
     }
 
     public override void Spawned()

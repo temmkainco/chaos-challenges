@@ -79,7 +79,7 @@ public abstract class RaceMinigameController : MinigameController
         var who = player.Object.InputAuthority;
         if (_respawns.Exists(r => r.player == who) || _finishOrder.Contains(who)) return true;
         player.ControlsLocked = true;
-        _respawns.Add((who, TickTimer.CreateFromSeconds(Runner, 1.2f)));
+        _respawns.Add((who, TickTimer.CreateFromSeconds(Runner, 0.8f)));
         return true;
     }
 

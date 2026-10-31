@@ -45,7 +45,8 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
     }
 
     /// <summary>Metres below the lowest spawn point that count as "fell off the world".</summary>
-    private const float FALL_LIMIT = 12f;
+    /// <summary>Metres below the lowest spawn point before a fall respawns you (kept short: long falls felt broken).</summary>
+    private const float FALL_LIMIT = 6f;
 
     /// <summary>
     /// Host only: a fall guard for every scene (the lobby had none). Whoever drops far below the spawn points is handed

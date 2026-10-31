@@ -17,23 +17,34 @@ public static class ArenaTheme
         if (theme == ArenaThemeKind.Studio) return;
         var set = GameObject.Find("Set");
         if (set == null) return;   // not a studio arena (warehouse, scrapyard...)
+        // The studio floor stays solid (stepping off the stage must not drop you into the void); only its look goes,
+        // and the ocean or space ground is drawn at its height.
+        float floorTop = centre.y - 0.6f;
         foreach (Transform child in set.transform)
+        {
+            if (child.name == "StudioFloor" && child.TryGetComponent<Collider>(out var floorCollider))
+            {
+                floorTop = floorCollider.bounds.max.y;
+                foreach (var r in child.GetComponentsInChildren<Renderer>()) r.enabled = false;
+                continue;
+            }
             if (System.Array.IndexOf(StudioOnly, child.name) >= 0) child.gameObject.SetActive(false);
+        }
 
         var root = new GameObject("Theme " + theme).transform;
         root.SetParent(parent, true);
         var random = new System.Random(77 + (int)theme);
         float R(float a, float b) => a + (float)random.NextDouble() * (b - a);
-        var floor = centre.y - 1f;
+        var floor = floorTop;
         var sun = Object.FindFirstObjectByType<Light>() is { type: LightType.Directional } light ? light : FindSun();
 
         if (theme == ArenaThemeKind.Islands)
         {
-            Plane(root, new Vector3(centre.x, floor - 1.2f, centre.z), 600f, new Color(0.18f, 0.55f, 0.8f));
+            Plane(root, new Vector3(centre.x, floor - 0.09f, centre.z), 600f, new Color(0.18f, 0.55f, 0.8f));
             for (int i = 0; i < 9; i++)
             {
                 float angle = i / 9f * Mathf.PI * 2f + R(-0.2f, 0.2f);
-                var spot = new Vector3(centre.x + Mathf.Cos(angle) * R(42f, 70f), floor - 1.1f, centre.z + Mathf.Sin(angle) * R(42f, 70f));
+                var spot = new Vector3(centre.x + Mathf.Cos(angle) * R(42f, 70f), floor + 0.1f, centre.z + Mathf.Sin(angle) * R(42f, 70f));
                 ArenaModels.Spawn("SandPatch", root, spot, Quaternion.Euler(0f, R(0f, 360f), 0f), new Vector3(R(14f, 22f), 0.8f, R(12f, 18f)));
                 for (int p = 0; p < 2; p++)
                     ArenaModels.Spawn(p == 0 ? "Palm" : "PalmStraight", root, spot + new Vector3(R(-4f, 4f), 3.5f, R(-3f, 3f)), Quaternion.Euler(0f, R(0f, 360f), 0f), new Vector3(4f, 7f, 4f), true);
@@ -70,11 +81,11 @@ public static class ArenaTheme
                 var spot = centre + new Vector3(Mathf.Cos(angle) * R(35f, 90f), R(-6f, 40f), Mathf.Sin(angle) * R(35f, 90f));
                 ArenaModels.Spawn("Meteor", root, spot, Quaternion.Euler(R(0f, 360f), R(0f, 360f), 0f), Vector3.one * R(3f, 9f), true);
             }
-            Plane(root, new Vector3(centre.x, floor - 6f, centre.z), 600f, new Color(0.32f, 0.3f, 0.4f));
+            Plane(root, new Vector3(centre.x, floor - 0.09f, centre.z), 600f, new Color(0.32f, 0.3f, 0.4f));
             for (int i = 0; i < 6; i++)
             {
                 float angle = i / 6f * Mathf.PI * 2f + 0.4f;
-                var spot = new Vector3(centre.x + Mathf.Cos(angle) * R(60f, 90f), floor - 6f, centre.z + Mathf.Sin(angle) * R(60f, 90f));
+                var spot = new Vector3(centre.x + Mathf.Cos(angle) * R(60f, 90f), floor, centre.z + Mathf.Sin(angle) * R(60f, 90f));
                 ArenaModels.Spawn(i % 2 == 0 ? "Hangar" : "Crater", root, spot + Vector3.up * 3f, Quaternion.Euler(0f, R(0f, 360f), 0f), new Vector3(14f, 6f, 14f), true);
             }
         }

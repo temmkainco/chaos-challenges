@@ -58,8 +58,9 @@ public class BombRushMinigameController : MinigameController
     public override string[] Variants => new[] { "Islands", "Close Islands", "Crate Islands" };
 
     private const int ISLANDS = 6;
-    private const float ISLAND_SIZE = 6f, ISLAND_HEIGHT = 7f;
-    private float RingRadius => Variant == 1 ? 9.6f : 12.5f;
+    private const float ISLAND_SIZE = 9f, ISLAND_HEIGHT = 7f;
+    /// <summary>Far enough apart that nobody jumps across (7-10 m of water between neighbours); a full throw still reaches.</summary>
+    private float RingRadius => Variant == 1 ? 16f : 19f;
     private Vector3 Island(int i)
     {
         float angle = (i + 0.5f) / ISLANDS * Mathf.PI * 2f;
@@ -79,11 +80,11 @@ public class BombRushMinigameController : MinigameController
             float yaw = (i + 0.5f) / ISLANDS * -360f;
             ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top + Vector3.down * 1.2f, new Vector3(ISLAND_SIZE, 1.2f, ISLAND_SIZE), ArenaProps.Green, yaw), "SandPatch");
             var outwardPalm = (top - _arenaCentre).WithY(0f).normalized;
-            ArenaModels.Spawn("Palm", transform, top + outwardPalm * 2.3f + Vector3.up * 2.2f, Quaternion.Euler(0f, yaw, 0f), new Vector3(3f, 4.5f, 3f), true);
+            ArenaModels.Spawn("Palm", transform, top + outwardPalm * 3.6f + Vector3.up * 2.2f, Quaternion.Euler(0f, yaw, 0f), new Vector3(3f, 4.5f, 3f), true);
             if (Variant == 2)
             {
                 var outward = (top - _arenaCentre).WithY(0f).normalized;
-                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top - outward * 1.6f + Vector3.Cross(Vector3.up, outward) * 1.3f,
+                ArenaProps.Skin(ArenaProps.Block(transform, PrimitiveType.Cube, top - outward * 2.6f + Vector3.Cross(Vector3.up, outward) * 2f,
                     new Vector3(1.3f, 1.3f, 1.3f), ArenaProps.Yellow, yaw), "Crate");
             }
         }

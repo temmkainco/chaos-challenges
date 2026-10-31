@@ -71,7 +71,7 @@ public abstract class ScoreMinigameController : MinigameController
         var who = player.Object.InputAuthority;
         if (_respawns.Exists(r => r.player == who)) return true;
         player.ControlsLocked = true;
-        _respawns.Add((who, TickTimer.CreateFromSeconds(Runner, 1.5f)));
+        _respawns.Add((who, TickTimer.CreateFromSeconds(Runner, 1f)));
         OnFell(who);
         return true;
     }

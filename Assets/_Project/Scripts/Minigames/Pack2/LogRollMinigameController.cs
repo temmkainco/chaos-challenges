@@ -49,13 +49,18 @@ public class LogRollMinigameController : EliminationMinigameController
         if (HasStateAuthority) Angle = 60f;
         for (int log = 0; log < LogCount; log++)
         {
-            // Static collider (a cylinder looks the same at any angle); the visual log turns.
-            var collider = new GameObject("LogCollider", typeof(MeshCollider));
+            // Static collider (a cylinder looks the same at any angle); the visual log turns. The mesh comes from a
+            // cylinder primitive: Unity's built-in "Cylinder.fbx" resource is missing in builds, which left the log
+            // without a collider there and everyone fell through it.
+            var collider = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            collider.name = "LogCollider";
+            Destroy(collider.GetComponent<Collider>());
+            collider.GetComponent<Renderer>().enabled = false;
             collider.transform.SetParent(transform, false);
             collider.transform.SetPositionAndRotation(Axis(log), Quaternion.Euler(0f, 0f, 90f));
             collider.transform.localScale = new Vector3(Radius * 2f, LENGTH * 0.5f, Radius * 2f);
-            var mesh = collider.GetComponent<MeshCollider>();
-            mesh.sharedMesh = Resources.GetBuiltinResource<Mesh>("Cylinder.fbx");
+            var mesh = collider.AddComponent<MeshCollider>();
+            mesh.sharedMesh = collider.GetComponent<MeshFilter>().sharedMesh;
             mesh.convex = true;
 
             var view = new GameObject("Log").transform;
@@ -77,7 +82,8 @@ public class LogRollMinigameController : EliminationMinigameController
     {
         base.StartGame();
         if (!HasStateAuthority) return;
-        Spin = 0.35f * (Variant == 2 ? 1.4f : 1f);
+        // A gentle start (standing still on a fast log threw people off in two seconds), building up over the round.
+        Spin = 0.15f * (Variant == 2 ? 1.3f : 1f);
         NextFlip = TickTimer.CreateFromSeconds(Runner, 12f);
         _hitTick.Clear();
     }
@@ -113,7 +119,7 @@ public class LogRollMinigameController : EliminationMinigameController
         if (!HasStateAuthority || !IsGameActive) return;
         float dt = Runner.DeltaTime;
         float elapsed = Definition.GameDuration * MatchSettings.LengthMultiplier - TimeRemaining;
-        float target = Mathf.Lerp(0.35f, 0.95f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.4f : 1f) * (TwistActive ? 1.4f : 1f);
+        float target = Mathf.Lerp(0.15f, 0.85f, Mathf.Clamp01(elapsed / 60f)) * (Variant == 2 ? 1.3f : 1f) * (TwistActive ? 1.4f : 1f);
         Spin = Mathf.Sign(Spin) * Mathf.MoveTowards(Mathf.Abs(Spin), target, 0.2f * dt);
         if (NextFlip.Expired(Runner) && !TwistActive)
         {
