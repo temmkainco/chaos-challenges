@@ -341,6 +341,10 @@ public class PlayerMovement : NetworkBehaviour
                 {
                     var bounced = Vector3.Reflect(flatVelocity, normal) * 0.55f + normal * 2f;
                     velocity = new Vector3(bounced.x, velocity.y, bounced.z);
+                    // Turn the kart along the barrier, or holding the throttle drives it straight back in (it felt stuck).
+                    var along = Vector3.ProjectOnPlane(transform.forward, normal).WithY(0f);
+                    if (along.sqrMagnitude > 0.01f)
+                        transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(along.normalized), 35f);
                 }
             }
             else velocity = new Vector3(velocity.x * 0.6f, velocity.y, velocity.z * 0.6f);

@@ -15,6 +15,9 @@ public abstract class RaceMinigameController : MinigameController
     [Networked] protected int FinishedCount { get; private set; }
     /// <summary>Per player slot: finishing place (0 = still racing) and the furthest progress, for the scoreboard.</summary>
     [Networked, Capacity(32)] private NetworkArray<byte> Place { get; }
+
+    /// <summary>Whether <paramref name="player"/> has crossed the line.</summary>
+    protected bool HasFinished(PlayerRef player) => Place[player.PlayerId & 31] > 0;
     [Networked, Capacity(32)] private NetworkArray<short> BoardProgress { get; }
 
     protected readonly List<PlayerRef> _finishOrder = new();

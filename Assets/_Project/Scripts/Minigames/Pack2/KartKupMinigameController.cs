@@ -21,7 +21,17 @@ public class KartKupMinigameController : RaceMinigameController
     public override VehicleKind Vehicle => VehicleKind.Kart;
     public override bool AllowShove => false;
     public override bool UsesDefaultControls => false;
-    public override string[] Variants => new[] { "Grand Prix", "Chicane", "Esses" };
+    public override string[] Variants => new[] { "Grand Prix", "Chicane", "Esses", "Hairpins", "Serpent" };
+
+    [SerializeField, Tooltip("A kart that hasn't moved this many metres for _unstuckSeconds is put back on the track")]
+    private float _unstuckDistance = 1.5f;
+    [SerializeField] private float _unstuckSeconds = 2.5f;
+
+    /// <summary>The item the local player holds (0 none, then BANANA, BOOST, SHOCK), for the HUD slot.</summary>
+    public byte LocalItem => Runner != null && Runner.LocalPlayer.IsRealPlayer ? Items[Runner.LocalPlayer.PlayerId & 31] : NO_ITEM;
+
+    /// <summary>Host: where each kart was at the last stuck check, and since when it has hardly moved.</summary>
+    private readonly Dictionary<PlayerRef, (Vector3 position, int since)> _stuck = new();
     public override string TwistTitle => "TURBO";
     public override string TwistKind => "BUFF";
     public override string TwistDescription => "Everyone gets a burst of speed.";
@@ -33,7 +43,7 @@ public class KartKupMinigameController : RaceMinigameController
     /// <summary>Bananas on the track (y below -9000 = none) and who dropped each.</summary>
     [Networked, Capacity(MAX_BANANAS)] private NetworkArray<Vector3> Bananas { get; }
 
-    private static readonly string[] Layouts = { "SSSSSLSSLSSSSSLSSL", "SSSRSSSSRRLLSRRSSRLR", "SSLRLSSLSLSSRSSLLS" };
+    private static readonly string[] Layouts = { "SSSSSLSSLSSSSSLSSL", "SSSRSSSSRRLLSRRSSRLR", "SSLRLSSLSLSSRSSLLS", "SLLSRSSLSLSLRSLS", "SLRSSLLSSSRLLSSSSSSL" };
     private static readonly Vector2Int[] Headings = { new(1, 0), new(0, 1), new(-1, 0), new(0, -1) };   // E N W S
 
     private readonly List<Vector3> _points = new();     // waypoints along the middle of the track, in driving order
@@ -55,6 +65,7 @@ public class KartKupMinigameController : RaceMinigameController
         base.Spawned();
         _origin = _centre.position + Vector3.up * _height;
         Build(Layouts[Variant % Layouts.Length]);
+        KartItemSlot.Create(this);
     }
 
     /// <summary>Lays the pieces, barriers and waypoints; the track is then shifted so it sits over the arena centre.</summary>
@@ -273,6 +284,19 @@ public class KartKupMinigameController : RaceMinigameController
             if (player == null || player.ControlsLocked) continue;
             var position = player.transform.position;
             int slot = entry.Key.PlayerId & 31;
+            // Wedged against a barrier or another kart: back on the track after a moment.
+            if (Runner.Tick % (Runner.TickRate / 2) == 0)
+            {
+                if (!_stuck.TryGetValue(entry.Key, out var stuck) || (position - stuck.position).magnitude > _unstuckDistance)
+                    _stuck[entry.Key] = (position, Runner.Tick);
+                else if ((Runner.Tick - stuck.since) * Runner.DeltaTime >= _unstuckSeconds && !HasFinished(entry.Key))
+                {
+                    _stuck.Remove(entry.Key);
+                    SendToCheckpoint(entry.Key);
+                    RPC_Unstuck(position);
+                    continue;
+                }
+            }
             // Item boxes.
             for (int b = 0; b < _boxes.Count && b < 16; b++)
             {
@@ -316,17 +340,11 @@ public class KartKupMinigameController : RaceMinigameController
         LowPolyExplosion.Play(position + Vector3.up, 2.5f, Resources.Load<Material>("ThrowArc"));
     }
 
-    public override string GetStatusText()
-    {
-        if (!IsGameActive || !Runner.LocalPlayer.IsRealPlayer) return null;
-        return Items[Runner.LocalPlayer.PlayerId & 31] switch
-        {
-            BANANA => "<b>BANANA</b> [E]",
-            BOOST => "<b>BOOST</b> [E]",
-            SHOCK => "<b>SHOCKWAVE</b> [E]",
-            _ => null,
-        };
-    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_Unstuck(Vector3 position) => WorldPopup.Show(position + Vector3.up * 2.5f, "UNSTUCK!", new Color(0.4f, 0.8f, 1f), 7f);
+
+    /// <summary>The item now shows in its own HUD slot (<see cref="KartItemSlot"/>).</summary>
+    public override string GetStatusText() => null;
 
     public override void Render()
     {
