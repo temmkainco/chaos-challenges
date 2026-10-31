@@ -44,9 +44,30 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         }
     }
 
-    /// <summary>Metres below the lowest spawn point that count as "fell off the world".</summary>
-    /// <summary>Metres below the lowest spawn point before a fall respawns you (kept short: long falls felt broken).</summary>
+    /// <summary>
+    /// Metres below the ground under the spawn points before a fall respawns you (kept short: long falls felt broken).
+    /// Measured from the ground, not the spawn points: the lobby's spawn points float well above its floor, and
+    /// measuring from them respawned players standing on the floor over and over.
+    /// </summary>
     private const float FALL_LIMIT = 6f;
+    private float? _groundY;
+
+    /// <summary>The lowest ground under any spawn point (found once; the spawn point itself when nothing is below).</summary>
+    private float GroundY()
+    {
+        if (_groundY.HasValue) return _groundY.Value;
+        float lowest = float.MaxValue;
+        int mask = ~((1 << ArenaProps.PLAYER_LAYER) | (1 << ArenaProps.FENCE_LAYER));
+        foreach (var point in _spawnPoints)
+        {
+            if (point == null) continue;
+            float y = Runner.GetPhysicsScene().Raycast(point.position + Vector3.up * 0.5f, Vector3.down, out var hit, 60f, mask, QueryTriggerInteraction.Ignore)
+                ? hit.point.y : point.position.y;
+            lowest = Mathf.Min(lowest, y);
+        }
+        _groundY = lowest;
+        return lowest;
+    }
 
     /// <summary>
     /// Host only: a fall guard for every scene (the lobby had none). Whoever drops far below the spawn points is handed
@@ -57,10 +78,7 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         if (!HasStateAuthority || Runner.Tick % 15 != 0 || _spawnPoints == null || _spawnPoints.Length == 0)
             return;
 
-        float lowest = float.MaxValue;
-        foreach (var point in _spawnPoints)
-            if (point != null) lowest = Mathf.Min(lowest, point.position.y);
-        float limit = lowest - FALL_LIMIT;
+        float limit = GroundY() - FALL_LIMIT;
 
         var minigame = MinigameController.Current;
         bool minigameReady = minigame != null && minigame.Object != null && minigame.Object.IsValid;
