@@ -121,7 +121,8 @@ public class PlayerColorPicker : MonoBehaviour
     private static string Initial(Fusion.PlayerRef owner)
     {
         var spawner = FindFirstObjectByType<BasePlayerSpawner>();
-        if (spawner != null && spawner.Players.TryGet(owner, out var player) && player != null && !string.IsNullOrEmpty(player.Nickname))
+        if (spawner != null && spawner.Object != null && spawner.Object.IsValid
+            && spawner.Players.TryGet(owner, out var player) && player != null && !string.IsNullOrEmpty(player.Nickname))
             return player.Nickname.Substring(0, 1).ToUpperInvariant();
         return "•";
     }
