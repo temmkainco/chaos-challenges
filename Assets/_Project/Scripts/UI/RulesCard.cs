@@ -186,7 +186,7 @@ public class RulesCard : MonoBehaviour
                 string name = string.IsNullOrEmpty(player.Nickname) ? $"Player {entry.Key.PlayerId}" : player.Nickname;
                 bool ready = controller.IsReady(entry.Key);
                 if (_sb.Length > 0) _sb.Append("   ");
-                _sb.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(Color.Lerp(player.OutfitColor, UiKit.Ink, 0.3f))).Append('>')
+                _sb.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(Color.Lerp(player.PlayerColor, UiKit.Ink, 0.3f))).Append('>')
                    .Append(name).Append("</color> ").Append(ready ? "<color=#2FA36B><b>READY</b></color>" : "<color=#9A8FB0>...</color>");
             }
         }

@@ -32,8 +32,16 @@ public class Player : NetworkBehaviour, ISpawned
     /// <summary>The player controlled on this machine, if spawned.</summary>
     public static Player Local { get; private set; }
 
-    /// <summary>Body colour, used to tint the player's name in the UI.</summary>
-    public Color OutfitColor => CosmeticsCatalog.Instance != null ? CosmeticsCatalog.Instance.GetColor(BodyColor).Color : Color.white;
+    /// <summary>
+    /// The player's colour (unique in the session, picked in the lobby; see <see cref="NetworkGameManager.PlayerColors"/>):
+    /// names, scoreboard swatches, karts, podiums and anything the player owns use it. The outfit's body colour until
+    /// the session has given them one.
+    /// </summary>
+    public Color PlayerColor =>
+        NetworkGameManager.Instance is { } match && match.Object != null && match.Object.IsValid && Object != null
+        && match.TryGetPlayerColor(Object.InputAuthority, out var color)
+            ? color
+            : CosmeticsCatalog.Instance != null ? CosmeticsCatalog.Instance.GetColor(BodyColor).Color : Color.white;
 
     private IPlatformService _platformService;
 
@@ -63,6 +71,7 @@ public class Player : NetworkBehaviour, ISpawned
         SpectatorGhost.Attach(this);
         RiderVisual.Attach(this);
         ContestantReveal.Attach(this);
+        ColorRing.Attach(this);
         OnLookChanged();
 
         if (Object.HasInputAuthority)

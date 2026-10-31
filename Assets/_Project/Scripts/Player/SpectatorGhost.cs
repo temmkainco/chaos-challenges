@@ -51,7 +51,7 @@ public class SpectatorGhost : MonoBehaviour
             // Sprites/Default (via the ThrowArc material) is transparent and unlit: a clean silhouette.
             _ghost = new Material(Resources.Load<Material>("ThrowArc"));
         }
-        var c = _player.OutfitColor;
+        var c = _player.PlayerColor;
         _ghost.color = new Color(c.r, c.g, c.b, 0.3f);
         foreach (var renderer in GetComponentsInChildren<Renderer>())
         {

@@ -168,7 +168,7 @@ public class PlayerListPanel : MonoBehaviour
             var who = player.Object.InputAuthority;
             string name = string.IsNullOrEmpty(player.Nickname) ? $"Player {who.PlayerId}" : player.Nickname;
             row.name.text = who == player.Runner.LocalPlayer ? $"{name} <size=70%>(you)</size>" : name;
-            row.name.color = Color.Lerp(player.OutfitColor, UiKit.Ink, 0.35f);
+            row.name.color = Color.Lerp(player.PlayerColor, UiKit.Ink, 0.35f);
             if (inLobby)
             {
                 bool ready = lobby.ReadyStates.TryGet(who, out var r) && r;

@@ -508,7 +508,7 @@ public class ConsoleRoundMinigameController : MinigameController
         if (_viewmodel == null)
         {
             var hands = Player.Local != null && CosmeticsCatalog.Instance != null ? CosmeticsCatalog.Instance.GetColor(Player.Local.HandsColor).Color : new Color(1f, 0.85f, 0.7f);
-            var sleeves = Player.Local != null ? Player.Local.OutfitColor : new Color(0.6f, 0.4f, 0.9f);
+            var sleeves = Player.Local != null ? Player.Local.PlayerColor : new Color(0.6f, 0.4f, 0.9f);
             _viewmodel = ConsoleViewmodel.Create(_material, hands, sleeves);
         }
         _viewmodel.gameObject.SetActive(true);

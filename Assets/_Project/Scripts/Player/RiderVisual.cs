@@ -113,7 +113,7 @@ public class RiderVisual : MonoBehaviour
         if (kind == VehicleKind.None || _visuals == null) return;
         _vehicle = new GameObject(kind + "Vehicle").transform;
         _vehicle.SetParent(_visuals, false);
-        var paint = _player.OutfitColor;
+        var paint = _player.PlayerColor;
         if (kind == VehicleKind.Kart)
         {
             // A kart from the car kit (five colours, one per contestant); its own driver makes way for ours.

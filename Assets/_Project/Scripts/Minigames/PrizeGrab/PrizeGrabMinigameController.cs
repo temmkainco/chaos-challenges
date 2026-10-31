@@ -276,9 +276,9 @@ public class PrizeGrabMinigameController : MinigameController
         if (label != null && label.text != text)
         {
             label.text = text;
-            label.color = p.OutfitColor;
+            label.color = p.PlayerColor;
             var pad = podium.Find("Pad")?.GetComponent<Renderer>();
-            if (pad != null) pad.material.color = new Color(p.OutfitColor.r, p.OutfitColor.g, p.OutfitColor.b, 0.85f);
+            if (pad != null) pad.material.color = new Color(p.PlayerColor.r, p.PlayerColor.g, p.PlayerColor.b, 0.85f);
         }
     }
 
@@ -302,7 +302,7 @@ public class PrizeGrabMinigameController : MinigameController
         string name = "";
         if (_playerSpawner.Players.TryGet(player, out var p) && p != null)
         {
-            color = p.OutfitColor;
+            color = p.PlayerColor;
             name = p.Nickname;
         }
         var mat = Resources.Load<Material>("ThrowArc");

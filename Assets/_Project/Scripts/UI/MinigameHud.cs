@@ -135,7 +135,7 @@ public class MinigameHud : MonoBehaviour
             bool mine = player == controller.Runner.LocalPlayer;
             _rows[i].name.text = mine ? $"<b>{Nickname(player)}</b>" : Nickname(player);
             _rows[i].value.text = value;
-            _rows[i].swatch.color = _spawner != null && _spawner.Players.TryGet(player, out var p) && p != null ? p.OutfitColor : Color.grey;
+            _rows[i].swatch.color = _spawner != null && _spawner.Players.TryGet(player, out var p) && p != null ? p.PlayerColor : Color.grey;
         }
     }
 
@@ -349,7 +349,7 @@ public class MinigameHud : MonoBehaviour
         if (_spawner == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
         var spawner = _spawner;
         if (spawner != null && spawner.Object != null && spawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname))
-            return $"<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(p.OutfitColor, new Color(0.18f, 0.1f, 0.28f), 0.35f))}>{p.Nickname}</color>";
+            return $"<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(p.PlayerColor, new Color(0.18f, 0.1f, 0.28f), 0.35f))}>{p.Nickname}</color>";
         return $"Player {player.PlayerId}";
     }
 

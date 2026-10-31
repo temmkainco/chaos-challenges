@@ -32,6 +32,7 @@ public class LobbyHud : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
         go.AddComponent<UnityEngine.UI.GraphicRaycaster>();
         go.AddComponent<GamePackPanel>();
+        PlayerColorPicker.Create(go.transform);
     }
 
     private void Update()

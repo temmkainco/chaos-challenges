@@ -30,7 +30,7 @@ public struct RosterEntry : INetworkStruct
 /// Spawned once per session by <see cref="LobbyManager"/> and kept across scene loads,
 /// so a rematch reuses it instead of creating a second one.
 /// </summary>
-public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
+public class NetworkGameManager : NetworkBehaviour, IPlayerJoined, IPlayerLeft
 {
     public const int MAX_ROUNDS = 16;
 
@@ -51,6 +51,63 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
     [Networked, Capacity(SessionSettings.MAX_PLAYERS)] private NetworkArray<RosterEntry> Roster { get; }
 
     // Scene load handshake: every peer reports once the scene for the current load id is active.
+    /// <summary>The player colours: each player has one of these, unique in the session, picked in the lobby.</summary>
+    public static readonly Color[] PlayerColors =
+    {
+        new(0.93f, 0.26f, 0.27f), new(0.24f, 0.52f, 0.97f), new(0.25f, 0.78f, 0.33f), new(1f, 0.82f, 0.16f),
+        new(1f, 0.53f, 0.13f), new(0.62f, 0.36f, 0.95f), new(1f, 0.45f, 0.75f), new(0.16f, 0.83f, 0.88f),
+    };
+    public static readonly string[] PlayerColorNames = { "RED", "BLUE", "GREEN", "YELLOW", "ORANGE", "PURPLE", "PINK", "CYAN" };
+
+    /// <summary>Each player's colour (by player id; 0 = none yet, else palette index + 1), kept for the whole session.</summary>
+    [Networked, Capacity(32)] private NetworkArray<byte> ColorOfPlayer { get; }
+
+    /// <summary>The player's colour index in <see cref="PlayerColors"/>, or -1.</summary>
+    public int ColorIndexOf(PlayerRef player) => player.IsRealPlayer ? ColorOfPlayer[player.PlayerId & 31] - 1 : -1;
+
+    public bool TryGetPlayerColor(PlayerRef player, out Color color)
+    {
+        int index = ColorIndexOf(player);
+        color = index >= 0 && index < PlayerColors.Length ? PlayerColors[index] : Color.white;
+        return index >= 0 && index < PlayerColors.Length;
+    }
+
+    /// <summary>Who has colour <paramref name="index"/> (PlayerRef.None if nobody).</summary>
+    public PlayerRef OwnerOfColor(int index)
+    {
+        foreach (var player in Runner.ActivePlayers)
+            if (ColorIndexOf(player) == index) return player;
+        return PlayerRef.None;
+    }
+
+    /// <summary>A player asks for a colour (lobby picker, or their last pick on joining); granted if nobody else has it.</summary>
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    public void RPC_RequestColor(byte index, RpcInfo info = default)
+    {
+        var player = info.Source == PlayerRef.None ? Runner.LocalPlayer : info.Source;
+        if (index >= PlayerColors.Length || Phase != MatchPhase.Lobby) return;
+        var owner = OwnerOfColor(index);
+        if (owner != PlayerRef.None && owner != player) return;
+        ColorOfPlayer.Set(player.PlayerId & 31, (byte)(index + 1));
+    }
+
+    /// <summary>Host. A colour nobody has yet, for a player who just joined.</summary>
+    private void AssignColor(PlayerRef player)
+    {
+        if (ColorIndexOf(player) >= 0) return;
+        for (int i = 0; i < PlayerColors.Length; i++)
+            if (OwnerOfColor(i) == PlayerRef.None)
+            {
+                ColorOfPlayer.Set(player.PlayerId & 31, (byte)(i + 1));
+                return;
+            }
+    }
+
+    public void PlayerJoined(PlayerRef player)
+    {
+        if (HasStateAuthority) AssignColor(player);
+    }
+
     [Networked] private int SceneLoadId { get; set; }
     /// <summary>A round or the lobby is loading and the host is waiting for every player to finish (the curtain stays down).</summary>
     [Networked] public NetworkBool WaitingForPlayers { get; private set; }
@@ -123,6 +180,9 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
 
         // Spawned outside any scene's injection (clients can receive it while still in the menu).
         _session = ProjectContext.Instance.Container.TryResolve<INetworkRunner>();
+        if (HasStateAuthority)
+            foreach (var player in Runner.ActivePlayers)
+                AssignColor(player);
 
         UpdateActivity();
     }
@@ -273,6 +333,7 @@ public class NetworkGameManager : NetworkBehaviour, IPlayerLeft
         if (!HasStateAuthority)
             return;
 
+        ColorOfPlayer.Set(player.PlayerId & 31, 0);   // the colour is free again
         int slot = GetSlot(player);
         if (slot < 0)
             return;

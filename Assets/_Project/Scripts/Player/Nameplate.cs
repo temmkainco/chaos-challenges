@@ -68,7 +68,7 @@ public class Nameplate : MonoBehaviour
         // The name arrives through OnNicknameUpdated (reading the networked string allocates); only the colour is polled.
         if (_shownName == null)
             OnNickname(_player.Nickname);
-        var color = _player.OutfitColor;
+        var color = _player.PlayerColor;
         if (color != _shownColor)
         {
             _shownColor = color;
