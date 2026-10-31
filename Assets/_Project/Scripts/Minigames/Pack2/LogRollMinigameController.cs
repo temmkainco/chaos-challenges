@@ -139,7 +139,10 @@ public class LogRollMinigameController : EliminationMinigameController
             {
                 var rel = player.transform.position - Axis(log);
                 float distance = new Vector2(rel.y, rel.z).magnitude;
-                if (distance > Radius + 0.9f || Mathf.Abs(rel.x) > LENGTH * 0.5f) continue;
+                // Only feet down on the log, below the ridge's top (0.5 m), can be caught; anyone in the air is clear
+                // (the host sees a client's jump a moment late).
+                if (distance > Radius + 0.35f || Mathf.Abs(rel.x) > LENGTH * 0.5f) continue;
+                if (!player.TryGetComponent<PlayerMovement>(out var movement) || !movement.IsGrounded) continue;
                 // Angle round the log's axis (0 = straight up, growing toward +Z like the log's own rotation).
                 float at = Mathf.Atan2(rel.z, rel.y) * Mathf.Rad2Deg;
                 float sign = log == 0 ? 1f : -1f;
@@ -150,10 +153,11 @@ public class LogRollMinigameController : EliminationMinigameController
                     float offset = r * 360f / RIDGES;
                     float travel = Mathf.DeltaAngle(from + offset, to + offset);
                     float start = Mathf.DeltaAngle(from + offset, at);
-                    float width = 14f;
+                    // The ridge's half-width (0.3 m) plus a little of the body, as an angle at this log's radius.
+                    float width = 0.5f / Radius * Mathf.Rad2Deg;
                     if (travel >= 0f ? start >= -width && start <= travel + width : start <= width && start >= travel - width) hit = true;
                 }
-                if (!hit || !player.TryGetComponent<PlayerMovement>(out var movement)) continue;
+                if (!hit) continue;
                 _hitTick[who] = Runner.Tick;
                 movement.Launch(new Vector3(0f, 6f, Mathf.Sign(SpinOf(log)) * 6f));
                 break;
