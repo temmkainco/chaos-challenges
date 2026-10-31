@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
+  m_Name: KartKupGame
+  m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
+  <Id>k__BackingField: kart_kup
+  <SceneBuildIndex>k__BackingField: 24
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: 120
+  <IsTimeLimited>k__BackingField: 1
+  <StartDelay>k__BackingField: 3
+  <DisplayName>k__BackingField: Kart Kup
+  <Description>k__BackingField: Three laps in karts round a sky track. Speed pads,
+    bumps and banana-free chaos!
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 0749c200183a0db4f957ea96de655658, type: 3}
+  <Rules>k__BackingField:
+  - Yellow pads give a burst of speed
+  - Brake before tight bends
+  - Bump rivals off the line
+  <Objective>k__BackingField: Finish three laps first.
+  <Danger>k__BackingField: Fly off the track and you're put back - but you lose time.
+  <Scoring>k__BackingField: Finish order wins; the rest by laps and distance.
+  <Controls>k__BackingField:
+  - W / S|Throttle / brake
+  - A / D|Steer
+  - SPACE|Hop

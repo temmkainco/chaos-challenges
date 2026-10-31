@@ -12,11 +12,11 @@ using UnityEngine.UI;
 /// </summary>
 public class GamePackPanel : MonoBehaviour
 {
-    private const int COLUMNS = 4;
-    private const float TILE_W = 300f, TILE_H = 200f;
-
-    private static readonly string[] ActionPack = { "tilefall", "bomb_rush", "hot_potato", "ring_out", "cannon_barrage", "hex_drop", "prize_grab" };
-    private static readonly string[] BrainPack = { "mines", "key_without_lock", "color_code", "console_round", "prize_grab" };
+    private static readonly string[] ActionPack = { "tilefall", "bomb_rush", "hot_potato", "ring_out", "cannon_barrage", "hex_drop", "prize_grab",
+        "spin_sweep", "block_party", "log_roll", "lava_rise", "door_dash", "kart_kup" };
+    private static readonly string[] BrainPack = { "mines", "key_without_lock", "color_code", "console_round", "prize_grab", "paint_party", "king_of_the_hill" };
+    private static readonly string[] NewPack = { "spin_sweep", "block_party", "log_roll", "lava_rise", "king_of_the_hill", "paint_party", "tail_tag",
+        "door_dash", "kart_kup", "sky_rings" };
 
     public static bool IsOpen { get; private set; }
 
@@ -62,30 +62,37 @@ public class GamePackPanel : MonoBehaviour
         if (_built || gm == null || gm.Database == null) return;
         _built = true;
         var db = gm.Database;
+        // The grid shrinks to fit however many games there are (three or four rows).
+        int columns = Mathf.Clamp(Mathf.CeilToInt(db.Count / 3f), 4, 8);
+        float tileW = Mathf.Min(300f, (1340f - (columns - 1) * 16f) / columns), tileH = tileW * 0.68f;
+        float scale = tileW / 300f;
+        int rows = Mathf.CeilToInt(db.Count / (float)columns);
+        float top = 270f - tileH * 0.5f, step = Mathf.Min(tileH + 12f, (600f - tileH) / Mathf.Max(1, rows - 1));
         for (int i = 0; i < db.Count; i++)
         {
             var def = db.GetByIndex(i);
-            int col = i % COLUMNS, row = i / COLUMNS;
-            float x = (col - (COLUMNS - 1) * 0.5f) * (TILE_W + 20f), y = 175f - row * (TILE_H + 12f);
+            int col = i % columns, row = i / columns;
+            float x = (col - (columns - 1) * 0.5f) * (tileW + 16f), y = top - row * step;
             var tile = MakeImage(_card, def.Id, UiKit.Instance.Panel, Color.white);
             tile.type = Image.Type.Sliced;
             tile.raycastTarget = true;
-            Place(tile.rectTransform, x, y, TILE_W, TILE_H);
+            Place(tile.rectTransform, x, y, tileW, tileH);
             var fade = tile.gameObject.AddComponent<CanvasGroup>();
             var clip = new GameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
             clip.transform.SetParent(tile.transform, false);
-            Place((RectTransform)clip.transform, 0f, 26f, TILE_W - 20f, 130f);
+            Place((RectTransform)clip.transform, 0f, 26f * scale, tileW - 20f * scale, tileH * 0.65f);
             var picture = MakeImage(clip.transform, "Picture", def.PreviewImage, Color.white);
-            Place(picture.rectTransform, 0f, 0f, TILE_W - 20f, (TILE_W - 20f) * 0.51f);
-            var name = MakeText(tile.transform, "Name", 24f, UiKit.Ink, false, 0f, -70f, TILE_W - 20f, 40f);
+            Place(picture.rectTransform, 0f, 0f, tileW - 20f * scale, (tileW - 20f * scale) * 0.51f);
+            var name = MakeText(tile.transform, "Name", 24f * scale, UiKit.Ink, false, 0f, -tileH * 0.35f, tileW - 16f * scale, 40f * scale);
             name.text = def.DisplayName.ToUpperInvariant();
             name.enableAutoSizing = true;
             name.fontSizeMin = 14f;
-            name.fontSizeMax = 24f;
+            name.fontSizeMin = 12f;
+            name.fontSizeMax = 24f * scale;
             var badgeBack = MakeImage(tile.transform, "Badge", UiKit.Instance.Button, UiKit.Mint);
             badgeBack.type = Image.Type.Sliced;
-            Place(badgeBack.rectTransform, TILE_W * 0.5f - 52f, TILE_H * 0.5f - 24f, 84f, 40f);
-            var badge = MakeText(badgeBack.transform, "Label", 22f, UiKit.Ink, false, 0f, 2f, 80f, 36f);
+            Place(badgeBack.rectTransform, tileW * 0.5f - 52f * scale, tileH * 0.5f - 24f * scale, 84f * scale, 40f * scale);
+            var badge = MakeText(badgeBack.transform, "Label", 22f * scale, UiKit.Ink, false, 0f, 2f, 80f * scale, 36f * scale);
             var button = tile.gameObject.AddComponent<Button>();
             button.targetGraphic = tile;
             var captured = def;
@@ -94,10 +101,11 @@ public class GamePackPanel : MonoBehaviour
             _tiles.Add((def, tile, picture, badge, fade));
         }
 
-        PresetButton("ALL GAMES", UiKit.Yellow, -480f, () => SetPack(null));
-        PresetButton("ACTION PACK", UiKit.Pink, -160f, () => SetPack(ActionPack));
-        PresetButton("BRAIN PACK", UiKit.Lavender, 160f, () => SetPack(BrainPack));
-        PresetButton("DONE", UiKit.Mint, 480f, () => Show(false));
+        PresetButton("ALL GAMES", UiKit.Yellow, -540f, () => SetPack(null));
+        PresetButton("ACTION PACK", UiKit.Pink, -270f, () => SetPack(ActionPack));
+        PresetButton("BRAIN PACK", UiKit.Lavender, 0f, () => SetPack(BrainPack));
+        PresetButton("NEW GAMES", UiKit.Orange, 270f, () => SetPack(NewPack));
+        PresetButton("DONE", UiKit.Mint, 540f, () => Show(false));
         Refresh();
     }
 
@@ -106,12 +114,12 @@ public class GamePackPanel : MonoBehaviour
         var image = MakeImage(_card, label, UiKit.Instance.Button, color);
         image.type = Image.Type.Sliced;
         image.raycastTarget = true;
-        Place(image.rectTransform, x, -385f, 290f, 76f);
+        Place(image.rectTransform, x, -385f, 250f, 76f);
         var button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
         button.onClick.AddListener(action);
         image.gameObject.AddComponent<ButtonJuice>();
-        MakeText(image.transform, "Label", 30f, UiKit.Ink, false, 0f, 3f, 280f, 60f).text = label;
+        MakeText(image.transform, "Label", 28f, UiKit.Ink, false, 0f, 3f, 240f, 60f).text = label;
     }
 
     private void Toggle(MinigameDefinitionSO def)

@@ -166,13 +166,6 @@ MonoBehaviour:
     Scale: 1
     AttachTo: 0
     WorldSpace: 1
-  - Name: Bowl
-    Prefab: {fileID: 5620988199356349840, guid: 2c8f86c032a5f7740866801cebb4e84a, type: 3}
-    LocalPosition: {x: 0, y: 0.5, z: 0.02}
-    LocalEuler: {x: 0, y: 0, z: 0}
-    Scale: 1
-    AttachTo: 0
-    WorldSpace: 1
   <Faces>k__BackingField:
   - Name: None
     Prefab: {fileID: 0}

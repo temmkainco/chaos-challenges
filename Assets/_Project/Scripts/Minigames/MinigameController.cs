@@ -16,6 +16,8 @@ public enum MinigamePhase : byte
     Intro,
 }
 
+public enum VehicleKind : byte { None, Kart, Plane }
+
 /// <summary>
 /// Base for every minigame. The host drives a networked <see cref="Phase"/> with one <see cref="PhaseTimer"/>
 /// (start countdown, then the optional time limit); every peer raises the UI events from the replicated state.
@@ -176,6 +178,18 @@ public class MinigameController : NetworkBehaviour
     /// handles it, false to send the player back to their spawn point.
     /// </summary>
     public virtual bool HandlePlayerFell(Player player) => false;
+
+    /// <summary>What contestants ride in this minigame (karts, planes); <see cref="VehicleKind.None"/> = on foot.</summary>
+    public virtual VehicleKind Vehicle => VehicleKind.None;
+
+    /// <summary>Planes can't climb above this height.</summary>
+    public virtual float MaxAltitude => float.MaxValue;
+
+    /// <summary>
+    /// Sideways push on contestants standing at <paramref name="position"/> (a rolling log carries you along). Must
+    /// depend only on networked state, so prediction and the host agree.
+    /// </summary>
+    public virtual Vector3 GroundDrift(Vector3 position) => Vector3.zero;
 
     /// <summary>Whether Shift sprint works in this minigame (off where it skips the challenge, e.g. jumping Hex Drop holes).</summary>
     public virtual bool AllowsSprint => true;

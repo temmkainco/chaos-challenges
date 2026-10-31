@@ -53,5 +53,35 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Minigames/ConsoleRoundMinigame.unity
     guid: 20d2e29c97c3c684096919562fc93437
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/SpinSweepMinigame.unity
+    guid: 43b8f996244b5e74f891495a66c5845d
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/BlockPartyMinigame.unity
+    guid: 50798d470c514fc4286790f40a3a856a
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/LogRollMinigame.unity
+    guid: 313989ffad98f2642838256dec4de051
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/LavaRiseMinigame.unity
+    guid: 79368c1450ad05e4497c80bda9092aea
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/KingOfTheHillMinigame.unity
+    guid: e20b4743832003e43a394bd60ffa9db1
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/PaintPartyMinigame.unity
+    guid: 78bf4c7ec25742e40a2d55e77757229a
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/TailTagMinigame.unity
+    guid: fa6788ab0168e0c4eafd8225d5534ce8
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/DoorDashMinigame.unity
+    guid: 3f001252664cc5043b6747ea3500b786
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/KartKupMinigame.unity
+    guid: 1746c479705df814da584b156395b0b4
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/SkyRingsMinigame.unity
+    guid: d2f7b27581ffe9a41a7d95a97879cd69
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

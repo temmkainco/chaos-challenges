@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
+  m_Name: BlockPartyGame
+  m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
+  <Id>k__BackingField: block_party
+  <SceneBuildIndex>k__BackingField: 17
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: 90
+  <IsTimeLimited>k__BackingField: 1
+  <StartDelay>k__BackingField: 3
+  <DisplayName>k__BackingField: Block Party
+  <Description>k__BackingField: Walls with gaps slide across the platform. Find the
+    gap or get shoved off!
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: c26c06eda57f5774a85ffddb7606fc45, type: 3}
+  <Rules>k__BackingField:
+  - Stand in a gap as the wall passes
+  - Walls get faster and come from more sides
+  - Shove rivals out of the gap
+  <Objective>k__BackingField: Stay on the platform.
+  <Danger>k__BackingField: A wall pushes you along until you go over the edge - unless
+    you're in a gap.
+  <Scoring>k__BackingField: Last one standing wins; survivors tie at the bell.
+  <Controls>k__BackingField:
+  - LMB|Shove

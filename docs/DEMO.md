@@ -37,6 +37,23 @@ Each round draws one layout for its arena (shown on the rules card as **MAP** an
 | Prize Grab | Open Stage · Hurdles · Towers |
 | Mines | Classic · Wide Field · Danger Zone |
 
+### Pack 2 (ten more games)
+
+| Minigame | Type | Layouts |
+|---|---|---|
+| Spin Sweep | last one standing: jump the sweeping bars | Two Bars · Cross · Counter-Spin |
+| Block Party | last one standing: find the gap in the sliding walls | Classic · Narrow · Crossfire |
+| Log Roll | last one standing on spinning logs | Big Log · Twin Logs · Speed Log |
+| Lava Rise | climb above the rising lava | Spiral · Twin Spirals · Scatter |
+| King of the Hill | points: hold the moving zone alone | Open Stage · Pillars · Shrinking Zone |
+| Paint Party | points: paint the most tiles | Square · Ring · Islands |
+| Tail Tag | grab a tail, hold it at the bell | Open Stage · Pillars · Hedges |
+| Door Dash | race through real and fake doors | Classic · Fake Out · Long Hall |
+| Kart Kup | 3-lap kart race (you drive a kart) | Oval · Clover · Long Oval |
+| Sky Rings | points: fly a plane through rings | Big Loop · Slalom · Tower |
+
+Vehicles are a movement mode of the contestant (`MinigameController.Vehicle`, `PlayerMovement.Drive/Fly`), so they are predicted and networked like running; `RiderVisual` seats the character in a kart or plane and steers the camera behind it. Points games derive from `ScoreMinigameController`, races from `RaceMinigameController`.
+
 Scoring: each round awards points by place (ties share the better place); the most points after all rounds wins.
 
 ## Building

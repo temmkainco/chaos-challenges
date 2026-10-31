@@ -18,6 +18,11 @@ public class PlayerMovement : NetworkBehaviour
     [Networked] private int LastGroundedTick { get; set; }
     [Networked] private int JumpPressedTick { get; set; }
     [Networked] private NetworkBool JumpHeld { get; set; }
+    /// <summary>Plane nose angle (degrees, up positive) and wing bank, for flying and the rider's pose.</summary>
+    [Networked] public float Pitch { get; private set; }
+    [Networked] public float Bank { get; private set; }
+    /// <summary>Speed pad / turbo: vehicles go faster while it runs.</summary>
+    [Networked] private TickTimer BoostTimer { get; set; }
 
     [Header("Run")]
     [SerializeField] private float _maxSpeed = 7f;
@@ -47,6 +52,23 @@ public class PlayerMovement : NetworkBehaviour
     private PlayerInteraction _interaction;
 
     public bool IsLaunched => !LaunchTimer.ExpiredOrNotRunning(Runner);
+    public bool IsBoosted => !BoostTimer.ExpiredOrNotRunning(Runner);
+
+    private const float KART_SPEED = 19f, KART_TURN = 130f, PLANE_SPEED = 17f, PLANE_TURN = 80f;
+
+    /// <summary>Host only. A speed pad or turbo for vehicles.</summary>
+    public void Boost(float seconds) => BoostTimer = TickTimer.CreateFromSeconds(Runner, seconds);
+
+    /// <summary>Host only. Faces <paramref name="yaw"/> and stops (respawning vehicles on the track).</summary>
+    public void ResetVehicle(float yaw)
+    {
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        CurrentVelocity = Vector3.zero;
+        _characterController.Velocity = Vector3.zero;
+        LaunchTimer = TickTimer.None;
+        Pitch = 0f;
+        Bank = 0f;
+    }
 
     /// <summary>Every contestant's controller on this peer; grabbable items ignore collisions with all of them.</summary>
     public static readonly System.Collections.Generic.List<CharacterController> Controllers = new();
@@ -112,6 +134,10 @@ public class PlayerMovement : NetworkBehaviour
         if (chaos == ChaosModifier.ReversedControls)
             data.Direction = -data.Direction;
 
+        var vehicle = minigame != null && !_player.IsSpectator ? minigame.Vehicle : VehicleKind.None;
+        if (vehicle == VehicleKind.Kart) { Drive(data, dt, speedScale, gravityScale, ice, minigame); return; }
+        if (vehicle == VehicleKind.Plane) { Fly(data, dt, speedScale, minigame); return; }
+
         // Horizontal: accelerate toward the wanted velocity.
         Vector3 input = new Vector3(data.Direction.x, 0f, data.Direction.z);
         if (input.sqrMagnitude > 1f) input.Normalize();
@@ -168,6 +194,8 @@ public class PlayerMovement : NetworkBehaviour
         velocity = new Vector3(horizontal.x, velocity.y, horizontal.z);
         // A twist's wind drifts everyone (not stored in the velocity, so it stops the moment the twist ends).
         var wind = minigame != null && !_player.ControlsLocked ? minigame.ChaosWind : Vector3.zero;
+        // A moving floor (rolling log) carries whoever stands on it.
+        if (minigame != null && IsGrounded) wind += minigame.GroundDrift(transform.position);
         _unityController.Move((velocity + wind) * dt);
 
         bool grounded = _unityController.isGrounded && velocity.y <= 0.5f;
@@ -193,5 +221,93 @@ public class PlayerMovement : NetworkBehaviour
         CurrentVelocity = velocity;
         _characterController.Velocity = velocity;
         _characterController.IsGrounded = grounded;
+    }
+    /// <summary>
+    /// Kart: W/S throttle and brake, A/D steer (sharper the faster you go), tyres grip sideways, Space hops.
+    /// Knockbacks still throw the kart around.
+    /// </summary>
+    private void Drive(NetworkInputData data, float dt, float speedScale, float gravityScale, bool ice, MinigameController minigame)
+    {
+        float throttle = Mathf.Clamp(data.Direction.z, -1f, 1f), steer = Mathf.Clamp(data.Direction.x, -1f, 1f);
+        var velocity = CurrentVelocity;
+        bool launched = IsLaunched;
+        var flat = new Vector3(velocity.x, 0f, velocity.z);
+        var fwd = transform.forward;
+        float forwardSpeed = Vector3.Dot(flat, fwd);
+        float top = KART_SPEED * speedScale * (IsBoosted ? 1.45f : 1f);
+        if (!launched)
+        {
+            float target = throttle >= 0f ? throttle * top : throttle * top * 0.45f;
+            bool braking = Mathf.Abs(target) < Mathf.Abs(forwardSpeed) || (target != 0f && Mathf.Sign(target) != Mathf.Sign(forwardSpeed));
+            float rate = throttle == 0f ? 7f : braking ? 28f : 15f;
+            if (IsBoosted && throttle > 0f) forwardSpeed = Mathf.Max(forwardSpeed, top * 0.85f);
+            forwardSpeed = Mathf.MoveTowards(forwardSpeed, target, rate * dt);
+            float grip = Mathf.Clamp01(Mathf.Abs(forwardSpeed) / 6f) * (forwardSpeed < 0f ? -1f : 1f);
+            transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y + steer * KART_TURN * grip * dt, 0f);
+            fwd = transform.forward;
+            var lateral = flat - Vector3.Project(flat, fwd);
+            lateral = Vector3.MoveTowards(lateral, Vector3.zero, (ice ? 4f : 45f) * dt);
+            flat = fwd * forwardSpeed + lateral;
+        }
+        else flat *= Mathf.Clamp01(1f - _airDrag * dt);
+
+        var pressed = data.Buttons.GetPressed(PreviousButtons);
+        PreviousButtons = data.Buttons;
+        if (pressed.IsSet(InputButtons.Jump) && IsGrounded && !launched)
+        {
+            velocity.y = Mathf.Sqrt(2f * _gravity * gravityScale * 0.5f);
+            IsGrounded = false;
+        }
+        float g = _gravity * gravityScale * (velocity.y < 0f ? _fallMultiplier : 1f);
+        velocity.y = Mathf.Max(velocity.y - g * dt, -_maxFallSpeed);
+        if (IsGrounded && velocity.y < 0f) velocity.y = -2f;
+        velocity = new Vector3(flat.x, velocity.y, flat.z);
+        var wind = !_player.ControlsLocked ? minigame.ChaosWind : Vector3.zero;
+        _unityController.Move((velocity + wind) * dt);
+        // Walls take the speed off instead of letting the kart grind along at full tilt.
+        if (_unityController.collisionFlags.HasFlag(CollisionFlags.Sides))
+            velocity = new Vector3(velocity.x * 0.6f, velocity.y, velocity.z * 0.6f);
+        bool grounded = _unityController.isGrounded && velocity.y <= 0.5f;
+        if (grounded)
+        {
+            if (velocity.y < 0f) velocity.y = -2f;
+            if (launched && LaunchTimer.RemainingTime(Runner) < _launchDuration - 0.25f) LaunchTimer = TickTimer.None;
+        }
+        IsGrounded = grounded;
+        CurrentVelocity = velocity;
+        _characterController.Velocity = velocity;
+        _characterController.IsGrounded = grounded;
+        Bank = Mathf.MoveTowards(Bank, -steer * Mathf.Clamp01(Mathf.Abs(forwardSpeed) / top) * 8f, 60f * dt);
+    }
+
+    /// <summary>
+    /// Plane: always flying forward; W/S nose up and down, A/D turn (the plane banks), Shift boosts. No gravity.
+    /// Parked (no movement) while controls are locked.
+    /// </summary>
+    private void Fly(NetworkInputData data, float dt, float speedScale, MinigameController minigame)
+    {
+        float climb = Mathf.Clamp(data.Direction.z, -1f, 1f), steer = Mathf.Clamp(data.Direction.x, -1f, 1f);
+        PreviousButtons = data.Buttons;
+        if (_player.ControlsLocked || _player.MovementLocked)
+        {
+            _unityController.Move(Vector3.down * 2f * dt);
+            CurrentVelocity = Vector3.zero;
+            _characterController.Velocity = Vector3.zero;
+            Pitch = Mathf.MoveTowards(Pitch, 0f, 60f * dt);
+            Bank = Mathf.MoveTowards(Bank, 0f, 60f * dt);
+            return;
+        }
+        Pitch = Mathf.MoveTowards(Pitch, climb * 35f, 90f * dt);
+        Bank = Mathf.MoveTowards(Bank, -steer * 35f, 120f * dt);
+        if (transform.position.y > minigame.MaxAltitude && Pitch > -10f) Pitch = Mathf.MoveTowards(Pitch, -10f, 120f * dt);
+        transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y + steer * PLANE_TURN * dt, 0f);
+        float speed = PLANE_SPEED * speedScale * (IsBoosted || data.Buttons.IsSet(InputButtons.Sprint) ? 1.35f : 1f);
+        var velocity = Quaternion.Euler(-Pitch, transform.eulerAngles.y, 0f) * Vector3.forward * speed;
+        if (IsLaunched) velocity = Vector3.Lerp(velocity, CurrentVelocity, 0.9f) + Vector3.down * 9f * dt;
+        _unityController.Move((velocity + minigame.ChaosWind) * dt);
+        IsGrounded = _unityController.isGrounded;
+        CurrentVelocity = velocity;
+        _characterController.Velocity = velocity;
+        _characterController.IsGrounded = IsGrounded;
     }
 }

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
+  m_Name: LogRollGame
+  m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
+  <Id>k__BackingField: log_roll
+  <SceneBuildIndex>k__BackingField: 18
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: 90
+  <IsTimeLimited>k__BackingField: 1
+  <StartDelay>k__BackingField: 3
+  <DisplayName>k__BackingField: Log Roll
+  <Description>k__BackingField: Giant logs spin under your feet. Walk against the
+    spin and jump the ridges!
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 7ff9fbc3323c4aa42885813e79d06ae8, type: 3}
+  <Rules>k__BackingField:
+  - Keep walking against the spin
+  - Jump when a ridge rolls over the top
+  - The spin flips direction now and then
+  <Objective>k__BackingField: Stay on the log the longest.
+  <Danger>k__BackingField: The spin carries you to the edge; ridges knock you off
+    unless you jump.
+  <Scoring>k__BackingField: Last one standing wins; survivors tie at the bell.
+  <Controls>k__BackingField:
+  - SPACE|Jump the ridges
+  - LMB|Shove

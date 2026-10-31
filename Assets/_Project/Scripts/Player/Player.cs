@@ -61,6 +61,7 @@ public class Player : NetworkBehaviour, ISpawned
         if (!TryGetComponent<EmotePlayer>(out _))
             gameObject.AddComponent<EmotePlayer>();
         SpectatorGhost.Attach(this);
+        RiderVisual.Attach(this);
         OnLookChanged();
 
         if (Object.HasInputAuthority)

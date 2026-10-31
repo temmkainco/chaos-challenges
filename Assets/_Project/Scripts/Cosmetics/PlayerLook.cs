@@ -45,7 +45,7 @@ public class PlayerLook : MonoBehaviour
             return;
         _shown[i] = index;
         if (_instances[i] != null)
-            DestroyObject(_instances[i]);
+            Discard(_instances[i]);
         _instances[i] = null;
 
         var item = catalog.GetItem(slot, index);
@@ -74,10 +74,10 @@ public class PlayerLook : MonoBehaviour
         foreach (var rigidbody in instance.GetComponentsInChildren<Rigidbody>(true))
         {
             rigidbody.isKinematic = true;
-            DestroyObject(rigidbody);
+            Discard(rigidbody);
         }
         foreach (var c in instance.GetComponentsInChildren<Collider>(true))
-            DestroyObject(c);
+            Discard(c);
         SetLayerRecursively(instance, _body != null ? _body.gameObject.layer : gameObject.layer);
         _instances[i] = instance;
     }
@@ -132,7 +132,7 @@ public class PlayerLook : MonoBehaviour
     }
 
     // Also works in edit mode (previews).
-    private static void DestroyObject(Object target)
+    private static void Discard(Object target)
     {
         if (Application.isPlaying) Destroy(target);
         else DestroyImmediate(target);

@@ -288,6 +288,12 @@ namespace Networking
                 Debug.LogWarning($"[Session] Could not join session lobby: {result.ShutdownReason}");
         }
 
+#if UNITY_EDITOR
+        /// <summary>Editor tests only: held movement (x = A/D, y = W/S) and a jump tapped every 20 ticks.</summary>
+        public static Vector2? TestMove;
+        public static bool TestJump;
+#endif
+
         public void OnInput(NetworkRunner runner, NetworkInput input)
         {
             var data = new NetworkInputData();
@@ -303,6 +309,11 @@ namespace Networking
                 data.Buttons.Set(InputButtons.Interact, localInput.IsInteractPressed);
                 data.Buttons.Set(InputButtons.Throw, localInput.IsThrowPressed);
             }
+#if UNITY_EDITOR
+            // Editor tests drive a player without a keyboard.
+            if (TestMove.HasValue) data.Direction = new Vector3(TestMove.Value.x, 0, TestMove.Value.y);
+            if (TestJump) data.Buttons.Set(InputButtons.Jump, (runner.Tick / 20) % 2 == 0);
+#endif
 
             input.Set(data);
         }

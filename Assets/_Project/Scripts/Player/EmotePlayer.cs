@@ -22,7 +22,7 @@ public class EmotePlayer : MonoBehaviour
 
     private Player _player;
     private Animator _animator;
-    private Transform _hips, _spine, _head, _lUpper, _lLower, _rUpper, _rLower;
+    private Transform _hips, _spine, _head, _lUpper, _lLower, _rUpper, _rLower, _lHand, _rHand;
     private int _shownTick = -1;
     private TextMeshPro _bubble;
 
@@ -39,6 +39,8 @@ public class EmotePlayer : MonoBehaviour
             _lLower = _animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
             _rUpper = _animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
             _rLower = _animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            _lHand = _animator.GetBoneTransform(HumanBodyBones.LeftHand);
+            _rHand = _animator.GetBoneTransform(HumanBodyBones.RightHand);
         }
     }
 
@@ -75,7 +77,7 @@ public class EmotePlayer : MonoBehaviour
             case 1: // Wave: right arm up, forearm waving
                 // Arm out to the side and the hand waving outward only, so it never swings through the head.
                 Aim(_rUpper, _rLower, (up * 0.9f + right * 1f).normalized, w);
-                Aim(_rLower, null, (up + right * (0.35f + 0.35f * s)).normalized, w);
+                Aim(_rLower, _rHand, (up + right * (0.35f + 0.35f * s)).normalized, w);
                 break;
             case 2: // Dance: hips bob and sway, arms up alternating
                 Tilt(_hips, fwd, 12f * s2 * w);
@@ -94,44 +96,45 @@ public class EmotePlayer : MonoBehaviour
                 Aim(_rUpper, _rLower, (up + right * (0.3f + 0.2f * s)).normalized, w);
                 Tilt(_spine, right, -6f * w);
                 break;
-            case 5: // Cry: head down, hands to the face
+            case 5: // Cry: head down, hands up in front of the face (the head is big: not into it)
                 Tilt(_head, right, 25f * w);
                 Tilt(_spine, right, 10f * w);
-                Aim(_lUpper, _lLower, (fwd - right * 0.2f - up * 0.3f).normalized, w);
-                Aim(_lLower, null, (up + right * 0.3f).normalized, w);
-                Aim(_rUpper, _rLower, (fwd + right * 0.2f - up * 0.3f).normalized, w);
-                Aim(_rLower, null, (up - right * 0.3f).normalized, w);
+                Aim(_lUpper, _lLower, (fwd - right * 0.25f - up * 0.1f).normalized, w);
+                Aim(_lLower, _lHand, (up + fwd * 0.55f + right * 0.15f).normalized, w);
+                Aim(_rUpper, _rLower, (fwd + right * 0.25f - up * 0.1f).normalized, w);
+                Aim(_rLower, _rHand, (up + fwd * 0.55f - right * 0.15f).normalized, w);
                 break;
             case 6: // 6-7: palms up in front, weighing up and down in turn, head bobbing
                 float weigh = Mathf.Sin(t * 12f);
                 Aim(_lUpper, _lLower, (-up + fwd * 0.6f - right * 0.35f).normalized, w);
                 Aim(_rUpper, _rLower, (-up + fwd * 0.6f + right * 0.35f).normalized, w);
-                Aim(_lLower, null, (fwd + up * (0.15f + 0.55f * weigh)).normalized, w);
-                Aim(_rLower, null, (fwd + up * (0.15f - 0.55f * weigh)).normalized, w);
+                Aim(_lLower, _lHand, (fwd + up * (0.15f + 0.55f * weigh)).normalized, w);
+                Aim(_rLower, _rHand, (fwd + up * (0.15f - 0.55f * weigh)).normalized, w);
                 Tilt(_head, fwd, 8f * weigh * w);
                 break;
             case 7: // Clap: forearms meeting in front
                 float clap = (Mathf.Sin(t * 14f) + 1f) * 0.5f;
                 Aim(_lUpper, _lLower, (fwd - right * 0.4f - up * 0.2f).normalized, w);
                 Aim(_rUpper, _rLower, (fwd + right * 0.4f - up * 0.2f).normalized, w);
-                Aim(_lLower, null, (fwd + right * (0.2f + 0.6f * clap)).normalized, w);
-                Aim(_rLower, null, (fwd - right * (0.2f + 0.6f * clap)).normalized, w);
+                Aim(_lLower, _lHand, (fwd + right * (0.2f + 0.6f * clap)).normalized, w);
+                Aim(_rLower, _rHand, (fwd - right * (0.2f + 0.6f * clap)).normalized, w);
                 break;
             case 9: // Dab: face buried in one elbow, the other arm thrown out and up, held
                 float hit = Mathf.Clamp01(t / 0.25f);
                 Tilt(_head, right, 25f * w * hit);
                 Tilt(_head, fwd, 20f * w * hit);
-                Aim(_lUpper, _lLower, (-right * 0.2f + up * 0.6f + fwd * 0.6f).normalized, w * hit);
-                Aim(_lLower, null, (right + up * 0.3f + fwd * 0.2f).normalized, w * hit);
+                // The bent arm crosses in front of the face, not through the (big) head.
+                Aim(_lUpper, _lLower, (-right * 0.15f + up * 0.45f + fwd * 0.9f).normalized, w * hit);
+                Aim(_lLower, _lHand, (right + up * 0.25f + fwd * 0.55f).normalized, w * hit);
                 Aim(_rUpper, _rLower, (right + up * 0.55f).normalized, w * hit);
-                Aim(_rLower, null, (right + up * 0.6f).normalized, w * hit);
+                Aim(_rLower, _rHand, (right + up * 0.6f).normalized, w * hit);
                 break;
             case 8: // Love: hands to the chest, swaying
                 Tilt(_spine, fwd, 8f * s2 * w);
                 Aim(_lUpper, _lLower, (fwd * 0.5f - up - right * 0.1f).normalized, w);
-                Aim(_lLower, null, (right + up * 0.3f).normalized, w);
+                Aim(_lLower, _lHand, (right + up * 0.3f).normalized, w);
                 Aim(_rUpper, _rLower, (fwd * 0.5f - up + right * 0.1f).normalized, w);
-                Aim(_rLower, null, (-right + up * 0.3f).normalized, w);
+                Aim(_rLower, _rHand, (-right + up * 0.3f).normalized, w);
                 Tilt(_head, fwd, 10f * s2 * w);
                 break;
         }
@@ -151,8 +154,8 @@ public class EmotePlayer : MonoBehaviour
         Tilt(_spine, right, 14f * w);
         Aim(_lUpper, _lLower, (fwd - right * 0.15f + up * 0.05f).normalized, w);
         Aim(_rUpper, _rLower, (fwd + right * 0.15f + up * 0.05f).normalized, w);
-        Aim(_lLower, null, (fwd + up * 0.1f).normalized, w);
-        Aim(_rLower, null, (fwd + up * 0.1f).normalized, w);
+        Aim(_lLower, _lHand, (fwd + up * 0.1f).normalized, w);
+        Aim(_rLower, _rHand, (fwd + up * 0.1f).normalized, w);
     }
 
     /// <summary>Rotates <paramref name="bone"/> so it points along <paramref name="direction"/> (world), blended by <paramref name="w"/>.</summary>

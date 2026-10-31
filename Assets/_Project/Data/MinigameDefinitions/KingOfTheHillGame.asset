@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89cbc515f664c394fa76e13533db2330, type: 3}
+  m_Name: KingOfTheHillGame
+  m_EditorClassIdentifier: Assembly-CSharp::MinigameDefinition
+  <Id>k__BackingField: king_of_the_hill
+  <SceneBuildIndex>k__BackingField: 20
+  <GameType>k__BackingField: 2
+  <GameDuration>k__BackingField: 75
+  <IsTimeLimited>k__BackingField: 1
+  <StartDelay>k__BackingField: 3
+  <DisplayName>k__BackingField: King of the Hill
+  <Description>k__BackingField: A glowing zone hops around the stage. Stand in it
+    alone to score - shove everyone else out!
+  <PreviewImage>k__BackingField: {fileID: 21300000, guid: 3d43ba2001b2b09489146c5d982832b3, type: 3}
+  <Rules>k__BackingField:
+  - Alone in the zone = points
+  - Shove rivals out
+  - Watch for the zone moving
+  <Objective>k__BackingField: Score the most points in the zone.
+  <Danger>k__BackingField: 'Two or more in the zone: contested, nobody scores. The
+    zone moves every few seconds.'
+  <Scoring>k__BackingField: Most points wins.
+  <Controls>k__BackingField:
+  - LMB|Shove (extra strong)

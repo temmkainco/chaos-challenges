@@ -70,8 +70,8 @@ public class ConsoleSitter : MonoBehaviour
         float mash = Mathf.Sin(t * 13f + _player.Object.InputAuthority.PlayerId) * 0.08f;
         Aim(_lUpperArm, _lLowerArm, (-up + fwd * 0.55f - right * 0.15f).normalized);
         Aim(_rUpperArm, _rLowerArm, (-up + fwd * 0.55f + right * 0.15f).normalized);
-        Aim(_lLowerArm, null, (fwd + right * 0.55f + up * (0.25f + mash)).normalized);
-        Aim(_rLowerArm, null, (fwd - right * 0.55f + up * (0.25f - mash)).normalized);
+        Aim(_lLowerArm, _lHand, (fwd + right * 0.55f + up * (0.25f + mash)).normalized);
+        Aim(_rLowerArm, _rHand, (fwd - right * 0.55f + up * (0.25f - mash)).normalized);
         Tilt(_head, right, 8f);
 
         if (_lHand != null && _rHand != null && _pad != null)
