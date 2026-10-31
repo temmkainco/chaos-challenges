@@ -101,6 +101,30 @@ public static class ArenaProps
         }
     }
 
+    /// <summary>
+    /// Invisible walls round <paramref name="area"/> (its horizontal extent), from <paramref name="ground"/> up
+    /// <paramref name="height"/> metres, on the fence layer (contestants only).
+    /// </summary>
+    public static void FenceBox(Transform parent, Bounds area, float ground, float height)
+    {
+        var root = new GameObject("PlayAreaWalls").transform;
+        root.SetParent(parent, true);
+        var centre = new Vector3(area.center.x, ground + height * 0.5f, area.center.z);
+        void Wall(Vector3 offset, Vector3 size)
+        {
+            var wall = new GameObject("Wall", typeof(BoxCollider));
+            wall.layer = FENCE_LAYER;
+            wall.transform.SetParent(root, false);
+            wall.transform.position = centre + offset;
+            wall.GetComponent<BoxCollider>().size = size;
+        }
+        float x = area.extents.x, z = area.extents.z;
+        Wall(new Vector3(x + 0.25f, 0f, 0f), new Vector3(0.5f, height, z * 2f + 1f));
+        Wall(new Vector3(-x - 0.25f, 0f, 0f), new Vector3(0.5f, height, z * 2f + 1f));
+        Wall(new Vector3(0f, 0f, z + 0.25f), new Vector3(x * 2f + 1f, height, 0.5f));
+        Wall(new Vector3(0f, 0f, -z - 0.25f), new Vector3(x * 2f + 1f, height, 0.5f));
+    }
+
     /// <summary>Call once after adding props: runtime colliders must reach the physics scene on clients too.</summary>
     public static void Done() => Physics.SyncTransforms();
 

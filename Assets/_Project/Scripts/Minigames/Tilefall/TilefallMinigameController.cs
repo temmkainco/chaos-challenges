@@ -12,6 +12,9 @@ using Zenject;
 /// </summary>
 public class TilefallMinigameController : MinigameController
 {
+    /// <summary>Off-course is handled by the course itself (back to the last checkpoint).</summary>
+    protected override bool UsesBoundary => false;
+
     [Networked] private int PlayersFinished { get; set; }
 
     [Inject] private TileCourse _course;

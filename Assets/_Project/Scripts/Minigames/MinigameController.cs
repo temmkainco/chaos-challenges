@@ -139,7 +139,64 @@ public class MinigameController : NetworkBehaviour
     {
         yield return null;
         var stage = GameObject.Find("StageCentre") ?? GameObject.Find("Stage");
-        ArenaTheme.Apply(Theme, stage != null ? stage.transform.position : transform.position, transform, LocationGround);
+        var centre = stage != null ? stage.transform.position : transform.position;
+        // The play area is measured before the scenery goes up (the theme hides the studio set, not the stage).
+        var area = PlayArea();
+        ArenaTheme.Apply(Theme, centre, transform, LocationGround);
+        if (UsesBoundary && area.HasValue && transform.Find("PlayerFence") == null)
+            BuildBoundary(area.Value, centre);
+    }
+
+    [Header("Play area")]
+    [SerializeField, Tooltip("Metres between what the game built (and its stage) and the invisible wall round it")]
+    private float _boundaryMargin = 1f;
+    [SerializeField, Tooltip("Height of that wall above the ground (arenas higher than this stay open to fall off)")]
+    private float _boundaryHeight = 4f;
+    [SerializeField, Tooltip("Metres past the wall (blasted over it) before the host brings a contestant back like a fall")]
+    private float _boundarySlack = 1.5f;
+
+    /// <summary>
+    /// Whether this game gets an invisible wall round its play area, so nobody walks off into the scenery. Games with
+    /// their own fence (a "PlayerFence" child) or walls keep theirs.
+    /// </summary>
+    protected virtual bool UsesBoundary => true;
+
+    /// <summary>The walled play area, once built (horizontal extent; the same on every peer).</summary>
+    public Bounds? Boundary { get; private set; }
+
+    /// <summary>Host's fall guard: well outside the walls (blasted over them) counts as falling off the map.</summary>
+    public bool IsOutsideBoundary(Vector3 position) =>
+        Boundary is { } area && (position.x < area.min.x - _boundarySlack || position.x > area.max.x + _boundarySlack
+            || position.z < area.min.z - _boundarySlack || position.z > area.max.z + _boundarySlack);
+
+    /// <summary>What the game built under its controller plus the stage it plays on.</summary>
+    private Bounds? PlayArea()
+    {
+        Bounds? area = null;
+        void Add(Renderer renderer)
+        {
+            var bounds = renderer.bounds;
+            if (bounds.size.x > 150f || bounds.size.z > 150f) return;   // ground and sea planes
+            if (area is { } a) { a.Encapsulate(bounds); area = a; } else area = bounds;
+        }
+        foreach (var renderer in GetComponentsInChildren<Renderer>())
+            Add(renderer);
+        foreach (var name in new[] { "Stage", "StageRim", "platform-purple" })
+            if (GameObject.Find(name) is { } floor)
+                foreach (var renderer in floor.GetComponentsInChildren<Renderer>())
+                    Add(renderer);
+        return area;
+    }
+
+    private void BuildBoundary(Bounds area, Vector3 centre)
+    {
+        float ground = GameObject.Find("StudioFloor") is { } studioFloor && studioFloor.TryGetComponent<Collider>(out var floorCollider)
+            ? floorCollider.bounds.max.y
+            : LocationGround ?? centre.y - 0.6f;
+        area.Expand(new Vector3(_boundaryMargin * 2f, 0f, _boundaryMargin * 2f));
+        Boundary = area;
+        ArenaProps.FenceBox(transform, area, ground, _boundaryHeight);
+        ArenaProps.Done();
     }
 
     /// <summary>

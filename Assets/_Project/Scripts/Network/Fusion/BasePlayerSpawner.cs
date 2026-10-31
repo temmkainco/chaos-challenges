@@ -85,7 +85,11 @@ public abstract class BasePlayerSpawner : NetworkBehaviour, IPlayerJoined, IPlay
         foreach (var entry in Players)
         {
             var player = entry.Value;
-            if (player == null || player.transform.position.y > limit) continue;
+            if (player == null) continue;
+            bool fell = player.transform.position.y <= limit;
+            // Blasted over the play area's walls counts as falling off the map.
+            bool outside = minigameReady && !player.IsSpectator && minigame.IsOutsideBoundary(player.transform.position);
+            if (!fell && !outside) continue;
             if (minigameReady && minigame.HandlePlayerFell(player)) continue;
             RequestSpawn(player);
         }

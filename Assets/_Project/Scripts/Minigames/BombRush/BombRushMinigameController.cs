@@ -13,6 +13,9 @@ using UnityEngine;
 /// </summary>
 public class BombRushMinigameController : MinigameController
 {
+    /// <summary>The islands stand in open water; leaving yours is the way out.</summary>
+    protected override bool UsesBoundary => false;
+
     [Header("Bombs")]
     [SerializeField] private NetworkPrefabRef _bombPrefab;
     [SerializeField, Tooltip("Seconds between bombs with 2 players; more players get them faster")] private float _spawnInterval = 3f;

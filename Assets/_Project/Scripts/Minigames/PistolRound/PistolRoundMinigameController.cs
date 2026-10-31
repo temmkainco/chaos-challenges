@@ -17,6 +17,9 @@ public enum DuelStage : byte
 /// </summary>
 public class PistolRoundMinigameController : TurnBasedMinigameController
 {
+    /// <summary>The street has its own buildings and fences.</summary>
+    protected override bool UsesBoundary => false;
+
     [Networked] public DuelStage Stage { get; private set; }
     [Networked] private TickTimer StageTimer { get; set; }
     /// <summary>Bit per <see cref="PlayerRef.PlayerId"/>: jammed until the next draw.</summary>

@@ -13,6 +13,9 @@ using UnityEngine;
 /// </summary>
 public class KeyLockMinigameController : MinigameController
 {
+    /// <summary>The warehouse has its own walls.</summary>
+    protected override bool UsesBoundary => false;
+
     private const byte CLOSED = 255;
 
     [SerializeField] private NetworkPrefabRef _keyPrefab;
