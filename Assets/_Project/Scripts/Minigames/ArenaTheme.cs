@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum ArenaThemeKind : byte { Studio, Islands, Space, Castle, Winter, Graveyard, Forest, Town, Candy, Sky, Circuit, Colosseum, Volcano }
+public enum ArenaThemeKind : byte { Studio, Islands, Space, Castle, Winter, Graveyard, Forest, Town, Candy, Sky, Circuit, Colosseum, Volcano, Prison }
 
 /// <summary>
 /// Sets a studio arena in a real place for a layout (<see cref="MinigameController.Theme"/>): the studio set (floor,
@@ -34,6 +34,7 @@ public static class ArenaTheme
         ["TailTagMinigame"] = new[] { ArenaThemeKind.Forest, ArenaThemeKind.Town, ArenaThemeKind.Graveyard },
         ["BombRushMinigame"] = new[] { ArenaThemeKind.Islands },
         ["CannonBarrageMinigame"] = new[] { ArenaThemeKind.Islands, ArenaThemeKind.Castle, ArenaThemeKind.Volcano },
+        ["KeyWithoutLockMinigame"] = new[] { ArenaThemeKind.Prison },
     };
 
     public static ArenaThemeKind For(string scene, int variant) =>
@@ -92,6 +93,15 @@ public static class ArenaTheme
         foreach (var name in AlwaysHidden)
             if (GameObject.Find(name) is { } hidden) hidden.SetActive(false);
         if (theme == ArenaThemeKind.Studio) return;
+        if (theme == ArenaThemeKind.Prison)
+        {
+            // The vault keeps its walls, walkways and doors (the game plays on them); it is dressed as a cell block.
+            var prison = new GameObject("Theme Prison").transform;
+            if (parent != null) prison.SetParent(parent, true);
+            float yardTop = GameObject.Find("Ground") is { } yard && yard.TryGetComponent<Collider>(out var yardCollider) ? yardCollider.bounds.max.y : centre.y - 0.6f;
+            new Builder(theme, centre, yardTop, prison).Prison();
+            return;
+        }
 
         // The set goes. The studio floor stays solid (stepping off the stage must not drop you into the void); only its
         // look goes, and the place's ground is drawn at its height.
@@ -190,6 +200,12 @@ public static class ArenaTheme
                 look.Fog = new Color(0.5f, 0.22f, 0.13f); look.FogStart = 40f; look.FogEnd = 260f;
                 look.Sun = new Color(1f, 0.6f, 0.4f); look.SunIntensity = 1f; look.SunPitch = 30f;
                 look.Ambient = new Color(0.62f, 0.4f, 0.36f); look.AmbientLow = new Color(0.35f, 0.15f, 0.1f); break;
+            case ArenaThemeKind.Prison:
+                look.Ground = new Color(0.27f, 0.28f, 0.3f); look.Stage = new Color(0.5f, 0.5f, 0.52f); look.Rim = new Color(0.95f, 0.75f, 0.2f);
+                look.Sky = new Color(0.05f, 0.07f, 0.16f); look.Clouds = null;
+                look.Fog = new Color(0.22f, 0.25f, 0.34f); look.FogStart = 40f; look.FogEnd = 200f;
+                look.Sun = new Color(0.75f, 0.8f, 1f); look.SunIntensity = 0.9f; look.SunPitch = 55f;
+                look.Ambient = new Color(0.6f, 0.62f, 0.72f); look.AmbientLow = new Color(0.35f, 0.35f, 0.4f); break;
             case ArenaThemeKind.Space:
                 look.Ground = new Color(0.32f, 0.3f, 0.4f); look.Stage = new Color(0.45f, 0.48f, 0.56f); look.Rim = new Color(0.3f, 0.8f, 1f);
                 look.Sun = new Color(0.8f, 0.85f, 1f); look.SunIntensity = 1.1f; look.Clouds = null; break;
@@ -626,6 +642,121 @@ public static class ArenaTheme
             Scatter(new[] { "Skeleton", "FireBasket" }, 10, 3f, 25f, 1.2f, 2.2f);
             for (int i = 0; i < 4; i++)
                 PointLight(At(i / 4f * Mathf.PI * 2f, _clear + 6f, 1f), lava, 18f, 1.8f);
+        }
+
+        /// <summary>
+        /// Key Hunt's cell block at night: concrete walls, steel walkways, bars either side of every door (the doors read
+        /// as cell gates), a "CELL BLOCK" sign; outside, a perimeter wall with guard towers and sweeping searchlights.
+        /// </summary>
+        public void Prison()
+        {
+            Atmosphere();
+            var concrete = new Color(0.66f, 0.65f, 0.62f);
+            var steel = new Color(0.45f, 0.48f, 0.55f);
+            var hazard = new Color(0.98f, 0.76f, 0.18f);
+            if (GameObject.Find("Set") is { } set)
+                foreach (Transform part in set.transform)
+                {
+                    string name = part.name;
+                    if (name.StartsWith("Prop_WallShelf")) { part.gameObject.SetActive(false); continue; }
+                    var colour = name == "Ground" ? _look.Ground
+                        : name == "Floor" ? new Color(0.5f, 0.5f, 0.53f)
+                        : name.StartsWith("Wall") && !name.StartsWith("Walkway") ? concrete
+                        : name.StartsWith("WalkwayTrim") || name.StartsWith("Pillar") ? hazard
+                        : name.StartsWith("Walkway") || name.StartsWith("Ramp") ? steel
+                        : (Color?)null;
+                    if (colour.HasValue) Recolour(part, colour.Value);
+                }
+            if (GameObject.Find("Vault") is { } vault)
+                foreach (Transform part in vault.transform)
+                    if (!part.name.Contains("Sign")) Recolour(part, concrete);
+            if (GameObject.Find("Theme Props") is { } props)
+                foreach (Transform prop in props.transform)
+                    Recolour(prop, new Color(0.55f, 0.5f, 0.42f));
+
+            // Cell bars either side of each door, against its wall.
+            var bars = new Color(0.28f, 0.29f, 0.32f);
+            foreach (var door in Object.FindObjectsByType<HuntDoor>(FindObjectsSortMode.None))
+            {
+                var t = door.transform;
+                foreach (float side in new[] { -1f, 1f })
+                    for (int n = 0; n < 2; n++)
+                    {
+                        var spot = t.position + t.right * side * (2.1f + n * 3.1f) + t.forward * 0.25f;
+                        spot.y = door.FrontPosition.y - 0.1f;
+                        Put("IronFence", Ground(spot), 3.1f, t.eulerAngles.y, bars);
+                    }
+            }
+            // Signs on the inner faces of the north and south walls, readable from inside.
+            if (GameObject.Find("WallN") is { } north && north.TryGetComponent<Renderer>(out var northWall))
+                Sign("CELL BLOCK  C", new Vector3(northWall.bounds.center.x, northWall.bounds.max.y - 2f, northWall.bounds.min.z - 0.15f), 0f);
+            if (GameObject.Find("WallS") is { } south && south.TryGetComponent<Renderer>(out var southWall))
+                Sign("NO ESCAPE", new Vector3(southWall.bounds.center.x, southWall.bounds.max.y - 2f, southWall.bounds.max.z + 0.15f), 180f);
+
+            // Concrete perimeter wall topped with bars, guard towers with searchlights at the corners, floodlights.
+            float half = 52f;
+            var grey = new Color(0.62f, 0.62f, 0.64f);
+            var yardCentre = new Vector3(_centre.x, _floor, _centre.z);
+            for (int side = 0; side < 4; side++)
+            {
+                float yaw = side * 90f;
+                var along = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+                var outward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+                Slab(yardCentre + outward * half + Vector3.up * 4f, new Vector3(half * 2f, 8f, 0.8f), grey, Quaternion.Euler(0f, yaw, 0f));
+                for (float x = -half + 1f; x <= half - 1f; x += 2.2f)
+                    Put("IronFence", yardCentre + outward * half + along * x + Vector3.up * 8f, 1.6f, yaw, bars);
+                var corner = yardCentre + outward * half + along * half;
+                Slab(corner + Vector3.up * 7f, new Vector3(3.5f, 14f, 3.5f), grey);
+                Slab(corner + Vector3.up * 14.3f, new Vector3(6f, 0.6f, 6f), new Color(0.4f, 0.41f, 0.45f));
+                Slab(corner + Vector3.up * 16.5f, new Vector3(4.5f, 3.8f, 4.5f), new Color(0.75f, 0.75f, 0.78f));
+                Slab(corner + Vector3.up * 18.6f, new Vector3(6.5f, 0.5f, 6.5f), new Color(0.3f, 0.31f, 0.35f));
+                var lamp = new GameObject("Searchlight");
+                lamp.transform.SetParent(_root, true);
+                lamp.transform.position = corner + Vector3.up * 16.5f - (outward + along) * 2.6f;
+                lamp.transform.rotation = Quaternion.Euler(35f, yaw + 180f + 45f, 0f);
+                var light = lamp.AddComponent<Light>();
+                light.type = LightType.Spot;
+                light.spotAngle = 22f;
+                light.range = 90f;
+                light.intensity = 6f;
+                light.color = new Color(1f, 0.97f, 0.85f);
+                light.shadows = LightShadows.None;
+                var sweep = lamp.AddComponent<Searchlight>();
+                sweep.Phase = side * 0.25f;
+                for (int f = -1; f <= 1; f += 2)
+                    Put("Lightpost", new Vector3(_centre.x, _floor, _centre.z) + outward * (half - 8f) + along * f * 20f, 6f, yaw + 180f, steel);
+            }
+            Scatter(new[] { "Barrel", "Crate" }, 12, 4f, 22f, 1.2f, 2f);
+        }
+
+        /// <summary>The ground under <paramref name="spot"/> (first thing hit going down), or the spot itself.</summary>
+        private static Vector3 Ground(Vector3 spot) =>
+            Physics.Raycast(spot + Vector3.up * 1.5f, Vector3.down, out var hit, 6f, ~((1 << ArenaProps.PLAYER_LAYER) | (1 << ArenaProps.FENCE_LAYER)), QueryTriggerInteraction.Ignore)
+                ? hit.point : spot;
+
+        private static void Recolour(Transform part, Color colour)
+        {
+            var block = new MaterialPropertyBlock();
+            foreach (var renderer in part.GetComponentsInChildren<Renderer>())
+            {
+                renderer.GetPropertyBlock(block);
+                block.SetColor("_BaseColor", colour);
+                renderer.SetPropertyBlock(block);
+            }
+        }
+
+        private void Sign(string text, Vector3 position, float yaw)
+        {
+            var go = new GameObject("Sign " + text);
+            go.transform.SetParent(_root, true);
+            go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            var label = go.AddComponent<TMPro.TextMeshPro>();
+            label.text = text;
+            label.fontSize = 18f;
+            label.alignment = TMPro.TextAlignmentOptions.Center;
+            label.color = new Color(1f, 0.82f, 0.25f);
+            label.rectTransform.sizeDelta = new Vector2(30f, 4f);
+            if (UiKit.Instance != null && UiKit.Instance.Font != null) label.font = UiKit.Instance.Font;
         }
 
         /// <summary>Green or sandy hills on the horizon.</summary>
