@@ -65,6 +65,25 @@ public class PromptBar : MonoBehaviour
         return bar;
     }
 
+    private static readonly string[] MoveKeys = { "WASD", "W A S D", "A / D", "W / S", "W", "S", "A", "D", "ARROWS" };
+
+    /// <summary>
+    /// A keyboard control as written in game data ("SPACE", "Hold LMB", "E / LMB") in the device last used: on a
+    /// gamepad movement keys become the left stick and the rest map word by word to the player bindings.
+    /// </summary>
+    public static string Cap(string key)
+    {
+        if (!UsingGamepad || string.IsNullOrEmpty(key)) return key;
+        if (System.Array.IndexOf(MoveKeys, key.Trim().ToUpperInvariant()) >= 0) return "L-Stick";
+        return System.Text.RegularExpressions.Regex.Replace(key, @"\b(LMB|SPACE|SHIFT|E)\b", m => m.Value switch
+        {
+            "LMB" => "X",
+            "SPACE" => "A",
+            "SHIFT" => "L3",
+            _ => "Y",
+        });
+    }
+
     private void Update()
     {
         var pad = Gamepad.current;

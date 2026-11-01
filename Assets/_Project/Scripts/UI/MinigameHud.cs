@@ -63,19 +63,11 @@ public class MinigameHud : MonoBehaviour
         splashRect.anchorMin = splashRect.anchorMax = new Vector2(0.5f, 0.8f);
     }
 
-    /// <summary>The rules card gets its own overlay canvas: this HUD is hidden during the intro.</summary>
+    /// <summary>The rules card builds its own overlay canvas: this HUD is hidden during the intro.</summary>
     private void CreateRulesCard()
     {
-        var go = new GameObject("RulesCardCanvas", typeof(RectTransform));
+        var go = new GameObject("RulesCard");
         UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, gameObject.scene);
-        var canvas = go.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 30;
-        var scaler = go.AddComponent<UnityEngine.UI.CanvasScaler>();
-        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-        go.AddComponent<UnityEngine.UI.GraphicRaycaster>();
         go.AddComponent<RulesCard>();
     }
 

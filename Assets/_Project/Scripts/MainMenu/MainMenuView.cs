@@ -27,7 +27,7 @@ public class MainMenuView : MonoBehaviour
     private MainMenuController _controller;
     private IPlatformService _platformService;
 
-    private RectTransform _canvas, _safe, _logo, _tv;
+    private RectTransform _canvas, _safe, _logo;
     private CanvasGroup _logoGroup;
     private RectTransform[] _views;
     private Vector2[] _rest;
@@ -116,43 +116,13 @@ public class MainMenuView : MonoBehaviour
         rt.offsetMin = rt.offsetMax = Vector2.zero;
     }
 
-    /// <summary>ON AIR, then DON'T STOP / THE PAR[TV]: the TV is a tilted Brand box that rocks gently.</summary>
+    /// <summary>The show logo (<see cref="ShowLogo"/>), top left.</summary>
     private void BuildLogo()
     {
-        var theme = UiTheme.Instance;
-        _logo = Ui.Place(Ui.Rect(_safe, "Logo"), new Vector2(0f, 1f), new Vector2(0f, -16f), new Vector2(1000f, 340f));
+        var logo = ShowLogo.Create(_safe, "ON AIR");
+        _logo = Ui.Place(logo.Rect, new Vector2(0f, 1f), new Vector2(0f, -16f), logo.Rect.sizeDelta);
         _logoGroup = _logo.gameObject.AddComponent<CanvasGroup>();
         _logoGroup.blocksRaycasts = false;
-
-        var pill = Ui.Box(_logo, "OnAir", UiTheme.Tone.Bad, 28f);
-        Ui.Place((RectTransform)pill.transform, new Vector2(0f, 1f), new Vector2(6f, 0f), new Vector2(206f, 56f));
-        var dot = Ui.Circle(pill.transform, "Dot", 18f, theme.Paper);
-        Ui.Place(dot.rectTransform, new Vector2(0f, 0.5f), new Vector2(24f, 0f), new Vector2(18f, 18f));
-        if (!UiTheme.ReduceMotion)
-            dot.DOFade(0.25f, 0.6f).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetUpdate(true).SetLink(dot.gameObject);
-        var onAir = Ui.Text(pill.transform, "ON AIR", UiTheme.TextRole.Label, UiTheme.Tone.Paper);
-        onAir.GetComponent<ThemedText>().Spacing = 14f;
-        onAir.GetComponent<ThemedText>().Apply();
-        Ui.Stretch(onAir.rectTransform);
-        onAir.rectTransform.offsetMin = new Vector2(44f, 0f);
-
-        var line1 = Ui.Text(_logo, "DON'T STOP", UiTheme.TextRole.DisplayXL, UiTheme.Tone.Paper, TextAlignmentOptions.Left, true);
-        Ui.Place(line1.rectTransform, new Vector2(0f, 1f), new Vector2(0f, -70f), new Vector2(1000f, 136f));
-        var line2 = Ui.Text(_logo, $"THE <color=#{ColorUtility.ToHtmlStringRGB(theme.Brand)}>PAR</color>", UiTheme.TextRole.DisplayXL,
-            UiTheme.Tone.Paper, TextAlignmentOptions.Left, true);
-        Ui.Place(line2.rectTransform, new Vector2(0f, 1f), new Vector2(0f, -196f), new Vector2(1000f, 136f));
-
-        line2.ForceMeshUpdate();
-        float width = line2.textBounds.max.x;   // the pivot is the line's left edge
-        var tv = Ui.Box(_logo, "TV", UiTheme.Tone.Brand, 26f);
-        _tv = Ui.Place((RectTransform)tv.transform, new Vector2(0f, 1f), new Vector2(width + 18f, -196f), new Vector2(196f, 132f));
-        var tvText = Ui.Text(_tv, "TV", UiTheme.TextRole.DisplayL, UiTheme.Tone.Paper, TextAlignmentOptions.Center, true);
-        Ui.Stretch(tvText.rectTransform);
-        _tv.pivot = new Vector2(0.5f, 0.5f);
-        _tv.anchoredPosition += new Vector2(98f, -66f);
-        _tv.localRotation = Quaternion.Euler(0f, 0f, -4f);
-        if (!UiTheme.ReduceMotion)
-            _tv.DOLocalRotate(new Vector3(0f, 0f, 2f), 1.8f).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetUpdate(true).SetLink(_tv.gameObject);
     }
 
     /// <summary>A view root: a column under the logo (or the whole safe area), hidden until shown.</summary>

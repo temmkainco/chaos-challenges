@@ -17,9 +17,8 @@ public class ShowCurtain : MonoBehaviour
     private const int NOISE_W = 96, NOISE_H = 54;
 
     private RectTransform _panel;
-    private TextMeshProUGUI _text;
+    private TextMeshProUGUI _wait;
     private string _shownWait;
-    private const string LOGO = "DON'T STOP\nTHE PAR<color=#FF8A3D><size=130%>TV</size></color>\n<size=30%><color=#FFF6E3>PLEASE STAND BY</color></size>";
     private RawImage _noise;
     private Texture2D _noiseTexture;
     private Color32[] _noisePixels;
@@ -37,52 +36,33 @@ public class ShowCurtain : MonoBehaviour
 
     private void Awake()
     {
-        var canvas = gameObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 500;
-        var scaler = gameObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-
+        var safe = Ui.Canvas("ShowCurtain", 500, transform);
+        var canvas = safe.parent;
         var panel = new GameObject("Panel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        panel.transform.SetParent(transform, false);
-        _panel = (RectTransform)panel.transform;
-        _panel.anchorMin = Vector2.zero; _panel.anchorMax = Vector2.one; _panel.offsetMin = _panel.offsetMax = Vector2.zero;
-        panel.GetComponent<Image>().color = UiKit.Ink;
+        panel.transform.SetParent(canvas, false);
+        panel.transform.SetAsFirstSibling();
+        _panel = Ui.Stretch((RectTransform)panel.transform);
+        panel.GetComponent<Image>().color = UiTheme.Instance.Ink;
+        safe.SetParent(_panel, false);   // the logo travels with the curtain
 
         _noiseTexture = new Texture2D(NOISE_W, NOISE_H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
         _noisePixels = new Color32[NOISE_W * NOISE_H];
         var noise = new GameObject("Static", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
         noise.transform.SetParent(_panel, false);
-        var nrt = (RectTransform)noise.transform;
-        nrt.anchorMin = Vector2.zero; nrt.anchorMax = Vector2.one; nrt.offsetMin = nrt.offsetMax = Vector2.zero;
+        noise.transform.SetSiblingIndex(0);
+        Ui.Stretch((RectTransform)noise.transform);
         _noise = noise.GetComponent<RawImage>();
         _noise.texture = _noiseTexture;
-        _noise.color = new Color(1f, 1f, 1f, 0.12f);
+        _noise.color = new Color(1f, 1f, 1f, 0.08f);
         _noise.raycastTarget = false;
 
-        var logo = new GameObject("Logo", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        logo.transform.SetParent(_panel, false);
-        var lrt = (RectTransform)logo.transform;
-        lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 0.5f);
-        lrt.sizeDelta = new Vector2(1600f, 400f);
-        var text = logo.GetComponent<TextMeshProUGUI>();
-        var kit = UiKit.Instance;
-        if (kit != null)
-        {
-            text.font = kit.Font;
-            if (kit.OutlineThick != null) text.fontSharedMaterial = kit.OutlineThick;
-        }
-        text.alignment = TextAlignmentOptions.Center;
-        text.fontSize = 110f;
-        text.color = UiKit.Pink;
-        text.text = LOGO;
-        text.raycastTarget = false;
-        _text = text;
+        var logo = ShowLogo.Create(safe, "PLEASE STAND BY", UiTheme.Tone.Accent);
+        Ui.Place(logo.Rect, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), logo.Rect.sizeDelta);
+        _wait = Ui.Text(safe, "", UiTheme.TextRole.Title, UiTheme.Tone.Haze);
+        Ui.Place(_wait.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -190f), new Vector2(1200f, 60f));
 
         // Start lifted.
-        _panel.anchoredPosition = new Vector2(0f, 1200f);
+        _panel.anchoredPosition = new Vector2(0f, 2000f);
         _panel.gameObject.SetActive(false);
     }
 
@@ -101,10 +81,10 @@ public class ShowCurtain : MonoBehaviour
             loading = true;
             wait = $"\n<size=22%><color=#FFF6E3>WAITING FOR PLAYERS  {match.LoadedCount}/{Mathf.Max(match.LoadedCount, match.ConnectedPlayerCount)}</color></size>";
         }
-        if (wait != _shownWait && _text != null)
+        if (wait != _shownWait)
         {
             _shownWait = wait;
-            _text.text = LOGO + wait;
+            _wait.text = wait ?? "";
         }
 
         if (loading)
@@ -138,14 +118,15 @@ public class ShowCurtain : MonoBehaviour
         _down = true;
         _panel.gameObject.SetActive(true);
         _panel.DOKill();
-        _panel.DOAnchorPosY(0f, 0.28f).SetEase(Ease.OutBounce).SetUpdate(true);
+        if (UiTheme.ReduceMotion) _panel.anchoredPosition = Vector2.zero;
+        else _panel.DOAnchorPosY(0f, 0.28f).SetEase(Ease.OutBounce).SetUpdate(true);
     }
 
     private void Lift()
     {
         _down = false;
         _panel.DOKill();
-        _panel.DOAnchorPosY(1200f, 0.35f).SetEase(Ease.InBack).SetUpdate(true)
+        _panel.DOAnchorPosY(2000f, UiTheme.ReduceMotion ? 0f : 0.35f).SetEase(Ease.InBack).SetUpdate(true)
             .OnComplete(() => _panel.gameObject.SetActive(false));
     }
 }

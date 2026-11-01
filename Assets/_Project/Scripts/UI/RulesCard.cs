@@ -1,108 +1,139 @@
 using DG.Tweening;
 using Fusion;
 using System.Collections.Generic;
-using System.Text;
 using TMPro;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
 
 /// <summary>
-/// The show's rules card, shown over the arena during <see cref="MinigamePhase.Intro"/>: round and name, the minigame's
-/// illustration, objective / danger / scoring, the controls as key caps, and a ready strip with every contestant.
-/// E, Space or the button readies you up. Meanwhile an orbiting camera reveals the arena behind the card.
-/// Built from code under the minigame HUD canvas, so every minigame gets it without per-scene setup.
+/// The show's rules card, shown over the arena during <see cref="MinigamePhase.Intro"/>: round tag and the game's name,
+/// its picture, goal / watch out / score, the controls as key caps (keyboard or gamepad, whichever was used last) and
+/// the contestants with who is ready. E, Space, Enter or gamepad A / Y (or the button) readies you up. Meanwhile an
+/// orbiting camera reveals the arena behind the card. Built with the UI kit on its own canvas, so every minigame gets
+/// it without per-scene setup.
 /// </summary>
 public class RulesCard : MonoBehaviour
 {
     private const float ORBIT_RADIUS = 24f, ORBIT_HEIGHT = 13f, ORBIT_SPEED = 9f;
+    private const float WIDTH = 1480f, HEIGHT = 860f, PICTURE_W = 680f, PICTURE_H = 383f;
 
     private CanvasGroup _group;
-    private TMP_Text _round, _title, _objective, _danger, _scoring, _controls, _readyList, _readyHint;
+    private RectTransform _card, _controls, _chips;
+    private TextMeshProUGUI _round, _map, _title, _objective, _danger, _scoring, _hint;
     private Image _illustration;
-    private Button _readyButton;
+    private UiButton _readyButton;
+    private GameObject _readyBadge, _scrim;
+    private PromptBar _prompts;
+    private readonly List<PlayerChip> _chipPool = new();
     private CinemachineCamera _orbit;
     /// <summary>The card is waiting for the local player: the pause menu frees the mouse so READY can be clicked.</summary>
     public static bool WantsCursor { get; private set; }
 
     private MinigameController _shownFor;
     private MinigameDefinitionSO _shownDefinition;
-    private bool _sentReady;
+    private bool _sentReady, _visible, _shownPad;
     private float _orbitAngle, _introTime;
     private Vector3 _orbitCentre;
-    private readonly StringBuilder _sb = new();
     private int _lastReadyMask = -1, _lastSeconds = -1;
 
     private void Awake()
     {
-        var kit = UiKit.Instance;
-        var root = new GameObject("RulesCard", typeof(RectTransform), typeof(CanvasGroup));
-        root.transform.SetParent(transform, false);
-        Stretch((RectTransform)root.transform);
-        _group = root.GetComponent<CanvasGroup>();
+        var safe = Ui.Canvas("Rules Card", 30, transform);
+        var theme = UiTheme.Instance;
+        var scrim = new GameObject("Scrim", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image)).GetComponent<Image>();
+        scrim.transform.SetParent(safe.parent, false);
+        scrim.transform.SetAsFirstSibling();
+        Ui.Stretch(scrim.rectTransform);
+        scrim.color = new Color(theme.Ink.r, theme.Ink.g, theme.Ink.b, 0.35f);
+        scrim.raycastTarget = false;
+        _scrim = scrim.gameObject;
+
+        var box = Ui.Box(safe, "Card", UiTheme.Tone.Studio);
+        _card = Ui.Place((RectTransform)box.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(WIDTH, HEIGHT));
+        _group = box.gameObject.AddComponent<CanvasGroup>();
+
+        // Round tag and the game's name.
+        var tag = Ui.Box(_card, "Round", UiTheme.Tone.Brand, 22f);
+        tag.ShadowDepth = theme.ShadowChip;
+        tag.Apply();
+        var tagRt = Ui.Place((RectTransform)tag.transform, new Vector2(0f, 1f), new Vector2(48f, -36f), new Vector2(240f, 46f));
+        _round = Ui.Text(tagRt, "", UiTheme.TextRole.Label, UiTheme.Tone.Paper);
+        _round.GetComponent<ThemedText>().SingleLine = true;
+        _round.GetComponent<ThemedText>().Apply();
+        Ui.Stretch(_round.rectTransform);
+        _map = Ui.Text(_card, "", UiTheme.TextRole.Label, UiTheme.Tone.Haze, TextAlignmentOptions.Left);
+        Ui.Place(_map.rectTransform, new Vector2(0f, 1f), new Vector2(306f, -36f), new Vector2(600f, 46f));
+        _title = Ui.Text(_card, "", UiTheme.TextRole.DisplayL, UiTheme.Tone.Paper, TextAlignmentOptions.Left, true);
+        Ui.Place(_title.rectTransform, new Vector2(0f, 1f), new Vector2(44f, -88f), new Vector2(WIDTH - 88f, 110f));
+
+        // The picture, clipped to a rounded frame.
+        var frame = Ui.Box(_card, "PictureFrame", UiTheme.Tone.Ink, 24f, false);
+        Ui.Place((RectTransform)frame.transform, new Vector2(0f, 1f), new Vector2(40f, -212f), new Vector2(PICTURE_W + 16f, PICTURE_H + 16f));
+        var clip = Ui.Place(Ui.Rect(frame.transform, "Clip"), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(PICTURE_W, PICTURE_H));
+        Thumbnail.Round(clip.gameObject);
+        _illustration = new GameObject("Illustration", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image)).GetComponent<Image>();
+        _illustration.transform.SetParent(clip, false);
+        _illustration.raycastTarget = false;
+
+        // Goal / watch out / score: a tag (word, not colour alone) over its line.
+        var rules = Ui.Place(Ui.Rect(_card, "Rules"), new Vector2(0f, 1f), new Vector2(PICTURE_W + 96f, -208f),
+            new Vector2(WIDTH - PICTURE_W - 140f, PICTURE_H + 24f));
+        Ui.Stack<VerticalLayoutGroup>(rules, 2, TextAnchor.UpperLeft);
+        _objective = Rule(rules, "GOAL", UiTheme.Tone.Good);
+        _danger = Rule(rules, "WATCH OUT", UiTheme.Tone.Warn);
+        _scoring = Rule(rules, "SCORE", UiTheme.Tone.Accent);
+
+        // Controls as key caps.
+        _controls = Ui.Place(Ui.Rect(_card, "Controls"), new Vector2(0f, 1f), new Vector2(44f, -630f), new Vector2(WIDTH - 88f, 120f));
+
+        // Contestants and the ready button.
+        _chips = Ui.Place(Ui.Rect(_card, "Contestants"), new Vector2(0f, 0f), new Vector2(44f, 40f), new Vector2(WIDTH - 480f, 56f));
+        Ui.Stack<HorizontalLayoutGroup>(_chips, 2, TextAnchor.MiddleLeft);
+        _hint = Ui.Text(_card, "", UiTheme.TextRole.Label, UiTheme.Tone.Haze, TextAlignmentOptions.Right);
+        Ui.Place(_hint.rectTransform, new Vector2(1f, 0f), new Vector2(-44f, 132f), new Vector2(380f, 36f));
+        _readyButton = Ui.Button(_card, "READY", UiButton.Variant.Primary, "tick", SendReady);
+        Ui.Place((RectTransform)_readyButton.transform, new Vector2(1f, 0f), new Vector2(-44f, 32f), new Vector2(320f, 92f));
+        _readyButton.navigation = new Navigation { mode = Navigation.Mode.None };
+        var badge = Ui.Box(_card, "YouAreReady", UiTheme.Tone.Good, 46f);
+        var badgeRt = Ui.Place((RectTransform)badge.transform, new Vector2(1f, 0f), new Vector2(-44f, 32f), new Vector2(320f, 92f));
+        var badgeRow = Ui.Rect(badgeRt, "Row");
+        Ui.Stretch(badgeRow);
+        Ui.Stack<HorizontalLayoutGroup>(badgeRow, 2, TextAnchor.MiddleCenter);
+        Ui.Size(Ui.Icon(badgeRow, "tick", 44f, UiTheme.Tone.Ink), 44f, 44f);
+        Ui.Text(badgeRow, "READY", UiTheme.TextRole.Button, UiTheme.Tone.Ink);
+        _readyBadge = badge.gameObject;
+
         _group.alpha = 0f;
-        _group.blocksRaycasts = false;
+        _card.gameObject.SetActive(false);
+        _scrim.SetActive(false);
+    }
 
-        var dim = MakeImage(root.transform, "Dim", null, new Color(UiKit.Ink.r, UiKit.Ink.g, UiKit.Ink.b, 0.35f));
-        Stretch(dim.rectTransform);
-
-        var card = MakeImage(root.transform, "Card", kit.Panel, UiKit.Cream);
-        card.type = Image.Type.Sliced;
-        Place(card.rectTransform, 0f, 10f, 1320f, 780f);
-
-        _round = MakeText(card.transform, "Round", 30f, UiKit.Ink, false, 0f, 330f, 1200f, 40f);
-        _title = MakeText(card.transform, "Title", 84f, UiKit.Orange, true, 0f, 262f, 1200f, 100f);
-
-        // Picture clipped inside the frame, with the rounded frame drawn on top so nothing pokes over its edge.
-        var back = MakeImage(card.transform, "IllustrationBack", kit.Panel, UiKit.Ink);
-        back.type = Image.Type.Sliced;
-        Place(back.rectTransform, -300f, 40f, 640f, 340f);
-        var clip = new GameObject("Clip", typeof(RectTransform));
-        clip.transform.SetParent(card.transform, false);
-        Place((RectTransform)clip.transform, -300f, 40f, 612f, 312f);
-        Thumbnail.Round(clip);
-        _illustration = MakeImage(clip.transform, "Illustration", null, Color.white);
-        Place(_illustration.rectTransform, 0f, 0f, 612f, 312f);
-        var frame = MakeImage(card.transform, "IllustrationFrame", kit.Frame != null ? kit.Frame : kit.Panel, UiKit.Ink);
-        frame.type = Image.Type.Sliced;
-        frame.pixelsPerUnitMultiplier = 2.2f;
-        Place(frame.rectTransform, -300f, 40f, 644f, 344f);
-
-        _objective = Row(card.transform, "GOAL", UiKit.Mint, 330f, 150f);
-        _danger = Row(card.transform, "WATCH OUT", UiKit.Tomato, 330f, 40f);
-        _scoring = Row(card.transform, "SCORE", UiKit.Yellow, 330f, -70f);
-
-        _controls = MakeText(card.transform, "Controls", 30f, UiKit.Ink, false, 0f, -195f, 1240f, 60f);
-
-        var strip = MakeImage(card.transform, "ReadyStrip", kit.Panel, UiKit.Lavender);
-        strip.type = Image.Type.Sliced;
-        Place(strip.rectTransform, -175f, -300f, 890f, 110f);
-        _readyList = MakeText(strip.transform, "Ready", 30f, UiKit.Ink, false, 0f, 14f, 850f, 46f);
-        // Five or six long names must still fit on one line at any resolution.
-        _readyList.enableWordWrapping = false;
-        _readyList.enableAutoSizing = true;
-        _readyList.fontSizeMin = 14f;
-        _readyList.fontSizeMax = 30f;
-        _readyHint = MakeText(strip.transform, "Hint", 24f, UiKit.Ink, false, 0f, -28f, 850f, 36f);
-
-        var button = MakeImage(card.transform, "ReadyButton", kit.Button, UiKit.Yellow);
-        button.type = Image.Type.Sliced;
-        button.raycastTarget = true;   // MakeImage turns raycasts off; without this the button can't be clicked
-        Place(button.rectTransform, 465f, -300f, 290f, 100f);
-        _readyButton = button.gameObject.AddComponent<Button>();
-        _readyButton.targetGraphic = button;
-        _readyButton.onClick.AddListener(SendReady);
-        button.gameObject.AddComponent<ButtonJuice>();
-        MakeText(button.transform, "Label", 44f, UiKit.Ink, false, 0f, 4f, 260f, 80f).text = "READY!";
+    private static TextMeshProUGUI Rule(RectTransform parent, string label, UiTheme.Tone tone)
+    {
+        var row = Ui.Rect(parent, label);
+        Ui.Size(row, parent.sizeDelta.x, 124f);
+        var tag = Ui.Box(row, "Tag", tone, 16f);
+        tag.ShadowDepth = UiTheme.Instance.ShadowChip;
+        tag.Apply();
+        var word = Ui.Text(tag.transform, label, UiTheme.TextRole.Label, UiTheme.Tone.Ink);
+        word.GetComponent<ThemedText>().SingleLine = true;
+        word.GetComponent<ThemedText>().Apply();
+        Ui.Stretch(word.rectTransform);
+        Ui.Place((RectTransform)tag.transform, new Vector2(0f, 1f), Vector2.zero, new Vector2(word.GetPreferredValues(label).x + 36f, 40f));
+        var text = Ui.Text(row, "", UiTheme.TextRole.Body, UiTheme.Tone.Paper, TextAlignmentOptions.TopLeft);
+        text.rectTransform.anchorMin = Vector2.zero; text.rectTransform.anchorMax = Vector2.one;
+        text.rectTransform.offsetMin = Vector2.zero; text.rectTransform.offsetMax = new Vector2(0f, -50f);
+        return text;
     }
 
     private void Update()
     {
         var controller = MinigameController.Current;
         bool intro = controller != null && controller.Object != null && controller.Object.IsValid && controller.Phase == MinigamePhase.Intro;
-        _group.alpha = Mathf.MoveTowards(_group.alpha, intro ? 1f : 0f, Time.deltaTime * 4f);
-        _group.blocksRaycasts = intro;
+        Show(intro);
         UpdateOrbit(intro);
         if (!intro)
         {
@@ -114,11 +145,13 @@ public class RulesCard : MonoBehaviour
             Fill(controller);
 
         bool ready = controller.IsReady(controller.Runner.LocalPlayer) || _sentReady;
-        _readyButton.interactable = !ready;
+        _readyButton.gameObject.SetActive(!ready);
+        _readyBadge.SetActive(ready);
         WantsCursor = !ready;
-        if (!ready && !PauseMenu.IsOpen && Keyboard.current != null
-            && (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame))
+        if (!ready && !PauseMenu.IsOpen && UiModal.OpenCount == 0
+            && (UiInput.Pressed(Key.E, GamepadButton.North) || UiInput.Pressed(Key.Space, GamepadButton.South) || UiInput.Pressed(Key.Enter)))
             SendReady();
+        if (_shownPad != PromptBar.UsingGamepad) FillControls(controller);
 
         int seconds = Mathf.CeilToInt(controller.TimeRemaining);
         if (controller.ReadyMask != _lastReadyMask || seconds != _lastSeconds)
@@ -139,63 +172,113 @@ public class RulesCard : MonoBehaviour
         _lastReadyMask = -1;
         var def = controller.Definition;
         var gm = NetworkGameManager.Instance;
-        _round.text = (gm != null && gm.RoundCount > 0 ? $"ROUND {gm.RoundIndex + 1} OF {gm.RoundCount}" : "NEXT ROUND")
-                      + (controller.VariantName != null ? $"   ·   MAP: {controller.VariantName.ToUpperInvariant()}" : "");
+        _round.text = gm != null && gm.RoundCount > 0 ? $"ROUND {gm.RoundIndex + 1}/{gm.RoundCount}" : "NEXT ROUND";
+        _map.text = controller.VariantName ?? "";
         _title.text = def != null ? def.DisplayName.ToUpperInvariant() : "";
         _objective.text = def != null && !string.IsNullOrEmpty(def.Objective) ? def.Objective : def?.Description;
         _danger.text = def?.Danger ?? "";
         _scoring.text = def?.Scoring ?? "";
+        _danger.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(_danger.text));
+        _scoring.transform.parent.gameObject.SetActive(!string.IsNullOrEmpty(_scoring.text));
         _illustration.sprite = def != null ? def.PreviewImage : null;
         _illustration.enabled = _illustration.sprite != null;
-        Thumbnail.Cover(_illustration, new Vector2(612f, 312f));
+        Thumbnail.Cover(_illustration, new Vector2(PICTURE_W, PICTURE_H));
+        FillControls(controller);
+        UiMotion.PanelIn(_card, _group);
+    }
 
-        _sb.Clear();
+    /// <summary>The controls as caps in the device used last (rebuilt when it changes).</summary>
+    private void FillControls(MinigameController controller)
+    {
+        _shownPad = PromptBar.UsingGamepad;
+        for (int i = _controls.childCount - 1; i >= 0; i--) Destroy(_controls.GetChild(i).gameObject);
+        var def = controller.Definition;
         if (controller.UsesDefaultControls)
         {
-            AppendKey("WASD", "Move");
-            AppendKey("SPACE", "Jump");
+            AddKey(PromptBar.Cap("WASD"), "Move");
+            AddKey(PromptBar.Cap("SPACE"), "Jump");
         }
         if (def != null && def.Controls != null)
             foreach (var pair in def.Controls)
             {
                 int bar = pair.IndexOf('|');
-                if (bar > 0) AppendKey(pair.Substring(0, bar), pair.Substring(bar + 1));
+                if (bar > 0) AddKey(PromptBar.Cap(pair.Substring(0, bar)), pair.Substring(bar + 1));
             }
-        _controls.text = _sb.ToString();
 
-        var root = (RectTransform)_group.transform.GetChild(1);
-        root.DOKill(true);
-        root.localScale = Vector3.one * 0.85f;
-        root.DOScale(1f, 0.35f).SetEase(Ease.OutBack);
+        // Flow the caps into rows that fit the card (long lists take two lines).
+        float x = 0f, y = 0f, gap = UiTheme.Instance.Gap(4), row = 58f;
+        foreach (RectTransform item in _controls)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(item);
+            float width = LayoutUtility.GetPreferredWidth(item);
+            if (x > 0f && x + width > _controls.sizeDelta.x) { x = 0f; y -= row; }
+            Ui.Place(item, new Vector2(0f, 1f), new Vector2(x, y), new Vector2(width, 50f));
+            x += width + gap;
+        }
     }
 
-    private void AppendKey(string key, string action)
+    private void AddKey(string key, string action)
     {
-        if (_sb.Length > 0) _sb.Append("     ");
-        _sb.Append("<mark=#2E1A4722 padding=\"10,10,4,4\"><b><color=#E8590C>").Append(key).Append("</color></b></mark> ").Append(action);
+        var item = Ui.Rect(_controls, action);
+        Ui.Stack<HorizontalLayoutGroup>(item, 1, TextAnchor.MiddleLeft);
+        var cap = Ui.Box(item, "Cap", UiTheme.Tone.Paper, 10f);
+        cap.ShadowDepth = UiTheme.Instance.ShadowChip;
+        cap.Apply();
+        var capText = Ui.Text(cap.transform, key, UiTheme.TextRole.Label, UiTheme.Tone.Ink);
+        var themed = capText.GetComponent<ThemedText>();
+        themed.SingleLine = true;
+        themed.ShrinkToFit = false;
+        themed.Apply();
+        Ui.Stretch(capText.rectTransform, 4f);
+        Ui.Size(cap, capText.GetPreferredValues(key).x + 28f, 46f);
+        var verb = Ui.Text(item, action, UiTheme.TextRole.Body, UiTheme.Tone.Paper, TextAlignmentOptions.Left);
+        verb.GetComponent<ThemedText>().SingleLine = true;
+        verb.GetComponent<ThemedText>().Apply();
+        verb.fontStyle = FontStyles.Bold;
     }
 
     private void RefreshReady(MinigameController controller, bool localReady, int seconds)
     {
-        _sb.Clear();
         var spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        var match = NetworkGameManager.Instance;
+        int shown = 0;
         if (spawner != null && spawner.Object != null)
         {
             foreach (var entry in spawner.Players)
             {
                 var player = entry.Value;
                 if (player == null || player.Object == null) continue;
+                if (shown >= _chipPool.Count)
+                {
+                    var chip = PlayerChip.Create(_chips, 56f);
+                    Ui.Size(chip, 250f, 56f);
+                    _chipPool.Add(chip);
+                }
                 string name = string.IsNullOrEmpty(player.Nickname) ? $"Player {entry.Key.PlayerId}" : player.Nickname;
-                bool ready = controller.IsReady(entry.Key);
-                if (_sb.Length > 0) _sb.Append("   ");
-                _sb.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(Color.Lerp(player.PlayerColor, UiKit.Ink, 0.3f))).Append('>')
-                   .Append(name).Append("</color> ").Append(ready ? "<color=#2FA36B><b>READY</b></color>" : "<color=#9A8FB0>...</color>");
+                int colour = match != null && match.Object != null && match.Object.IsValid ? match.ColorIndexOf(entry.Key) : -1;
+                _chipPool[shown].gameObject.SetActive(true);
+                _chipPool[shown].Set(colour >= 0 ? colour + 1 : entry.Key.PlayerId, player.PlayerColor, name, controller.IsReady(entry.Key) ? "tick" : null);
+                shown++;
             }
         }
-        _readyList.text = _sb.ToString();
-        _readyHint.text = localReady
-            ? $"Waiting for the others - starting in {seconds}s"
-            : $"Click READY or press <b>E</b> - starting in {seconds}s";
+        for (int i = shown; i < _chipPool.Count; i++) _chipPool[i].gameObject.SetActive(false);
+        _hint.text = $"Starting in {seconds}";
+    }
+
+    private void Show(bool visible)
+    {
+        if (visible == _visible) return;
+        _visible = visible;
+        _scrim.SetActive(visible);
+        _group.blocksRaycasts = visible;
+        if (_prompts != null) { Destroy(_prompts.gameObject); _prompts = null; }
+        if (visible)
+        {
+            _card.gameObject.SetActive(true);
+            _prompts = PromptBar.Create(_card.parent, (PromptBar.Action.Confirm, "Ready"));
+        }
+        else
+            UiMotion.PanelOut(_card, _group).OnComplete(() => { if (!_visible) _card.gameObject.SetActive(false); });
     }
 
     private void SendReady()
@@ -256,63 +339,4 @@ public class RulesCard : MonoBehaviour
         centre /= count;
         return true;
     }
-
-    #region UI building
-
-    private static void Stretch(RectTransform rt)
-    {
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
-    }
-
-    private static void Place(RectTransform rt, float x, float y, float w, float h)
-    {
-        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = new Vector2(x, y);
-        rt.sizeDelta = new Vector2(w, h);
-    }
-
-    private static Image MakeImage(Transform parent, string name, Sprite sprite, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        go.transform.SetParent(parent, false);
-        var image = go.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static TMP_Text MakeText(Transform parent, string name, float size, Color color, bool outline, float x, float y, float w, float h)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var text = go.GetComponent<TextMeshProUGUI>();
-        var kit = UiKit.Instance;
-        text.font = kit.Font;
-        if (outline && kit.OutlineThick != null) text.fontSharedMaterial = kit.OutlineThick;
-        text.fontSize = size;
-        text.color = color;
-        text.alignment = TextAlignmentOptions.Center;
-        text.raycastTarget = false;
-        Place(text.rectTransform, x, y, w, h);
-        return text;
-    }
-
-    /// <summary>One "badge + line" row on the right of the card (goal, danger, scoring).</summary>
-    private static TMP_Text Row(Transform parent, string label, Color color, float x, float y)
-    {
-        var badge = MakeImage(parent, label, UiKit.Instance.Button, color);
-        badge.type = Image.Type.Sliced;
-        Place(badge.rectTransform, x - 205f, y, 190f, 60f);
-        MakeText(badge.transform, "Label", 24f, UiKit.Ink, false, 0f, 3f, 180f, 50f).text = label;
-        var text = MakeText(parent, label + "Text", 26f, UiKit.Ink, false, x + 110f, y, 420f, 100f);
-        text.alignment = TextAlignmentOptions.Left;
-        text.enableWordWrapping = true;
-        text.enableAutoSizing = true;
-        text.fontSizeMin = 16f;
-        text.fontSizeMax = 26f;
-        return text;
-    }
-
-    #endregion
 }
