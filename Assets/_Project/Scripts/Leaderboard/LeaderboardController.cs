@@ -70,6 +70,7 @@ public class LeaderboardController : NetworkBehaviour
                     IsOverallWinner = r.Score == topScore,
                 })
                 .ToList();
+            Identify(entries, roster.OrderByDescending(r => r.Score).ToList());
         }
         else
         {
@@ -86,11 +87,24 @@ public class LeaderboardController : NetworkBehaviour
                     RoundPodium = true,
                 })
                 .ToList();
+            Identify(entries, roster.Where(r => r.LastRoundPoints > 0).OrderByDescending(r => r.LastRoundPoints).ToList());
         }
 
         while (entries.Count < _maxSlots)
             entries.Add(new LeaderboardEntry { IsEmpty = true, PlayerName = "" });
 
         return entries;
+    }
+
+    /// <summary>Each entry's player number and colour (their colour slot), so results show the same chips as the HUD.</summary>
+    private void Identify(List<LeaderboardEntry> entries, List<RosterEntry> roster)
+    {
+        for (int i = 0; i < entries.Count && i < roster.Count; i++)
+        {
+            int colour = roster[i].Connected ? _gameManager.ColorIndexOf(roster[i].Player) : -1;
+            if (colour < 0) continue;
+            entries[i].Number = colour + 1;
+            entries[i].Color = NetworkGameManager.PlayerColors[colour];
+        }
     }
 }

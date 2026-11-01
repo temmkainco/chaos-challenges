@@ -59,6 +59,10 @@ public class ShowCurtain : MonoBehaviour
         var logo = ShowLogo.Create(safe, "PLEASE STAND BY", UiTheme.Tone.Accent);
         Ui.Place(logo.Rect, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), logo.Rect.sizeDelta);
         _wait = Ui.Text(safe, "", UiTheme.TextRole.Title, UiTheme.Tone.Haze);
+        // Fixed size: auto-sizing ran while the curtain was hidden and came out tiny.
+        _wait.GetComponent<ThemedText>().ShrinkToFit = false;
+        _wait.GetComponent<ThemedText>().SingleLine = true;
+        _wait.GetComponent<ThemedText>().Apply();
         Ui.Place(_wait.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -190f), new Vector2(1200f, 60f));
 
         // Start lifted.
