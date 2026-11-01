@@ -134,12 +134,12 @@ public class EmotePlayer : MonoBehaviour
                 Aim(_rUpper, _rLower, (right + up * 0.55f).normalized, w * hit);
                 Aim(_rLower, _rHand, (right + up * 0.6f).normalized, w * hit);
                 break;
-            case 8: // Love: a hug held in front of the chest, swaying (elbows forward: the bean body is wide)
+            case 8: // Love: hands to the chest, swaying
                 Tilt(_spine, fwd, 8f * s2 * w);
-                Aim(_lUpper, _lLower, (fwd * 1.1f - up * 0.6f - right * 0.35f).normalized, w);
-                Aim(_lLower, _lHand, (right + fwd * 0.45f + up * 0.35f).normalized, w);
-                Aim(_rUpper, _rLower, (fwd * 1.1f - up * 0.6f + right * 0.35f).normalized, w);
-                Aim(_rLower, _rHand, (-right + fwd * 0.45f + up * 0.35f).normalized, w);
+                Aim(_lUpper, _lLower, (fwd * 0.5f - up - right * 0.1f).normalized, w);
+                Aim(_lLower, _lHand, (right + up * 0.3f).normalized, w);
+                Aim(_rUpper, _rLower, (fwd * 0.5f - up + right * 0.1f).normalized, w);
+                Aim(_rLower, _rHand, (-right + up * 0.3f).normalized, w);
                 Tilt(_head, fwd, 10f * s2 * w);
                 break;
         }
