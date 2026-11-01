@@ -11,6 +11,7 @@ using DG.Tweening;
 /// buttons. Opens with a pop, focuses its first button (gamepad ready), and Back (Esc / B) cancels it.
 /// <see cref="Show"/> builds one on a top canvas.
 /// </summary>
+[DefaultExecutionOrder(-100)]   // on top of every screen: takes Back first
 public class UiModal : MonoBehaviour
 {
     private RectTransform _panel;
@@ -84,9 +85,7 @@ public class UiModal : MonoBehaviour
     private void Update()
     {
         UiFocus.Keep(_focus);   // e.g. the scene behind reloaded and took the selection with it
-        bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-                    || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
-        if (back && Cancelable)
+        if (UiInput.Back() && Cancelable)
         {
             _onCancel?.Invoke();
             Close();

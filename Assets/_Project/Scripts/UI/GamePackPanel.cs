@@ -2,15 +2,19 @@ using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
 
 /// <summary>
-/// Lobby: the games tonight's show draws its rounds from. Everyone opens it with L to see the list (pictures, in or out);
-/// the host also edits it (L or G): click a game to take it in or out, or use a ready-made pack
+/// Lobby: the games tonight's show draws its rounds from, as a grid of picture tiles marked IN or OUT. Everyone opens
+/// it (L / LB) to look; the host also edits it (L or G): pick a game to take it in or out, or use a ready-made pack
 /// (<see cref="MatchSettings.IsMinigameEnabled"/>). At least one game always stays in. Clients see the host's pack
-/// (<see cref="NetworkGameManager.PackMask"/>). Built from code with <see cref="UiKit"/>, like the rules card.
+/// (<see cref="NetworkGameManager.PackMask"/>). Built with the UI kit on the canvas it is added to; keyboard,
+/// mouse and gamepad all work, and Back closes it.
 /// </summary>
+[DefaultExecutionOrder(-50)]   // above the pause menu: takes Back first while open
 public class GamePackPanel : MonoBehaviour
 {
     private static readonly string[] ActionPack = { "tilefall", "bomb_rush", "hot_potato", "ring_out", "hex_drop", "prize_grab",
@@ -18,6 +22,8 @@ public class GamePackPanel : MonoBehaviour
     private static readonly string[] BrainPack = { "mines", "key_without_lock", "color_code", "console_round", "prize_grab", "paint_party", "king_of_the_hill" };
     private static readonly string[] NewPack = { "spin_sweep", "block_party", "log_roll", "lava_rise", "king_of_the_hill", "paint_party", "tail_tag",
         "door_dash", "kart_kup", "sky_rings" };
+
+    private const float WIDTH = 1500f, HEIGHT = 940f, GRID_W = 1420f, GRID_H = 600f, GAP = 16f;
 
     public static bool IsOpen { get; private set; }
 
@@ -30,13 +36,6 @@ public class GamePackPanel : MonoBehaviour
         }
     }
 
-    private CanvasGroup _group;
-    private RectTransform _card;
-    private TMP_Text _subtitle;
-    private readonly List<(MinigameDefinitionSO def, Image tile, Image picture, TMP_Text badge, CanvasGroup fade)> _tiles = new();
-    private readonly List<GameObject> _hostOnly = new();
-    private bool _built;
-
     private static bool InLobby
     {
         get
@@ -46,22 +45,59 @@ public class GamePackPanel : MonoBehaviour
         }
     }
 
+    private GameObject _scrim;
+    private RectTransform _panel;
+    private CanvasGroup _group;
+    private TextMeshProUGUI _subtitle;
+    private RectTransform _grid;
+    private readonly List<(MinigameDefinitionSO def, Button button, UiBox badge, Image badgeIcon, TextMeshProUGUI badgeText, CanvasGroup fade)> _tiles = new();
+    private readonly List<GameObject> _hostOnly = new();
+    private UiButton _done;
+    private bool _built;
+    private GameObject _restoreFocus;
+
     private void Awake()
     {
-        var root = new GameObject("GamePack", typeof(RectTransform), typeof(CanvasGroup));
-        root.transform.SetParent(transform, false);
-        Stretch((RectTransform)root.transform);
-        _group = root.GetComponent<CanvasGroup>();
-        _group.alpha = 0f;
-        _group.blocksRaycasts = false;
-        var dim = MakeImage(root.transform, "Dim", null, new Color(UiKit.Ink.r, UiKit.Ink.g, UiKit.Ink.b, 0.45f));
-        Stretch(dim.rectTransform);
-        var card = MakeImage(root.transform, "Card", UiKit.Instance.Panel, UiKit.Cream);
-        card.type = Image.Type.Sliced;
-        _card = card.rectTransform;
-        Place(_card, 0f, 0f, 1400f, 900f);
-        MakeText(_card, "Title", 72f, UiKit.Orange, true, 0f, 385f, 1200f, 90f).text = "TONIGHT'S GAMES";
-        _subtitle = MakeText(_card, "Subtitle", 28f, UiKit.Ink, false, 0f, 322f, 1200f, 40f);
+        var safe = transform.Find("Safe") as RectTransform ?? (RectTransform)transform;
+        var theme = UiTheme.Instance;
+        // The scrim covers the whole screen; the panel sits in the safe area.
+        var scrim = new GameObject("Scrim", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image)).GetComponent<Image>();
+        scrim.transform.SetParent(transform, false);
+        scrim.transform.SetAsFirstSibling();
+        Ui.Stretch(scrim.rectTransform);
+        scrim.color = new Color(theme.Ink.r, theme.Ink.g, theme.Ink.b, theme.ScrimAlpha);
+        _scrim = scrim.gameObject;
+
+        var box = Ui.Box(safe, "Panel", UiTheme.Tone.Studio);
+        _panel = Ui.Place((RectTransform)box.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(WIDTH, HEIGHT));
+        _group = box.gameObject.AddComponent<CanvasGroup>();
+
+        var title = Ui.Text(_panel, "TONIGHT'S GAMES", UiTheme.TextRole.DisplayM, UiTheme.Tone.Paper, TextAlignmentOptions.Left, true);
+        Ui.Place(title.rectTransform, new Vector2(0f, 1f), new Vector2(40f, -28f), new Vector2(WIDTH - 80f, 80f));
+        _subtitle = Ui.Text(_panel, "", UiTheme.TextRole.Body, UiTheme.Tone.Haze, TextAlignmentOptions.Left);
+        Ui.Place(_subtitle.rectTransform, new Vector2(0f, 1f), new Vector2(40f, -108f), new Vector2(WIDTH - 80f, 44f));
+        _grid = Ui.Place(Ui.Rect(_panel, "Grid"), new Vector2(0.5f, 1f), new Vector2(0f, -172f), new Vector2(GRID_W, GRID_H));
+
+        var buttons = Ui.Place(Ui.Rect(_panel, "Buttons"), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(GRID_W, 88f));
+        Ui.Stack<HorizontalLayoutGroup>(buttons, 2, TextAnchor.MiddleLeft);
+        _hostOnly.Add(PackButton(buttons, "ALL GAMES", () => SetPack(null)));
+        _hostOnly.Add(PackButton(buttons, "ACTION", () => SetPack(ActionPack)));
+        _hostOnly.Add(PackButton(buttons, "BRAINS", () => SetPack(BrainPack)));
+        _hostOnly.Add(PackButton(buttons, "NEW", () => SetPack(NewPack)));
+        var spacer = Ui.Rect(buttons, "Spacer");
+        spacer.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
+        _done = Ui.Button(buttons, "DONE", UiButton.Variant.Primary, "tick", () => Show(false));
+        Ui.Size(_done, 260f, 80f);
+
+        _scrim.SetActive(false);
+        _panel.gameObject.SetActive(false);
+    }
+
+    private GameObject PackButton(Transform parent, string label, UnityEngine.Events.UnityAction action)
+    {
+        var b = Ui.Button(parent, label, UiButton.Variant.Secondary, null, action);
+        Ui.Size(b, 250f, 80f);
+        return b.gameObject;
     }
 
     private void OnDestroy() => IsOpen = false;
@@ -73,67 +109,67 @@ public class GamePackPanel : MonoBehaviour
         if (_built || gm == null || gm.Database == null) return;
         _built = true;
         var db = gm.Database;
-        // The grid shrinks to fit however many games there are (three or four rows).
-        int columns = Mathf.Clamp(Mathf.CeilToInt(db.Count / 3f), 4, 8);
-        float tileW = Mathf.Min(300f, (1340f - (columns - 1) * 16f) / columns), tileH = tileW * 0.68f;
-        float scale = tileW / 300f;
+        var theme = UiTheme.Instance;
+        // The grid shrinks to fit however many games there are.
+        int columns = Mathf.Clamp(Mathf.CeilToInt(db.Count / 4f), 4, 8);
         int rows = Mathf.CeilToInt(db.Count / (float)columns);
-        float top = 270f - tileH * 0.5f, step = Mathf.Min(tileH + 12f, (600f - tileH) / Mathf.Max(1, rows - 1));
+        float tileW = (GRID_W - (columns - 1) * GAP) / columns;
+        float tileH = Mathf.Min(tileW * 0.72f, (GRID_H - (rows - 1) * GAP) / rows);
+        var grid = _grid.gameObject.AddComponent<GridLayoutGroup>();
+        grid.cellSize = new Vector2(tileW, tileH);
+        grid.spacing = new Vector2(GAP, GAP);
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = columns;
+        grid.childAlignment = TextAnchor.UpperCenter;
+
+        float nameH = Mathf.Clamp(tileH * 0.26f, 30f, 44f);
         for (int i = 0; i < db.Count; i++)
         {
             var def = db.GetByIndex(i);
-            int col = i % columns, row = i / columns;
-            float x = (col - (columns - 1) * 0.5f) * (tileW + 16f), y = top - row * step;
-            var tile = MakeImage(_card, def.Id, UiKit.Instance.Panel, Color.white);
-            tile.type = Image.Type.Sliced;
-            tile.raycastTarget = true;
-            Place(tile.rectTransform, x, y, tileW, tileH);
+            var tile = Ui.Box(_grid, def.Id, UiTheme.Tone.Riser, 16f);
+            var rt = (RectTransform)tile.transform;
             var fade = tile.gameObject.AddComponent<CanvasGroup>();
-            var clip = new GameObject("Clip", typeof(RectTransform));
-            clip.transform.SetParent(tile.transform, false);
-            var clipSize = new Vector2(tileW - 20f * scale, tileH * 0.65f);
-            Place((RectTransform)clip.transform, 0f, 26f * scale, clipSize.x, clipSize.y);
-            Thumbnail.Round(clip);
-            var picture = MakeImage(clip.transform, "Picture", def.PreviewImage, Color.white);
-            Thumbnail.Cover(picture, clipSize);
-            var name = MakeText(tile.transform, "Name", 24f * scale, UiKit.Ink, false, 0f, -tileH * 0.35f, tileW - 16f * scale, 40f * scale);
-            name.text = def.DisplayName.ToUpperInvariant();
-            name.enableAutoSizing = true;
-            name.enableWordWrapping = false;
-            name.fontSizeMin = 9f;
-            name.fontSizeMax = 24f * scale;
-            var badgeBack = MakeImage(tile.transform, "Badge", UiKit.Instance.Button, UiKit.Mint);
-            badgeBack.type = Image.Type.Sliced;
-            Place(badgeBack.rectTransform, tileW * 0.5f - 52f * scale, tileH * 0.5f - 24f * scale, 84f * scale, 40f * scale);
-            var badge = MakeText(badgeBack.transform, "Label", 22f * scale, UiKit.Ink, false, 0f, 2f, 80f * scale, 36f * scale);
+
+            var clip = Ui.Rect(rt, "Clip");
+            clip.anchorMin = Vector2.zero; clip.anchorMax = Vector2.one;
+            clip.offsetMin = new Vector2(10f, nameH + 6f); clip.offsetMax = new Vector2(-10f, -10f);
+            Thumbnail.Round(clip.gameObject);
+            var picture = new GameObject("Picture", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image)).GetComponent<Image>();
+            picture.transform.SetParent(clip, false);
+            picture.sprite = def.PreviewImage;
+            picture.raycastTarget = false;
+            Thumbnail.Cover(picture, new Vector2(tileW - 20f, tileH - nameH - 16f));
+
+            var name = Ui.Text(rt, def.DisplayName.ToUpperInvariant(), UiTheme.TextRole.Label, UiTheme.Tone.Paper);
+            name.GetComponent<ThemedText>().SingleLine = true;
+            name.GetComponent<ThemedText>().Apply();
+            name.fontStyle = FontStyles.Bold;
+            name.rectTransform.anchorMin = Vector2.zero; name.rectTransform.anchorMax = new Vector2(1f, 0f);
+            name.rectTransform.pivot = new Vector2(0.5f, 0f);
+            name.rectTransform.offsetMin = new Vector2(8f, 4f); name.rectTransform.offsetMax = new Vector2(-8f, nameH + 4f);
+
+            // IN / OUT: a word and an icon, not colour alone.
+            var badge = Ui.Box(rt, "Badge", UiTheme.Tone.Good, 14f);
+            badge.ShadowDepth = theme.ShadowChip;
+            badge.Apply();
+            Ui.Place((RectTransform)badge.transform, new Vector2(1f, 1f), new Vector2(-4f, -4f), new Vector2(104f, 40f));
+            var icon = Ui.Icon(badge.transform, "tick", 24f, UiTheme.Tone.Ink);
+            Ui.Place(icon.rectTransform, new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(24f, 24f));
+            var word = Ui.Text(badge.transform, "IN", UiTheme.TextRole.Label, UiTheme.Tone.Ink);
+            word.GetComponent<ThemedText>().ShrinkToFit = false;
+            word.fontStyle = FontStyles.Bold;
+            Ui.Stretch(word.rectTransform);
+            word.rectTransform.offsetMin = new Vector2(34f, 0f);
+
             var button = tile.gameObject.AddComponent<Button>();
-            button.targetGraphic = tile;
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = tile.FillImage;
             var captured = def;
             button.onClick.AddListener(() => Toggle(captured));
-            tile.gameObject.AddComponent<ButtonJuice>();
-            _tiles.Add((def, tile, picture, badge, fade));
+            tile.gameObject.AddComponent<UiFocus>().Target = rt;
+            _tiles.Add((def, button, badge, icon, word, fade));
         }
-
-        _hostOnly.Add(PresetButton("ALL GAMES", UiKit.Yellow, -540f, () => SetPack(null)));
-        _hostOnly.Add(PresetButton("ACTION PACK", UiKit.Pink, -270f, () => SetPack(ActionPack)));
-        _hostOnly.Add(PresetButton("BRAIN PACK", UiKit.Lavender, 0f, () => SetPack(BrainPack)));
-        _hostOnly.Add(PresetButton("NEW GAMES", UiKit.Orange, 270f, () => SetPack(NewPack)));
-        PresetButton("DONE", UiKit.Mint, 540f, () => Show(false));
         Refresh();
-    }
-
-    private GameObject PresetButton(string label, Color color, float x, UnityEngine.Events.UnityAction action)
-    {
-        var image = MakeImage(_card, label, UiKit.Instance.Button, color);
-        image.type = Image.Type.Sliced;
-        image.raycastTarget = true;
-        Place(image.rectTransform, x, -385f, 250f, 76f);
-        var button = image.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.onClick.AddListener(action);
-        image.gameObject.AddComponent<ButtonJuice>();
-        MakeText(image.transform, "Label", 28f, UiKit.Ink, false, 0f, 3f, 240f, 60f).text = label;
-        return image.gameObject;
     }
 
     private void Toggle(MinigameDefinitionSO def)
@@ -142,8 +178,8 @@ public class GamePackPanel : MonoBehaviour
         bool enabled = MatchSettings.IsMinigameEnabled(def.Id);
         if (enabled && EnabledCount() <= 1)
         {
-            _card.DOKill(true);
-            _card.DOShakeAnchorPos(0.3f, 12f, 30);
+            _panel.DOKill(true);
+            _panel.DOShakeAnchorPos(0.3f, 12f, 30).SetUpdate(true);
             Sfx.Play(Sound.Nope);
             return;
         }
@@ -159,7 +195,6 @@ public class GamePackPanel : MonoBehaviour
             MatchSettings.SetMinigameEnabled(t.def.Id, ids == null || System.Array.IndexOf(ids, t.def.Id) >= 0);
         if (EnabledCount() == 0)
             foreach (var t in _tiles) MatchSettings.SetMinigameEnabled(t.def.Id, true);
-        Sfx.Play(Sound.Click);
         Refresh();
     }
 
@@ -182,31 +217,63 @@ public class GamePackPanel : MonoBehaviour
         {
             var t = _tiles[i];
             bool on = IsIn(i);
-            t.fade.alpha = on ? 1f : 0.45f;
-            t.tile.color = on ? Color.white : new Color(0.85f, 0.83f, 0.9f);
-            t.badge.text = on ? "IN" : "OUT";
-            t.badge.transform.parent.GetComponent<Image>().color = on ? UiKit.Mint : UiKit.Tomato;
+            t.fade.alpha = on ? 1f : 0.5f;
+            t.badge.SetFill(on ? UiTheme.Tone.Good : UiTheme.Tone.Bad);
+            t.badgeIcon.sprite = UiShapes.Icon(on ? "tick" : "cross");
+            t.badgeIcon.color = UiTheme.Instance.Color(on ? UiTheme.Tone.Ink : UiTheme.Tone.Paper);
+            t.badgeText.text = on ? "IN" : "OUT";
+            t.badgeText.color = UiTheme.Instance.Color(on ? UiTheme.Tone.Ink : UiTheme.Tone.Paper);
+            t.button.interactable = host;
         }
         int count = EnabledCount();
         var gm = NetworkGameManager.Instance;
         int rounds = host ? MatchSettings.Rounds : gm != null ? gm.PackRounds : MatchSettings.Rounds;
-        _subtitle.text = $"<b>{count}</b> of {_tiles.Count} games in the show - each match plays {rounds} of them" +
-                         (count < rounds ? " (some twice)" : "") + (host ? "  -  click a game to take it in or out" : "");
+        _subtitle.text = $"{count} of {_tiles.Count} in  ·  {rounds} rounds a match" + (count < rounds ? " (some twice)" : "");
+        UiFocus.Chain(Rows(host));
+    }
+
+    /// <summary>Keyboard / gamepad order: the grid's rows (the tiles a host can pick), then the button row.</summary>
+    private Selectable[][] Rows(bool host)
+    {
+        var rows = new List<Selectable[]>();
+        if (host)
+        {
+            int columns = _grid.GetComponent<GridLayoutGroup>().constraintCount;
+            for (int start = 0; start < _tiles.Count; start += columns)
+            {
+                var row = new List<Selectable>();
+                for (int i = start; i < Mathf.Min(start + columns, _tiles.Count); i++) row.Add(_tiles[i].button);
+                rows.Add(row.ToArray());
+            }
+        }
+        var bottom = new List<Selectable>();
+        if (host) foreach (var b in _hostOnly) bottom.Add(b.GetComponent<Selectable>());
+        bottom.Add(_done);
+        rows.Add(bottom.ToArray());
+        return rows.ToArray();
     }
 
     private void Show(bool open)
     {
         if (open) Build();
+        if (open == IsOpen) return;
         IsOpen = open;
-        _group.blocksRaycasts = open;
-        _group.DOKill();
-        _group.DOFade(open ? 1f : 0f, 0.2f).SetUpdate(true).SetLink(gameObject);
+        var events = EventSystem.current;
         if (open)
         {
+            _restoreFocus = events != null ? events.currentSelectedGameObject : null;
+            _scrim.SetActive(true);
+            _panel.gameObject.SetActive(true);
             Refresh();
-            _card.DOKill(true);
-            _card.localScale = Vector3.one * 0.9f;
-            _card.DOScale(1f, 0.25f).SetEase(Ease.OutBack).SetLink(gameObject);
+            UiMotion.PanelIn(_panel, _group);
+            var first = IsHost && _tiles.Count > 0 ? _tiles[0].button.gameObject : _done.gameObject;
+            if (events != null) events.SetSelectedGameObject(first);
+        }
+        else
+        {
+            _scrim.SetActive(false);
+            UiMotion.PanelOut(_panel, _group).OnComplete(() => { if (!IsOpen) _panel.gameObject.SetActive(false); });
+            if (events != null) events.SetSelectedGameObject(_restoreFocus);
         }
     }
 
@@ -217,54 +284,14 @@ public class GamePackPanel : MonoBehaviour
             Show(false);
             return;
         }
-        var keyboard = Keyboard.current;
-        if (keyboard == null || PauseMenu.IsOpen || !InLobby) return;
-        if (keyboard.lKey.wasPressedThisFrame || (IsHost && keyboard.gKey.wasPressedThisFrame))
+        if (IsOpen)
+        {
+            UiFocus.Keep(_done.gameObject);
+            if (UiModal.OpenCount == 0 && UiInput.Back()) { Show(false); return; }
+            if (!IsHost && Time.frameCount % 15 == 0) Refresh();   // the host may change the pack while a guest looks
+        }
+        if (PauseMenu.IsOpen || !InLobby || UiModal.OpenCount > 0) return;
+        if (UiInput.Pressed(Key.L, GamepadButton.LeftShoulder) || (IsHost && UiInput.Pressed(Key.G)))
             Show(!IsOpen);
-        else if (IsOpen && !IsHost && Time.frameCount % 15 == 0)
-            Refresh();   // the host may change the pack while a guest looks
     }
-
-    #region UI building
-
-    private static void Stretch(RectTransform rt)
-    {
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
-    }
-
-    private static void Place(RectTransform rt, float x, float y, float w, float h)
-    {
-        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = new Vector2(x, y);
-        rt.sizeDelta = new Vector2(w, h);
-    }
-
-    private static Image MakeImage(Transform parent, string name, Sprite sprite, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        go.transform.SetParent(parent, false);
-        var image = go.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static TMP_Text MakeText(Transform parent, string name, float size, Color color, bool outline, float x, float y, float w, float h)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var text = go.GetComponent<TextMeshProUGUI>();
-        var kit = UiKit.Instance;
-        text.font = kit.Font;
-        if (outline && kit.OutlineThick != null) text.fontSharedMaterial = kit.OutlineThick;
-        text.fontSize = size;
-        text.color = color;
-        text.alignment = TextAlignmentOptions.Center;
-        text.raycastTarget = false;
-        Place(text.rectTransform, x, y, w, h);
-        return text;
-    }
-
-    #endregion
 }

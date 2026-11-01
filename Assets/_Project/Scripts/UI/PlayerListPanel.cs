@@ -1,98 +1,73 @@
 using System.Collections.Generic;
 using DG.Tweening;
-using Fusion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
 
 /// <summary>
-/// Hold Tab: everyone in the show at a glance (you keep moving; the camera holds still so the mouse can click). In a round each contestant is IN or OUT (knocked out, in the lounge); in the
-/// lobby READY or NOT READY. The host also gets a KICK button per player and, in the lobby, START NOW. Lives for the
-/// whole session (DontDestroyOnLoad), built from code with <see cref="UiKit"/>.
+/// Hold Tab (gamepad: View): everyone in the show at a glance, as player chips (colour, number, name). You keep
+/// moving; the camera holds still so the mouse can click. In a round each contestant is in or out (knocked out, in
+/// the lounge); in the lobby ready or not. The host also gets KICK per player and, in the lobby, START NOW. Lives for
+/// the whole session (DontDestroyOnLoad), built with the UI kit.
 /// </summary>
 public class PlayerListPanel : MonoBehaviour
 {
     private const int MAX_ROWS = 8;
+    private const float WIDTH = 840f, ROW = 72f;
 
     public static bool IsOpen { get; private set; }
 
-    private CanvasGroup _group;
     private RectTransform _card;
-    private TMP_Text _title;
-    private readonly List<(GameObject root, TMP_Text name, TMP_Text status, Button kick)> _rows = new();
+    private CanvasGroup _group;
+    private TextMeshProUGUI _title, _subtitle;
+    private readonly List<(GameObject root, PlayerChip chip, TextMeshProUGUI status, UiButton kick)> _rows = new();
     private readonly List<Player> _players = new();
-    private Button _startButton;
+    private UiButton _startButton;
     private float _nextRefresh;
     private BasePlayerSpawner _spawner;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Create()
     {
-        var go = new GameObject("PlayerList", typeof(RectTransform));
+        var go = new GameObject("PlayerList");
         DontDestroyOnLoad(go);
         go.AddComponent<PlayerListPanel>();
     }
 
     private void Awake()
     {
-        var canvas = gameObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 150;
-        var scaler = gameObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-        gameObject.AddComponent<GraphicRaycaster>();
-
-        var root = new GameObject("Root", typeof(RectTransform), typeof(CanvasGroup));
-        root.transform.SetParent(transform, false);
-        var rootRect = (RectTransform)root.transform;
-        rootRect.anchorMin = Vector2.zero; rootRect.anchorMax = Vector2.one; rootRect.offsetMin = rootRect.offsetMax = Vector2.zero;
-        _group = root.GetComponent<CanvasGroup>();
+        var safe = Ui.Canvas("Player List", 150, transform);
+        var box = Ui.Box(safe, "Card", UiTheme.Tone.Studio);
+        _card = Ui.Place((RectTransform)box.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(WIDTH, 300f));
+        _group = box.gameObject.AddComponent<CanvasGroup>();
         _group.alpha = 0f;
         _group.blocksRaycasts = false;
 
-        var card = Image(root.transform, "Card", UiKit.Instance.Panel, UiKit.Cream);
-        card.type = UnityEngine.UI.Image.Type.Sliced;
-        _card = card.rectTransform;
-        Place(_card, 0f, 0f, 760f, 140f + MAX_ROWS * 64f);
-        _title = Text(_card, "Title", 48f, UiKit.Orange, true, 0f, _card.sizeDelta.y * 0.5f - 52f, 700f, 64f);
-        _title.text = "CONTESTANTS";
+        _title = Ui.Text(_card, "CONTESTANTS", UiTheme.TextRole.Title, UiTheme.Tone.Paper, TextAlignmentOptions.Left, true);
+        Ui.Place(_title.rectTransform, new Vector2(0f, 1f), new Vector2(36f, -24f), new Vector2(WIDTH - 260f, 56f));
+        _subtitle = Ui.Text(_card, "", UiTheme.TextRole.Body, UiTheme.Tone.Haze, TextAlignmentOptions.Right);
+        Ui.Place(_subtitle.rectTransform, new Vector2(1f, 1f), new Vector2(-36f, -28f), new Vector2(220f, 48f));
 
         for (int i = 0; i < MAX_ROWS; i++)
         {
-            float y = _card.sizeDelta.y * 0.5f - 120f - i * 64f;
-            var row = new GameObject("Row " + i, typeof(RectTransform));
-            row.transform.SetParent(_card, false);
-            Place((RectTransform)row.transform, 0f, y, 700f, 56f);
-            var name = Text(row.transform, "Name", 30f, UiKit.Ink, false, -150f, 0f, 380f, 50f);
-            name.alignment = TextAlignmentOptions.Left;
-            name.enableWordWrapping = false;
-            name.enableAutoSizing = true;
-            name.fontSizeMin = 14f;
-            name.fontSizeMax = 30f;
-            var status = Text(row.transform, "Status", 26f, UiKit.Ink, false, 110f, 0f, 160f, 50f);
-            var kickImage = Image(row.transform, "Kick", UiKit.Instance.Button, UiKit.Tomato);
-            kickImage.type = UnityEngine.UI.Image.Type.Sliced;
-            kickImage.raycastTarget = true;
-            Place(kickImage.rectTransform, 280f, 0f, 120f, 48f);
-            Text(kickImage.transform, "Label", 22f, UiKit.Ink, false, 0f, 2f, 110f, 40f).text = "KICK";
-            var kick = kickImage.gameObject.AddComponent<Button>();
-            kick.targetGraphic = kickImage;
+            var row = Ui.Rect(_card, "Row " + i);
+            Ui.Place(row, new Vector2(0.5f, 1f), new Vector2(0f, -100f - i * (ROW + 12f)), new Vector2(WIDTH - 72f, ROW));
+            var chip = PlayerChip.Create(row, ROW);
+            Ui.Place((RectTransform)chip.transform, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(400f, ROW));
+            var status = Ui.Text(row, "", UiTheme.TextRole.Body, UiTheme.Tone.Haze, TextAlignmentOptions.Left);
+            status.fontStyle = FontStyles.Bold;
+            Ui.Place(status.rectTransform, new Vector2(0f, 0.5f), new Vector2(416f, 0f), new Vector2(160f, ROW));
             int index = i;
-            kick.onClick.AddListener(() => Kick(index));
-            _rows.Add((row, name, status, kick));
+            var kick = Ui.Button(row, "KICK", UiButton.Variant.Danger, null, () => Kick(index));
+            Ui.Place((RectTransform)kick.transform, new Vector2(1f, 0.5f), Vector2.zero, new Vector2(130f, 64f));
+            _rows.Add((row.gameObject, chip, status, kick));
         }
 
-        var startImage = Image(_card, "StartNow", UiKit.Instance.Button, UiKit.Mint);
-        startImage.type = UnityEngine.UI.Image.Type.Sliced;
-        startImage.raycastTarget = true;
-        Place(startImage.rectTransform, 0f, -_card.sizeDelta.y * 0.5f + 46f, 300f, 64f);
-        Text(startImage.transform, "Label", 30f, UiKit.Ink, false, 0f, 2f, 290f, 56f).text = "START NOW";
-        _startButton = startImage.gameObject.AddComponent<Button>();
-        _startButton.targetGraphic = startImage;
-        _startButton.onClick.AddListener(ForceStart);
+        _startButton = Ui.Button(_card, "START NOW", UiButton.Variant.Primary, "play", ForceStart);
+        Ui.Place((RectTransform)_startButton.transform, new Vector2(0.5f, 0f), new Vector2(0f, 28f), new Vector2(360f, 80f));
     }
 
     private static bool IsHost =>
@@ -101,10 +76,11 @@ public class PlayerListPanel : MonoBehaviour
 
     private void Update()
     {
-        var keyboard = Keyboard.current;
         bool inSession = Player.Local != null;
         // Held, not toggled (Shift+Tab is Steam's overlay).
-        bool held = keyboard != null && keyboard.tabKey.isPressed && !keyboard.shiftKey.isPressed && inSession && !PauseMenu.IsOpen;
+        var keyboard = Keyboard.current;
+        bool held = inSession && !PauseMenu.IsOpen && !GamePackPanel.IsOpen
+                    && (UiInput.Held(Key.Tab) && (keyboard == null || !keyboard.shiftKey.isPressed) || UiInput.Held(Key.None, GamepadButton.Select));
         if (held != IsOpen)
             Show(held);
         if (IsOpen && Time.unscaledTime >= _nextRefresh)
@@ -133,14 +109,24 @@ public class PlayerListPanel : MonoBehaviour
         }
         _group.blocksRaycasts = open;
         _group.DOKill();
-        _group.DOFade(open ? 1f : 0f, 0.15f).SetUpdate(true).SetLink(gameObject);
+        _group.DOFade(open ? 1f : 0f, UiTheme.Instance.PanelOut).SetUpdate(true).SetLink(gameObject);
         if (open)
         {
             _nextRefresh = 0f;
-            _card.DOKill(true);
-            _card.localScale = Vector3.one * 0.92f;
-            _card.DOScale(1f, 0.2f).SetEase(Ease.OutBack).SetLink(gameObject);
+            Refresh();
+            if (!UiTheme.ReduceMotion)
+            {
+                _card.DOKill(true);
+                _card.localScale = Vector3.one * 0.94f;
+                _card.DOScale(1f, UiTheme.Instance.PanelIn).SetEase(Ease.OutBack).SetUpdate(true).SetLink(gameObject);
+            }
+            // Gamepad: Start Now is one press of A away while View is held.
+            if (_startButton.gameObject.activeSelf && EventSystem.current != null && PromptBar.UsingGamepad)
+                EventSystem.current.SetSelectedGameObject(_startButton.gameObject);
         }
+        else if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null
+                 && EventSystem.current.currentSelectedGameObject.transform.IsChildOf(transform))
+            EventSystem.current.SetSelectedGameObject(null);
     }
 
     private void Refresh()
@@ -155,9 +141,12 @@ public class PlayerListPanel : MonoBehaviour
         var lobby = FindFirstObjectByType<LobbyManager>();
         bool inLobby = lobby != null && lobby.Object != null && lobby.Object.IsValid;
         var minigame = MinigameController.Current;
+        var match = NetworkGameManager.Instance;
         bool host = IsHost;
-        _title.text = inLobby ? "CONTESTANTS" : minigame != null && minigame.Definition != null ? minigame.Definition.DisplayName.ToUpperInvariant() : "CONTESTANTS";
+        _title.text = !inLobby && minigame != null && minigame.Definition != null ? minigame.Definition.DisplayName.ToUpperInvariant() : "CONTESTANTS";
 
+        int good = 0;
+        var theme = UiTheme.Instance;
         for (int i = 0; i < _rows.Count; i++)
         {
             var row = _rows[i];
@@ -167,31 +156,24 @@ public class PlayerListPanel : MonoBehaviour
             var player = _players[i];
             var who = player.Object.InputAuthority;
             string name = string.IsNullOrEmpty(player.Nickname) ? $"Player {who.PlayerId}" : player.Nickname;
-            row.name.text = who == player.Runner.LocalPlayer ? $"{name} <size=70%>(you)</size>" : name;
-            row.name.color = Color.Lerp(player.PlayerColor, UiKit.Ink, 0.35f);
-            if (inLobby)
-            {
-                bool ready = lobby.ReadyStates.TryGet(who, out var r) && r;
-                row.status.text = ready ? "<color=#2FA36B><b>READY</b></color>" : "<color=#E03131>NOT READY</color>";
-            }
-            else
-                row.status.text = player.IsSpectator ? "<color=#E03131><b>OUT</b></color>" : "<color=#2FA36B><b>IN</b></color>";
+            if (who == player.Runner.LocalPlayer) name += " (you)";
+            int colour = match != null && match.Object != null && match.Object.IsValid ? match.ColorIndexOf(who) : -1;
+            bool on = inLobby ? lobby.ReadyStates.TryGet(who, out var ready) && ready : !player.IsSpectator;
+            if (on) good++;
+            row.chip.Set(colour >= 0 ? colour + 1 : who.PlayerId, player.PlayerColor, name, on ? "tick" : inLobby ? null : "cross");
+            row.status.text = inLobby ? (on ? "Ready" : "Not ready") : (on ? "In" : "Out");
+            row.status.color = theme.Color(on ? UiTheme.Tone.Good : inLobby ? UiTheme.Tone.Haze : UiTheme.Tone.Bad);
             row.kick.gameObject.SetActive(host && who != player.Runner.LocalPlayer);
         }
+        _subtitle.text = _players.Count == 0 ? "" : inLobby ? $"{good}/{_players.Count} ready" : $"{good}/{_players.Count} in";
         _startButton.gameObject.SetActive(host && inLobby);
-        Layout(Mathf.Max(1, _players.Count), host && inLobby);
-    }
+        float height = 100f + Mathf.Max(1, _players.Count) * (ROW + 12f) + (host && inLobby ? 120f : 24f);
+        _card.sizeDelta = new Vector2(WIDTH, height);
 
-    /// <summary>The card fits the players listed (and the START NOW button when it shows).</summary>
-    private void Layout(int rows, bool startButton)
-    {
-        float height = 130f + rows * 64f + (startButton ? 90f : 20f);
-        _card.sizeDelta = new Vector2(760f, height);
-        float top = height * 0.5f;
-        _title.rectTransform.anchoredPosition = new Vector2(0f, top - 52f);
-        for (int i = 0; i < _rows.Count; i++)
-            ((RectTransform)_rows[i].root.transform).anchoredPosition = new Vector2(0f, top - 120f - i * 64f);
-        ((RectTransform)_startButton.transform).anchoredPosition = new Vector2(0f, -top + 52f);
+        var order = new List<Selectable[]>();
+        foreach (var row in _rows) if (row.root.activeSelf && row.kick.gameObject.activeSelf) order.Add(new Selectable[] { row.kick });
+        order.Add(new Selectable[] { _startButton });
+        UiFocus.Chain(order.ToArray());
     }
 
     private void Kick(int index)
@@ -212,42 +194,4 @@ public class PlayerListPanel : MonoBehaviour
         Sfx.Play(Sound.Go);
         Show(false);
     }
-
-    #region UI building
-
-    private static void Place(RectTransform rt, float x, float y, float w, float h)
-    {
-        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = new Vector2(x, y);
-        rt.sizeDelta = new Vector2(w, h);
-    }
-
-    private static Image Image(Transform parent, string name, Sprite sprite, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        go.transform.SetParent(parent, false);
-        var image = go.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static TMP_Text Text(Transform parent, string name, float size, Color color, bool outline, float x, float y, float w, float h)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var text = go.GetComponent<TextMeshProUGUI>();
-        var kit = UiKit.Instance;
-        text.font = kit.Font;
-        if (outline && kit.OutlineThick != null) text.fontSharedMaterial = kit.OutlineThick;
-        text.fontSize = size;
-        text.color = color;
-        text.alignment = TextAlignmentOptions.Center;
-        text.raycastTarget = false;
-        Place(text.rectTransform, x, y, w, h);
-        return text;
-    }
-
-    #endregion
 }

@@ -46,7 +46,8 @@ public class PlayerChip : MonoBehaviour
         _number.text = number.ToString();
         _name.text = name;
         // Names stay on one line; very long ones shrink a little, then end in "…".
-        _name.textWrappingMode = TextWrappingModes.NoWrap;
+        var themed = _name.GetComponent<ThemedText>();
+        if (!themed.SingleLine) { themed.SingleLine = true; themed.Apply(); }
         _name.overflowMode = TextOverflowModes.Ellipsis;
         _status.gameObject.SetActive(status != null);
         if (status == null) return;

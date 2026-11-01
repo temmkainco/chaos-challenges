@@ -131,7 +131,8 @@ public class MainMenuView : MonoBehaviour
         if (!UiTheme.ReduceMotion)
             dot.DOFade(0.25f, 0.6f).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetUpdate(true).SetLink(dot.gameObject);
         var onAir = Ui.Text(pill.transform, "ON AIR", UiTheme.TextRole.Label, UiTheme.Tone.Paper);
-        onAir.characterSpacing = 14f;
+        onAir.GetComponent<ThemedText>().Spacing = 14f;
+        onAir.GetComponent<ThemedText>().Apply();
         Ui.Stretch(onAir.rectTransform);
         onAir.rectTransform.offsetMin = new Vector2(44f, 0f);
 
@@ -391,9 +392,7 @@ public class MainMenuView : MonoBehaviour
         }
         UiFocus.Keep(_focus[(int)_view] != null ? _focus[(int)_view] : _views[(int)_view].GetComponentInChildren<Selectable>()?.gameObject);
 
-        bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-                    || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
-        if (!back) return;
+        if (!UiInput.Back()) return;
         if (_picker != null && _picker.gameObject.activeSelf) _picker.Close();
         else if (_view == View.Main) ConfirmQuit();
         else ShowView(View.Main);

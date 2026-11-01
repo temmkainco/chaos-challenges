@@ -11,18 +11,19 @@ using UnityEngine.UI;
 public class PromptBar : MonoBehaviour
 {
     /// <summary>The actions prompts can name, with their keyboard and gamepad caps.</summary>
-    public enum Action { Confirm, Back, Interact, Jump, Emote, Players, Games, Throw }
+    public enum Action { Confirm, Back, Interact, Jump, Emote, Players, Games, Throw, Colour }
 
     private static readonly Dictionary<Action, (string key, string pad)> Caps = new()
     {
         [Action.Confirm] = ("Enter", "A"),
         [Action.Back] = ("Esc", "B"),
-        [Action.Interact] = ("E", "X"),
+        [Action.Interact] = ("E", "Y"),
         [Action.Jump] = ("Space", "A"),
         [Action.Emote] = ("T", "Y"),
         [Action.Players] = ("Tab", "View"),
         [Action.Games] = ("L", "LB"),
         [Action.Throw] = ("LMB", "RT"),
+        [Action.Colour] = ("C", "RB"),
     };
 
     /// <summary>True once a gamepad was used more recently than the keyboard or mouse.</summary>

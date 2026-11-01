@@ -1,72 +1,89 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
 
 /// <summary>
-/// Lobby: the player colours as a row of swatches. Yours has a ring, colours other players have are dimmed and
-/// marked with their initial. C switches to the next free colour (or click a free swatch when the cursor is out).
-/// Your last pick is remembered and asked for again when you join a lobby. Colours are kept by
-/// <see cref="NetworkGameManager"/> (unique per player, for the whole session).
+/// Lobby: the player colours as a row of swatches in a kit card, top left. Yours has a Paper ring and its name is
+/// written out; colours other players have are dimmed and marked with their initial (never colour alone). C / RB
+/// switches to the next free colour, or click a free swatch while the cursor is out. Your last pick is remembered
+/// and asked for again when you join a lobby. Colours are kept by <see cref="NetworkGameManager"/> (unique per
+/// player, for the whole session).
 /// </summary>
 public class PlayerColorPicker : MonoBehaviour
 {
     private const string PREF = "PlayerColor";
-    private const float SPACING = 64f;
+    private const float STEP = 64f;
 
-    private Image[] _swatches, _rings;
-    private TMP_Text[] _marks;
-    private TMP_Text _label;
+    private Image[] _swatches;
+    private GameObject[] _rings;
+    private TextMeshProUGUI[] _marks;
+    private TextMeshProUGUI _name, _cap;
+    private CanvasGroup _group;
     private bool _askedForPreferred;
 
-    public static void Create(Transform canvas)
+    public static PlayerColorPicker Create(Transform parent)
     {
-        var go = new GameObject("PlayerColorPicker", typeof(RectTransform));
-        go.transform.SetParent(canvas, false);
-        go.AddComponent<PlayerColorPicker>();
-    }
-
-    private void Awake()
-    {
-        var root = (RectTransform)transform;
-        root.anchorMin = root.anchorMax = new Vector2(0f, 1f);
-        root.pivot = new Vector2(0f, 1f);
-        root.anchoredPosition = new Vector2(24f, -24f);
         int count = NetworkGameManager.PlayerColors.Length;
-        root.sizeDelta = new Vector2(SPACING * count + 40f, 130f);
+        var theme = UiTheme.Instance;
+        var box = Ui.Box(parent, "YourColour", UiTheme.Tone.Studio);
+        var rt = Ui.Place((RectTransform)box.transform, new Vector2(0f, 1f), Vector2.zero, new Vector2(count * STEP + 40f, 148f));
+        var picker = rt.gameObject.AddComponent<PlayerColorPicker>();
+        picker._group = rt.gameObject.AddComponent<CanvasGroup>();
 
-        var kit = UiKit.Instance;
-        var card = Make(transform, "Card", kit.Panel, new Color(UiKit.Cream.r, UiKit.Cream.g, UiKit.Cream.b, 0.92f));
-        Stretch(card.rectTransform);
-        _label = Text(transform, 24f, new Vector2(0f, 38f), new Vector2(root.sizeDelta.x, 40f));
+        var label = Ui.Text(rt, "YOUR COLOUR", UiTheme.TextRole.Label, UiTheme.Tone.Haze, TextAlignmentOptions.Left);
+        label.GetComponent<ThemedText>().SingleLine = true;
+        label.GetComponent<ThemedText>().Apply();
+        float labelWidth = label.GetPreferredValues(label.text).x;
+        Ui.Place(label.rectTransform, new Vector2(0f, 1f), new Vector2(24f, -12f), new Vector2(labelWidth + 4f, 44f));
+        picker._name = Ui.Text(rt, "", UiTheme.TextRole.Body, UiTheme.Tone.Paper, TextAlignmentOptions.Left);
+        picker._name.fontStyle = FontStyles.Bold;
+        Ui.Place(picker._name.rectTransform, new Vector2(0f, 1f), new Vector2(40f + labelWidth, -10f), new Vector2(rt.sizeDelta.x - 140f - labelWidth, 44f));
 
-        _swatches = new Image[count];
-        _rings = new Image[count];
-        _marks = new TMP_Text[count];
+        // The key that switches colour, as a cap (follows keyboard / gamepad).
+        var cap = Ui.Box(rt, "Cap", UiTheme.Tone.Paper, 10f);
+        cap.ShadowDepth = theme.ShadowChip;
+        cap.Apply();
+        Ui.Place((RectTransform)cap.transform, new Vector2(1f, 1f), new Vector2(-20f, -14f), new Vector2(64f, 40f));
+        picker._cap = Ui.Text(cap.transform, "C", UiTheme.TextRole.Label, UiTheme.Tone.Ink);
+        picker._cap.GetComponent<ThemedText>().ShrinkToFit = false;
+        Ui.Stretch(picker._cap.rectTransform);
+
+        picker._swatches = new Image[count];
+        picker._rings = new GameObject[count];
+        picker._marks = new TextMeshProUGUI[count];
         for (int i = 0; i < count; i++)
         {
-            float x = (i - (count - 1) * 0.5f) * SPACING;
-            _rings[i] = Make(transform, "Ring " + i, kit.Circle, UiKit.Ink);
-            Place(_rings[i].rectTransform, x, -14f, 62f, 62f);
-            _swatches[i] = Make(transform, "Colour " + i, kit.Circle, NetworkGameManager.PlayerColors[i]);
-            Place(_swatches[i].rectTransform, x, -14f, 50f, 50f);
-            _swatches[i].raycastTarget = true;
+            var position = new Vector2(20f + STEP * 0.5f + i * STEP, -96f);
+            var ring = Ui.Circle(rt, "Yours " + i, 62f, theme.Paper);
+            Ui.Place(ring.rectTransform, new Vector2(0f, 1f), position + new Vector2(-31f, 31f), new Vector2(62f, 62f));
+            picker._rings[i] = ring.gameObject;
+            var outline = Ui.Circle(rt, "Outline " + i, 52f, theme.Ink);
+            Ui.Place(outline.rectTransform, new Vector2(0f, 1f), position + new Vector2(-26f, 26f), new Vector2(52f, 52f));
+            var swatch = Ui.Circle(outline.transform, "Colour " + i, 44f, NetworkGameManager.PlayerColors[i]);
+            swatch.raycastTarget = true;
             int index = i;
-            var button = _swatches[i].gameObject.AddComponent<Button>();
-            button.onClick.AddListener(() => Request(index));
-            _marks[i] = Text(_swatches[i].transform, 26f, Vector2.zero, new Vector2(50f, 50f));
+            var button = swatch.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() => picker.Request(index));
+            picker._swatches[i] = swatch;
+            picker._marks[i] = Ui.Text(swatch.transform, "", UiTheme.TextRole.Label, UiTheme.Tone.Paper);
+            picker._marks[i].GetComponent<ThemedText>().ShrinkToFit = false;
+            Ui.Stretch(picker._marks[i].rectTransform);
         }
+        return picker;
     }
 
     private void Update()
     {
         var match = NetworkGameManager.Instance;
-        if (match == null || match.Object == null || !match.Object.IsValid || match.Phase != MatchPhase.Lobby)
-        {
-            SetVisible(false);
-            return;
-        }
-        SetVisible(true);
+        bool visible = match != null && match.Object != null && match.Object.IsValid && match.Phase == MatchPhase.Lobby;
+        _group.alpha = visible ? 1f : 0f;
+        _group.blocksRaycasts = visible;
+        if (!visible) return;
+
         var me = match.Runner.LocalPlayer;
         int mine = match.ColorIndexOf(me);
 
@@ -78,25 +95,23 @@ public class PlayerColorPicker : MonoBehaviour
             if (preferred >= 0 && preferred != mine) match.RPC_RequestColor((byte)preferred);
         }
 
-        if (!PauseMenu.IsOpen && Keyboard.current != null && Keyboard.current.cKey.wasPressedThisFrame)
+        if (!PauseMenu.IsOpen && !GamePackPanel.IsOpen && UiInput.Pressed(Key.C, GamepadButton.RightShoulder))
             Request(NextFree(match, mine));
 
+        var theme = UiTheme.Instance;
         for (int i = 0; i < _swatches.Length; i++)
         {
             var owner = match.OwnerOfColor(i);
             bool yours = i == mine;
-            bool taken = owner != PlayerRefNone && !yours;
-            _rings[i].enabled = yours;
+            bool taken = owner != Fusion.PlayerRef.None && !yours;
+            _rings[i].SetActive(yours);
             var c = NetworkGameManager.PlayerColors[i];
-            _swatches[i].color = taken ? Color.Lerp(c, UiKit.Ink, 0.55f) : c;
+            _swatches[i].color = taken ? Color.Lerp(c, theme.Ink, 0.6f) : c;
             _marks[i].text = taken ? Initial(owner) : "";
         }
-        _label.text = mine >= 0
-            ? $"YOUR COLOUR: <color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(NetworkGameManager.PlayerColors[mine], UiKit.Ink, 0.25f))}>{NetworkGameManager.PlayerColorNames[mine]}</color>   <size=80%>C: change</size>"
-            : "YOUR COLOUR";
+        _name.text = mine >= 0 ? NetworkGameManager.PlayerColorNames[mine] : "";
+        _cap.text = PromptBar.UsingGamepad ? "RB" : "C";
     }
-
-    private static readonly Fusion.PlayerRef PlayerRefNone = Fusion.PlayerRef.None;
 
     private static int NextFree(NetworkGameManager match, int mine)
     {
@@ -125,50 +140,5 @@ public class PlayerColorPicker : MonoBehaviour
             && spawner.Players.TryGet(owner, out var player) && player != null && !string.IsNullOrEmpty(player.Nickname))
             return player.Nickname.Substring(0, 1).ToUpperInvariant();
         return "•";
-    }
-
-    private void SetVisible(bool visible)
-    {
-        foreach (Transform child in transform)
-            if (child.gameObject.activeSelf != visible) child.gameObject.SetActive(visible);
-    }
-
-    private static Image Make(Transform parent, string name, Sprite sprite, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        go.transform.SetParent(parent, false);
-        var image = go.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static TMP_Text Text(Transform parent, float size, Vector2 position, Vector2 boxSize)
-    {
-        var go = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var text = go.GetComponent<TextMeshProUGUI>();
-        text.font = UiKit.Instance.Font;
-        text.fontSize = size;
-        text.color = UiKit.Ink;
-        text.alignment = TextAlignmentOptions.Center;
-        text.raycastTarget = false;
-        Place(text.rectTransform, position.x, position.y, boxSize.x, boxSize.y);
-        return text;
-    }
-
-    private static void Place(RectTransform rt, float x, float y, float w, float h)
-    {
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(w, h);
-        rt.anchoredPosition = new Vector2(x, y);
-    }
-
-    private static void Stretch(RectTransform rt)
-    {
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
     }
 }

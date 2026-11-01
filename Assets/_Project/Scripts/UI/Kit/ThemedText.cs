@@ -13,6 +13,8 @@ public class ThemedText : MonoBehaviour
     public UiTheme.Tone Tone = UiTheme.Tone.Paper;
     [Tooltip("Thick Ink outline (display text straight over the 3D world)")] public bool Outlined;
     [Tooltip("Shrink to fit (up to 80%) instead of overflowing; leave room for translations")] public bool ShrinkToFit = true;
+    [Tooltip("Never wrap (names, tags); Body and Label text wraps otherwise")] public bool SingleLine;
+    [Tooltip("Letter spacing; negative = the role's")] public float Spacing = -1f;
 
     private TextMeshProUGUI _text;
 
@@ -42,8 +44,8 @@ public class ThemedText : MonoBehaviour
         text.fontSizeMax = size;
         text.fontSizeMin = Mathf.Max(theme.Label, size * 0.8f);
         text.color = theme.Color(Tone);
-        text.textWrappingMode = Role is UiTheme.TextRole.Body or UiTheme.TextRole.Label ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
-        text.characterSpacing = Role is UiTheme.TextRole.Button or UiTheme.TextRole.Label ? 3f : 0f;
+        text.textWrappingMode = !SingleLine && Role is UiTheme.TextRole.Body or UiTheme.TextRole.Label ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+        text.characterSpacing = Spacing >= 0f ? Spacing : Role is UiTheme.TextRole.Button or UiTheme.TextRole.Label ? 3f : 0f;
         text.raycastTarget = false;
     }
 }
