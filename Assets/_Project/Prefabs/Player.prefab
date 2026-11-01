@@ -1001,6 +1001,7 @@ GameObject:
   - component: {fileID: 8788695815963667762}
   - component: {fileID: 3001662693769037708}
   - component: {fileID: 1768960846065777392}
+  - component: {fileID: 2264848928657791039}
   m_Layer: 7
   m_Name: Visuals
   m_TagString: Untagged
@@ -1083,6 +1084,23 @@ MonoBehaviour:
   _ground:
     serializedVersion: 2
     m_Bits: 4294966143
+--- !u!114 &2264848928657791039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5161133641240142585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c50bfd3bf08c334199a08d978d22a13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandClearance
+  _headCentre: {x: 0, y: 1.524, z: 0}
+  _headRadius: 0.275
+  _bodyCentre: {x: 0, y: 0.943, z: 0}
+  _bodySize: {x: 0.236, y: 0.341, z: 0.193}
+  _margin: 0.07
 --- !u!1 &5174145382575525635
 GameObject:
   m_ObjectHideFlags: 0
