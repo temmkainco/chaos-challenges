@@ -16,6 +16,14 @@
 | Platformer Kit | Kenney | CC0 | Sky islands: floating grass blocks, coins, stars |
 | Mini Arena | Kenney | CC0 | Colosseum: stands, columns, banners, statues, crowd |
 | Platformer Pack | Quaternius | CC0 | Doors, towers, bouncers, hazards |
+| Universal Animation Library (Standard, v3.0) | Quaternius (quaternius.itch.io) | CC0 | Character clips: Idle, Walk, Jog, Sprint, JumpStart, Fall, Land, HitChest, HitHead, PushLoop, SpellShoot, Dance, SitIdle, Drive, SwimIdle, Roll |
+| Universal Animation Library 2 (Standard, v2.2) | Quaternius | CC0 | Character clips: HitKnockback, IdleFoldArms, GetUp, Throw, WalkCarry, Yes |
 | Lowpoly Asset Bundle | Pandazole | Asset Store licence | Toy bricks, logs, crates, fences, rocks |
 
 Kenney packs live in `Assets/ThirdParty/Kenney/<Kit>/` (FBX + colour map, each with its `License.txt`).
+
+The character clips are copied out of the libraries' Humanoid FBXs (in place, root motion baked) into
+`Assets/_Project/Animations/Character/` by `Tools/Character/unity/ual_import.cs` (Unity editor script, run with
+`unity command script eval_file`); the FBXs themselves are not in the repository. `Shove.anim` is ours, keyed from
+muscle poses by `Tools/Character/unity/build_controller.cs`, which also builds `Player.controller`.
+

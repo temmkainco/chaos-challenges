@@ -44,13 +44,10 @@ public class EmotePlayer : MonoBehaviour
         }
     }
 
-    private const float SHOVE_TIME = 0.35f;
-
     private void LateUpdate()
     {
         if (_player == null || _player.Object == null || !_player.Object.IsValid)
             return;
-        PoseShove();
         if (_player.EmoteId == 0)
             return;
 
@@ -138,24 +135,6 @@ public class EmotePlayer : MonoBehaviour
                 Tilt(_head, fwd, 10f * s2 * w);
                 break;
         }
-    }
-
-    /// <summary>The shove: both arms thrust forward, quickly out and back (from the replicated swing tick).</summary>
-    private void PoseShove()
-    {
-        var interaction = _player.Interaction;
-        if (interaction == null || interaction.ShoveTick == 0) return;
-        float t = (_player.Runner.Tick - interaction.ShoveTick) * _player.Runner.DeltaTime;
-        if (t < 0f || t > SHOVE_TIME) return;
-        // Snap out in a tenth of a second, ease back for the rest.
-        float w = t < 0.1f ? t / 0.1f : 1f - (t - 0.1f) / (SHOVE_TIME - 0.1f);
-        var body = transform;
-        Vector3 fwd = body.forward, right = body.right, up = Vector3.up;
-        Tilt(_spine, right, 14f * w);
-        Aim(_lUpper, _lLower, (fwd - right * 0.15f + up * 0.05f).normalized, w);
-        Aim(_rUpper, _rLower, (fwd + right * 0.15f + up * 0.05f).normalized, w);
-        Aim(_lLower, _lHand, (fwd + up * 0.1f).normalized, w);
-        Aim(_rLower, _rHand, (fwd + up * 0.1f).normalized, w);
     }
 
     /// <summary>Rotates <paramref name="bone"/> so it points along <paramref name="direction"/> (world), blended by <paramref name="w"/>.</summary>

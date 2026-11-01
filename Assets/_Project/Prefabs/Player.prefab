@@ -537,7 +537,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3163086856589717797}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.12087865, y: -0.12590991, z: 0.050445307, w: 0.98335665}
+  m_LocalRotation: {x: -0.12087866, y: -0.12590991, z: 0.05044531, w: 0.98335665}
   m_LocalPosition: {x: 0.07176313, y: 0.23169808, z: 0.011092067}
   m_LocalScale: {x: 0.9999999, y: 1, z: 0.9999999}
   m_ConstrainProportionsScale: 0
@@ -1000,6 +1000,7 @@ GameObject:
   - component: {fileID: 5542760295474116675}
   - component: {fileID: 8788695815963667762}
   - component: {fileID: 3001662693769037708}
+  - component: {fileID: 1768960846065777392}
   m_Layer: 7
   m_Name: Visuals
   m_TagString: Untagged
@@ -1034,7 +1035,7 @@ Animator:
   m_GameObject: {fileID: 5161133641240142585}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: e18e8834cd20af746a110392c8e54406, type: 3}
-  m_Controller: {fileID: 9100000, guid: 6ac001f5ecfc35a4da83bd8a36830c1b, type: 2}
+  m_Controller: {fileID: 9100000, guid: 767c2d76b31908842a5bb8bf968c89d7, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -1059,6 +1060,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAnimationController
   movement: {fileID: -4257660747238865832}
+  _sprintClipSpeed: 6.378
+  _takeOffSpeed: 2
+  _triggerLife: 0.25
+--- !u!114 &1768960846065777392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5161133641240142585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82c08fcb65d48ed478a0bf444032b794, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FootIK
+  _maxSpeed: 0.5
+  _reach: 0.35
+  _blendSpeed: 8
+  _ground:
+    serializedVersion: 2
+    m_Bits: 4294966143
 --- !u!1 &5174145382575525635
 GameObject:
   m_ObjectHideFlags: 0
@@ -2100,7 +2122,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7795039904284673015}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.12087865, y: 0.12590991, z: -0.050445307, w: 0.98335665}
+  m_LocalRotation: {x: -0.12087866, y: 0.12590991, z: -0.05044531, w: 0.98335665}
   m_LocalPosition: {x: -0.07176313, y: 0.23169808, z: 0.011092067}
   m_LocalScale: {x: 0.9999999, y: 1, z: 0.9999999}
   m_ConstrainProportionsScale: 0

@@ -305,9 +305,9 @@ namespace Networking
         }
 
 #if UNITY_EDITOR
-        /// <summary>Editor tests only: held movement (x = A/D, y = W/S) and a jump tapped every 20 ticks.</summary>
+        /// <summary>Editor tests only: held movement (x = A/D, y = W/S), a jump tapped every 20 ticks, a shove every 60.</summary>
         public static Vector2? TestMove;
-        public static bool TestJump;
+        public static bool TestJump, TestShove;
 #endif
 
         public void OnInput(NetworkRunner runner, NetworkInput input)
@@ -332,6 +332,7 @@ namespace Networking
             // Editor tests drive a player without a keyboard.
             if (TestMove.HasValue) data.Direction = new Vector3(TestMove.Value.x, 0, TestMove.Value.y);
             if (TestJump) data.Buttons.Set(InputButtons.Jump, (runner.Tick / 20) % 2 == 0);
+            if (TestShove) data.Buttons.Set(InputButtons.Throw, (runner.Tick / 30) % 2 == 0);
 #endif
 
             input.Set(data);
