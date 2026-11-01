@@ -13,6 +13,7 @@ public class UiTabBar : MonoBehaviour
     public event Action<int> Selected;
     private readonly List<UiButton> _tabs = new();
     public int Index { get; private set; } = -1;
+    public IReadOnlyList<UiButton> Tabs => _tabs;
 
     public static UiTabBar Create(Transform parent, params (string label, string icon)[] tabs)
     {

@@ -146,8 +146,8 @@ public class ColorPickerPopup : MonoBehaviour
         _current = Ui.Circle(transform, "Current", 90f, Color.white);
         Place(_current.rectTransform, columnX, top - 52f, 90f, 90f);
         var hexLabel = Ui.Text(transform, "HEX", UiTheme.TextRole.Label, UiTheme.Tone.Haze);
-        Place(hexLabel.rectTransform, columnX, top - 128f, columnWidth, 34f);
-        _hex = MakeInput(transform, columnX, top - 166f, Mathf.Min(columnWidth, 190f), 50f);
+        Place(hexLabel.rectTransform, columnX, top - 122f, columnWidth, 34f);
+        _hex = MakeInput(transform, columnX, top - 178f, Mathf.Min(columnWidth, 190f), 50f);
         _hex.onValueChanged.AddListener(text =>
         {
             if (_hex.isFocused && text.TrimStart('#').Length == 6 && LocalLook.TryParseHex(text, out var color)) SetColor(color);

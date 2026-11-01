@@ -43,6 +43,8 @@ public class UiBox : MonoBehaviour
         image.raycastTarget = index == 2;
         image.sprite = UiShapes.RoundRect;
         image.type = Image.Type.Sliced;
+        // Layers fill the box; a layout group on the box (a modal's column) must not stack them.
+        (go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>()).ignoreLayout = true;
         return image;
     }
 

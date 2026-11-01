@@ -17,9 +17,14 @@ public class UiModal : MonoBehaviour
     private CanvasGroup _group;
     private Action _onCancel;
     private GameObject _restoreFocus;
+    private GameObject _focus;
 
     public RectTransform Content { get; private set; }
     public RectTransform Buttons { get; private set; }
+    /// <summary>False for a modal Back must not close (a "connecting" notice).</summary>
+    public bool Cancelable { get; set; } = true;
+    /// <summary>Modals on screen; screens underneath ignore Back while one is open.</summary>
+    public static int OpenCount { get; private set; }
 
     /// <summary>A modal with the given buttons (label, variant, action); the last one is the default focus if it is Primary.</summary>
     public static UiModal Show(string title, string text, Action onCancel, params (string label, UiButton.Variant variant, Action action)[] buttons)
@@ -34,6 +39,7 @@ public class UiModal : MonoBehaviour
         scrim.GetComponent<Image>().color = new Color(theme.Ink.r, theme.Ink.g, theme.Ink.b, theme.ScrimAlpha);
 
         var modal = canvas.gameObject.AddComponent<UiModal>();
+        OpenCount++;
         modal._onCancel = onCancel;
         modal._restoreFocus = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
         var box = Ui.Box(safe, "Panel", UiTheme.Tone.Studio);
@@ -59,30 +65,39 @@ public class UiModal : MonoBehaviour
         Ui.Size(modal.Buttons, 760f, 100f);
 
         UiButton focus = null;
+        var order = new System.Collections.Generic.List<Selectable>();
         foreach (var (label, variant, action) in buttons)
         {
             var b = Ui.Button(modal.Buttons, label, variant, null, () => { action?.Invoke(); modal.Close(); });
             Ui.Size(b, 340f, 88f);
+            order.Add(b);
             if (focus == null || variant == UiButton.Variant.Primary) focus = b;
         }
+        modal.Buttons.gameObject.SetActive(buttons.Length > 0);
+        UiFocus.Chain(order.ToArray());   // focus stays inside the modal
         UiMotion.PanelIn(modal._panel, modal._group);
+        modal._focus = focus != null ? focus.gameObject : null;
         if (focus != null && EventSystem.current != null) EventSystem.current.SetSelectedGameObject(focus.gameObject);
         return modal;
     }
 
     private void Update()
     {
+        UiFocus.Keep(_focus);   // e.g. the scene behind reloaded and took the selection with it
         bool back = (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
                     || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
-        if (back)
+        if (back && Cancelable)
         {
             _onCancel?.Invoke();
             Close();
         }
     }
 
+    private void OnDestroy() => OpenCount--;
+
     public void Close()
     {
+        if (!enabled) return;
         enabled = false;
         UiMotion.PanelOut(_panel, _group).OnComplete(() =>
         {
