@@ -3,9 +3,9 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Plays a contestant's emote on every peer from the replicated <see cref="Player.EmoteId"/>: a procedural pose layered
-/// on top of the animator (limbs are aimed at world-space directions, so it works with any humanoid rig) plus a
-/// speech bubble. Emotes last <see cref="DURATION"/> seconds; a new one restarts.
+/// Plays a contestant's emote on every peer from the replicated <see cref="Player.EmoteId"/>: a speech bubble, plus a
+/// procedural pose layered on top of the animator for the emotes without a clip (limbs are aimed at world-space
+/// directions, so it works with any humanoid rig); the others play as clips (<see cref="HasClip"/>). Emotes last <see cref="DURATION"/> seconds; a new one restarts.
 /// </summary>
 public class EmotePlayer : MonoBehaviour
 {
@@ -13,6 +13,12 @@ public class EmotePlayer : MonoBehaviour
     public const int COUNT = 10;   // index 0 is "none"
 
     public static readonly string[] Names = { "", "Wave", "Dance", "Laugh", "Cheer", "Cry", "6-7", "Clap", "Love", "Dab" };
+
+    /// <summary>
+    /// Emotes played from an animation clip (the Emote layer, <see cref="PlayerAnimationController"/>); the rest
+    /// (6-7, Love, Dab: no downloadable clip) are posed procedurally here.
+    /// </summary>
+    public static bool HasClip(int emote) => emote is 1 or 2 or 3 or 4 or 5 or 7;
     private static readonly string[] Bubbles = { "", "HI!", "LA LA LA!", "HAHA!", "YAY!", "WAAH...", "SIX SEVEN!", "CLAP CLAP", "<3", "DAB!" };
     private static readonly Color[] BubbleColors =
     {
@@ -59,6 +65,8 @@ public class EmotePlayer : MonoBehaviour
             _shownTick = _player.EmoteTick;
             ShowBubble(_player.EmoteId);
         }
+        if (HasClip(_player.EmoteId))
+            return;
         // Ease in and out so the pose blends with the animation instead of snapping.
         float w = Mathf.Clamp01(t / 0.2f) * Mathf.Clamp01((DURATION - t) / 0.3f);
         Pose(_player.EmoteId, t, w);

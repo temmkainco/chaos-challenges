@@ -18,6 +18,7 @@
 | Platformer Pack | Quaternius | CC0 | Doors, towers, bouncers, hazards |
 | Universal Animation Library (Standard, v3.0) | Quaternius (quaternius.itch.io) | CC0 | Character clips: Idle, Walk, Jog, Sprint, JumpStart, Fall, Land, HitChest, HitHead, PushLoop, SpellShoot, Dance, SitIdle, Drive, SwimIdle, Roll |
 | Universal Animation Library 2 (Standard, v2.2) | Quaternius | CC0 | Character clips: HitKnockback, IdleFoldArms, GetUp, Throw, WalkCarry, Yes |
+| Various Attitudes animations (FREE01) | Motion Cast (Godot Asset Store) | Royalty free (store licence: non-exclusive, perpetual, use and modify) | Emotes: Wave, Laugh, Cheer, Cry, Clap (2.6 s slices; Wave's arm moved off our big head) |
 | Lowpoly Asset Bundle | Pandazole | Asset Store licence | Toy bricks, logs, crates, fences, rocks |
 
 Kenney packs live in `Assets/ThirdParty/Kenney/<Kit>/` (FBX + colour map, each with its `License.txt`).
@@ -25,5 +26,7 @@ Kenney packs live in `Assets/ThirdParty/Kenney/<Kit>/` (FBX + colour map, each w
 The character clips are copied out of the libraries' Humanoid FBXs (in place, root motion baked) into
 `Assets/_Project/Animations/Character/` by `Tools/Character/unity/ual_import.cs` (Unity editor script, run with
 `unity command script eval_file`); the FBXs themselves are not in the repository. `Shove.anim` is ours, keyed from
-muscle poses by `Tools/Character/unity/build_controller.cs`, which also builds `Player.controller`.
+muscle poses by `Tools/Character/unity/build_controller.cs`, which also builds `Player.controller`. The emotes come
+from `Tools/Character/unity/emote_import.cs` (Motion Cast's "no root" FBXs, explicit bone map); Dance is the
+Quaternius clip. 6-7, Love and Dab have no downloadable equivalent and stay procedural (`EmotePlayer`).
 

@@ -111,6 +111,22 @@ var empty = sm1.AddState("Empty"); sm1.defaultState = empty;
 var shoveState = sm1.AddState("Shove"); shoveState.motion = shove;
 var anyShove = sm1.AddAnyStateTransition(shoveState); anyShove.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "Shove"); anyShove.duration = 0.03f; anyShove.hasFixedDuration = true; anyShove.canTransitionToSelf = true;
 var back = shoveState.AddTransition(empty); back.hasExitTime = true; back.exitTime = 0.9f; back.duration = 0.08f; back.hasFixedDuration = true;
+// Emotes with a clip (EmotePlayer.HasClip): full body, weight driven by PlayerAnimationController (0 while moving).
+ctrl.AddParameter("EmoteId", UnityEngine.AnimatorControllerParameterType.Int);
+ctrl.AddParameter("Emote", UnityEngine.AnimatorControllerParameterType.Trigger);
+ctrl.AddLayer("Emote");
+layers = ctrl.layers; layers[2].defaultWeight = 0f; layers[2].blendingMode = UnityEditor.Animations.AnimatorLayerBlendingMode.Override; ctrl.layers = layers;
+var sm2 = ctrl.layers[2].stateMachine;
+var rest = sm2.AddState("Empty"); sm2.defaultState = rest;
+foreach (var (id, clipName) in new[] { (1, "Emotes/Wave"), (2, "Dance"), (3, "Emotes/Laugh"), (4, "Emotes/Cheer"), (5, "Emotes/Cry"), (7, "Emotes/Clap") })
+{
+    var st = sm2.AddState(clipName.Replace("Emotes/", "")); st.motion = Clip(clipName); st.iKOnFeet = true;
+    var go2 = sm2.AddAnyStateTransition(st);
+    go2.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "Emote");
+    go2.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Equals, id, "EmoteId");
+    go2.duration = 0.15f; go2.hasFixedDuration = true; go2.canTransitionToSelf = true;
+    if (clipName != "Dance") { var done = st.AddTransition(rest); done.hasExitTime = true; done.exitTime = 0.95f; done.duration = 0.2f; done.hasFixedDuration = true; }
+}
 UnityEditor.EditorUtility.SetDirty(ctrl);
 
 // Clip loop settings for the in-place loops (copied clips keep them, but make sure).

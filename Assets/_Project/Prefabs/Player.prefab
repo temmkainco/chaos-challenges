@@ -1063,6 +1063,8 @@ MonoBehaviour:
   _sprintClipSpeed: 6.378
   _takeOffSpeed: 2
   _triggerLife: 0.25
+  _emoteFade: 5
+  _emoteMaxSpeed: 0.5
 --- !u!114 &1768960846065777392
 MonoBehaviour:
   m_ObjectHideFlags: 0
