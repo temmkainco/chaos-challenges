@@ -16,10 +16,16 @@ public class Player : NetworkBehaviour, ISpawned
     [Networked] public NetworkBool MovementLocked { get; set; }
     /// <summary>Knocked out of the current round: lives in the lounge, can't touch the game, drawn as a ghost.</summary>
     [Networked] public NetworkBool IsSpectator { get; set; }
-    /// <summary>Chosen look (see <see cref="CosmeticsCatalog"/>), sent by the owner whenever the player spawns.</summary>
-    [Networked, OnChangedRender(nameof(OnLookChanged))] public byte BodyColor { get; private set; }
-    [Networked, OnChangedRender(nameof(OnLookChanged))] public byte HandsColor { get; private set; }
-    [Networked, OnChangedRender(nameof(OnLookChanged))] public byte HeadColor { get; private set; }
+    /// <summary>
+    /// Chosen look, sent by the owner whenever the player spawns or changes it: part colours as 24-bit RGB
+    /// (<see cref="LocalLook.ToRgb"/>), wearables as catalogue indices (<see cref="CosmeticsCatalog"/>).
+    /// </summary>
+    [Networked, OnChangedRender(nameof(OnLookChanged))] public int BodyRgb { get; private set; }
+    [Networked, OnChangedRender(nameof(OnLookChanged))] public int HandsRgb { get; private set; }
+    [Networked, OnChangedRender(nameof(OnLookChanged))] public int HeadRgb { get; private set; }
+    public Color BodyColor => LocalLook.FromRgb(BodyRgb);
+    public Color HandsColor => LocalLook.FromRgb(HandsRgb);
+    public Color HeadColor => LocalLook.FromRgb(HeadRgb);
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Hat { get; private set; }
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Face { get; private set; }
     [Networked, OnChangedRender(nameof(OnLookChanged))] public byte Neck { get; private set; }
@@ -41,7 +47,7 @@ public class Player : NetworkBehaviour, ISpawned
         NetworkGameManager.Instance is { } match && match.Object != null && match.Object.IsValid && Object != null
         && match.TryGetPlayerColor(Object.InputAuthority, out var color)
             ? color
-            : CosmeticsCatalog.Instance != null ? CosmeticsCatalog.Instance.GetColor(BodyColor).Color : Color.white;
+            : BodyColor;
 
     private IPlatformService _platformService;
 
@@ -121,7 +127,7 @@ public class Player : NetworkBehaviour, ISpawned
 
     private void SendLocalLook()
     {
-        RPC_SetLook((byte)LocalLook.Body, (byte)LocalLook.Hands, (byte)LocalLook.Head, (byte)LocalLook.Hat,
+        RPC_SetLook(LocalLook.ToRgb(LocalLook.Body), LocalLook.ToRgb(LocalLook.Hands), LocalLook.ToRgb(LocalLook.Head), (byte)LocalLook.Hat,
             (byte)LocalLook.Face, (byte)LocalLook.Neck, (byte)LocalLook.Back);
     }
 
@@ -133,11 +139,11 @@ public class Player : NetworkBehaviour, ISpawned
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_SetLook(byte body, byte hands, byte head, byte hat, byte face, byte neck, byte back)
+    private void RPC_SetLook(int body, int hands, int head, byte hat, byte face, byte neck, byte back)
     {
-        BodyColor = body;
-        HandsColor = hands;
-        HeadColor = head;
+        BodyRgb = body & 0xFFFFFF;
+        HandsRgb = hands & 0xFFFFFF;
+        HeadRgb = head & 0xFFFFFF;
         Hat = hat;
         Face = face;
         Neck = neck;

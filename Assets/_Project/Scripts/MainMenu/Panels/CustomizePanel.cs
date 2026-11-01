@@ -5,7 +5,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Main menu character customizer: body, hands and head colour plus hat, face, neck and back items, with a turning
-/// 3D preview (drag it to turn it yourself).
+/// 3D preview (drag it to turn it yourself). The arrows step through the preset colours; clicking a part's colour opens
+/// the colour picker (<see cref="ColorPickerPopup"/>) for any colour.
 /// Choices are saved right away (<see cref="LocalLook"/>) and used in every match.
 /// </summary>
 public class CustomizePanel : PanelBase
@@ -32,6 +33,7 @@ public class CustomizePanel : PanelBase
     private static readonly Vector3 StagePosition = new(0f, -2000f, 0f);
 
     private PlayerLook _model;
+    private ColorPickerPopup _picker;
     private Camera _camera;
     private RenderTexture _texture;
 
@@ -43,6 +45,10 @@ public class CustomizePanel : PanelBase
         _hat.Previous.onClick.AddListener(() => LocalLook.StepItem(CosmeticsCatalog.Slot.Hat, -1));
         _hat.Next.onClick.AddListener(() => LocalLook.StepItem(CosmeticsCatalog.Slot.Hat, 1));
         BuildExtraRows();
+        _picker = ColorPickerPopup.Create((RectTransform)_hat.Value.transform.parent, PickerArea());
+        OpensPicker(_body, CosmeticsCatalog.Part.Body);
+        OpensPicker(_hands, CosmeticsCatalog.Part.Hands);
+        OpensPicker(_head, CosmeticsCatalog.Part.Head);
         _randomButton.onClick.AddListener(LocalLook.Randomize);
         _doneButton.onClick.AddListener(Close);
     }
@@ -94,6 +100,40 @@ public class CustomizePanel : PanelBase
         }
     }
 
+    /// <summary>The rows' area, labels to arrows (where the picker opens, leaving the preview in view).</summary>
+    private Rect PickerArea()
+    {
+        var parent = (RectTransform)_hat.Value.transform.parent;
+        var corners = new Vector3[4];
+        float xMin = float.MaxValue, xMax = float.MinValue, yMin = float.MaxValue, yMax = float.MinValue;
+        foreach (RectTransform child in parent)
+        {
+            // The rows only: not the Random / Done buttons below them, the preview or the title.
+            if (child.anchoredPosition.y < -300f || child.anchoredPosition.y > 300f || child == _preview.rectTransform) continue;
+            if (child.rect.width > 400f || child.rect.height > 150f || child.GetComponent<ColorPickerPopup>() != null) continue;   // backgrounds
+            child.GetWorldCorners(corners);
+            foreach (var c in corners)
+            {
+                var local = parent.InverseTransformPoint(c);
+                xMin = Mathf.Min(xMin, local.x); xMax = Mathf.Max(xMax, local.x);
+                yMin = Mathf.Min(yMin, local.y); yMax = Mathf.Max(yMax, local.y);
+            }
+        }
+        return Rect.MinMaxRect(xMin - 10f, yMin - 10f, xMax + 10f, yMax + 10f);
+    }
+
+    /// <summary>Clicking a colour row's swatch or name opens the picker for that part.</summary>
+    private void OpensPicker(Row row, CosmeticsCatalog.Part part)
+    {
+        foreach (var graphic in new Graphic[] { row.Swatch, row.Value })
+        {
+            if (graphic == null) continue;
+            graphic.raycastTarget = true;
+            var button = graphic.gameObject.GetComponent<Button>() ?? graphic.gameObject.AddComponent<Button>();
+            button.onClick.AddListener(() => _picker.Open(part));
+        }
+    }
+
     private static void Hook(Row row, CosmeticsCatalog.Part part)
     {
         row.Previous.onClick.AddListener(() => LocalLook.StepColor(part, -1));
@@ -111,6 +151,7 @@ public class CustomizePanel : PanelBase
     private void OnDisable()
     {
         LocalLook.Changed -= Refresh;
+        if (_picker != null) _picker.Close();
         if (_camera != null) _camera.enabled = false;
     }
 
@@ -174,9 +215,9 @@ public class CustomizePanel : PanelBase
         if (catalog == null)
             return;
 
-        Show(_body, catalog.GetColor(LocalLook.Body));
-        Show(_hands, catalog.GetColor(LocalLook.Hands));
-        Show(_head, catalog.GetColor(LocalLook.Head));
+        Show(_body, LocalLook.Body);
+        Show(_hands, LocalLook.Hands);
+        Show(_head, LocalLook.Head);
         _hat.Value.text = catalog.GetItem(CosmeticsCatalog.Slot.Hat, LocalLook.Hat).Name;
         for (int k = 0; k < ExtraSlots.Length; k++)
             if (_extra[k].Value != null)
@@ -186,11 +227,11 @@ public class CustomizePanel : PanelBase
             _model.Apply(LocalLook.Body, LocalLook.Hands, LocalLook.Head, LocalLook.Hat, LocalLook.Face, LocalLook.Neck, LocalLook.Back);
     }
 
-    private static void Show(Row row, CosmeticsCatalog.Swatch swatch)
+    private static void Show(Row row, Color color)
     {
-        row.Value.text = swatch.Name;
+        row.Value.text = LocalLook.NameOf(color);
         if (row.Swatch != null)
-            row.Swatch.color = swatch.Color;
+            row.Swatch.color = color;
     }
 
     private void OnDestroy()

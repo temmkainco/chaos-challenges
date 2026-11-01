@@ -18,7 +18,8 @@ public class PlayerLook : MonoBehaviour
     private MaterialPropertyBlock _block;
     private Transform _chest;
 
-    public void Apply(int body, int hands, int head, int hat, int face = 0, int neck = 0, int back = 0)
+    /// <summary>Colours the parts (a property block per submesh: no material copies) and puts on the wearables.</summary>
+    public void Apply(Color body, Color hands, Color head, int hat, int face = 0, int neck = 0, int back = 0)
     {
         var catalog = CosmeticsCatalog.Instance;
         if (catalog == null)
@@ -27,9 +28,9 @@ public class PlayerLook : MonoBehaviour
         if (_body != null)
         {
             _block ??= new MaterialPropertyBlock();
-            Tint(CosmeticsCatalog.Part.Body, catalog.GetColor(body).Color);
-            Tint(CosmeticsCatalog.Part.Hands, catalog.GetColor(hands).Color);
-            Tint(CosmeticsCatalog.Part.Head, catalog.GetColor(head).Color);
+            Tint(CosmeticsCatalog.Part.Body, body);
+            Tint(CosmeticsCatalog.Part.Hands, hands);
+            Tint(CosmeticsCatalog.Part.Head, head);
         }
 
         Wear(catalog, CosmeticsCatalog.Slot.Hat, hat);
