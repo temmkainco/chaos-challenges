@@ -1,66 +1,84 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using Fusion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
-/// Minimal screen HUD shared by every minigame, styled like a TV broadcast: a compact "LIVE" chip in the top-right
-/// corner with the time left and the minigame's one status line (hidden when both are empty), a round-name splash
-/// that slides in at the countdown and animates out, a controls hint for the first seconds, and a big banner for
-/// "YOUR TURN!" and the announcer's lines (<see cref="MinigameController.Announcement"/>). Reads replicated state every frame.
+/// The in-round HUD shared by every minigame, built with the UI kit: the round tag top left, the show timer (a quiet
+/// bar, a big count in the last seconds), the game's status line and its scoreboard top right, chaos as a lower third
+/// while it is coming and while it lasts, a stamped banner for "YOUR TURN!" and the announcer's lines
+/// (<see cref="MinigameController.Announcement"/>), the game's big call-out (Color Code's colour) and a one-line hint
+/// for the first seconds. Only what you need now; it reads replicated state every frame.
 /// </summary>
 public class MinigameHud : MonoBehaviour
 {
-    private const int URGENT_SECONDS = 10;
-    private const float HINT_SECONDS = 7f;
+    private const float HINT_SECONDS = 7f, STATUS_MAX_WIDTH = 560f, BOARD_WIDTH = 460f;
 
-    [SerializeField] private CanvasGroup _group;
-    [SerializeField] private TMP_Text _title;
-    [SerializeField] private TMP_Text _timer;
-    [SerializeField] private TMP_Text _status;
-    [SerializeField] private TMP_Text _hint;
-
-    private string _lastTimer, _lastStatus;
-    private CanvasGroup _chip, _hintGroup;
-    private TMP_Text _banner, _splash, _callout;
-    private readonly System.Collections.Generic.Queue<string> _bannerQueue = new();
-    private float _playingTime;
+    private CanvasGroup _group;
+    private RectTransform _safe;
+    private LowerThird _roundTag, _chaos;
+    private ShowTimer _timer;
+    private UiBox _statusBox, _hintBox;
+    private TextMeshProUGUI _status, _hint, _banner, _callout;
+    private CanvasGroup _bannerGroup, _hintGroup;
+    private RectTransform _board;
+    private readonly List<(GameObject root, Image disc, TextMeshProUGUI number, TextMeshProUGUI name, TextMeshProUGUI value)> _rows = new();
+    private readonly Queue<(string text, bool chaos)> _bannerQueue = new();
+    private bool _bannerUp;
+    private float _playingTime, _nextStatus;
     private PlayerRef _lastTurn = PlayerRef.None;
     private MinigameController _shownFor;
-    private int _lastAnnouncement;
-    private int _lastTimerSeconds = -1;
-    private bool _chipVisible;
-    private float _nextStatus;
-    private int _lastTurnSecond = -1;
-    private RectTransform _board;
-    private readonly System.Collections.Generic.List<(UnityEngine.UI.Image swatch, TMP_Text name, TMP_Text value)> _rows = new();
+    private int _lastAnnouncement, _lastTurnSecond = -1;
+    private string _lastStatus;
     private static BasePlayerSpawner _spawner;
 
     private void Awake()
     {
-        if (_title != null)
-            _title.gameObject.SetActive(false);
-        _timer.fontSize = 40f;
-        _status.fontSize = 26f;
-        // Broadcast-style corner chip instead of a top-centre panel.
-        var chipRect = (RectTransform)_timer.transform.parent;
-        chipRect.anchorMin = chipRect.anchorMax = chipRect.pivot = new Vector2(1f, 1f);
-        chipRect.anchoredPosition = new Vector2(-24f, -20f);
-        chipRect.sizeDelta = new Vector2(360f, chipRect.sizeDelta.y);
-        _chip = Group(_timer.transform.parent);
-        _hintGroup = Group(_hint.transform.parent);
-        _banner = CreateBanner();
+        _safe = Ui.Canvas("Minigame HUD", 25, transform);
+        _group = _safe.gameObject.AddComponent<CanvasGroup>();
+        _group.alpha = 0f;
+        _group.blocksRaycasts = false;
+
+        _roundTag = LowerThird.Create(_safe, true);
+        _roundTag.Dock(new Vector2(0f, 1f), new Vector2(0f, -34f));
+        _timer = ShowTimer.Create(_safe);
+
+        _statusBox = Ui.Box(_safe, "Status", UiTheme.Tone.Studio);
+        Ui.Place((RectTransform)_statusBox.transform, new Vector2(1f, 1f), Vector2.zero, new Vector2(360f, 72f));
+        _status = Ui.Text(_statusBox.transform, "", UiTheme.TextRole.Body, UiTheme.Tone.Paper, TextAlignmentOptions.Center);
+        _status.GetComponent<ThemedText>().ShrinkToFit = false;
+        _status.GetComponent<ThemedText>().Apply();
+        Ui.Stretch(_status.rectTransform, 14f);
+
+        _board = Ui.Box(_safe, "Scoreboard", UiTheme.Tone.Studio).GetComponent<RectTransform>();
+        Ui.Place(_board, new Vector2(1f, 1f), new Vector2(0f, -90f), new Vector2(BOARD_WIDTH, 60f));
+        var layout = Ui.Stack<VerticalLayoutGroup>(_board, 0, TextAnchor.UpperLeft);
+        layout.padding = new RectOffset(16, 18, 12, 12);
+        _board.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        _board.gameObject.SetActive(false);
+
+        _chaos = LowerThird.Create(_safe);
+
+        _callout = Ui.Text(_safe, "", UiTheme.TextRole.DisplayL, UiTheme.Tone.Paper, TextAlignmentOptions.Center, true);
+        Ui.Place(_callout.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(1200f, 130f));
+        _callout.gameObject.SetActive(false);
+
+        _banner = Ui.Text(_safe, "", UiTheme.TextRole.DisplayXL, UiTheme.Tone.Accent, TextAlignmentOptions.Center, true);
+        Ui.Place(_banner.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 200f), new Vector2(1600f, 180f));
+        _bannerGroup = _banner.gameObject.AddComponent<CanvasGroup>();
+        _banner.gameObject.SetActive(false);
+
+        _hintBox = Ui.Box(_safe, "Hint", UiTheme.Tone.Studio);
+        Ui.Place((RectTransform)_hintBox.transform, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(900f, 72f));
+        _hintGroup = _hintBox.gameObject.AddComponent<CanvasGroup>();
+        _hintGroup.alpha = 0f;
+        _hint = Ui.Text(_hintBox.transform, "", UiTheme.TextRole.Body, UiTheme.Tone.Paper);
+        Ui.Stretch(_hint.rectTransform, 12f);
+
         CreateRulesCard();
         gameObject.AddComponent<ChaosEffects>();
-        _callout = CreateBanner();
-        _callout.name = "Callout";
-        _callout.fontSize = 84f;
-        ((RectTransform)_callout.transform).anchorMin = ((RectTransform)_callout.transform).anchorMax = new Vector2(0.5f, 0.86f);
-        _splash = CreateBanner();
-        _splash.name = "RoundSplash";
-        _splash.fontSize = 96f;
-        var splashRect = (RectTransform)_splash.transform;
-        splashRect.anchorMin = splashRect.anchorMax = new Vector2(0.5f, 0.8f);
     }
 
     /// <summary>The rules card builds its own overlay canvas: this HUD is hidden during the intro.</summary>
@@ -71,130 +89,18 @@ public class MinigameHud : MonoBehaviour
         go.AddComponent<RulesCard>();
     }
 
-    private static CanvasGroup Group(Transform t)
-    {
-        if (!t.TryGetComponent<CanvasGroup>(out var group))
-            group = t.gameObject.AddComponent<CanvasGroup>();
-        return group;
-    }
-
-    /// <summary>
-    /// Side scoreboard under the LIVE chip: one row per contestant (outfit colour, name, value), best first. Shown when
-    /// the minigame reports values (<see cref="MinigameController.ScoreboardValue"/>).
-    /// </summary>
-    private void UpdateBoard(MinigameController controller)
-    {
-        var players = new System.Collections.Generic.List<(PlayerRef player, string value, float rank)>();
-        foreach (var player in controller.Runner.ActivePlayers)
-        {
-            string value = controller.ScoreboardValue(player);
-            if (value != null) players.Add((player, value, controller.ScoreboardRank(player)));
-        }
-        if (_board == null)
-        {
-            if (players.Count == 0) return;
-            var go = new GameObject("Scoreboard", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.VerticalLayoutGroup), typeof(UnityEngine.UI.ContentSizeFitter));
-            go.transform.SetParent(transform, false);
-            _board = (RectTransform)go.transform;
-            _board.anchorMin = _board.anchorMax = _board.pivot = new Vector2(1f, 1f);
-            _board.anchoredPosition = new Vector2(-24f, -190f);
-            _board.sizeDelta = new Vector2(330f, 10f);
-            var background = go.GetComponent<UnityEngine.UI.Image>();
-            background.sprite = UiKit.Instance != null ? UiKit.Instance.Panel : null;
-            background.type = UnityEngine.UI.Image.Type.Sliced;
-            background.color = new Color(1f, 0.97f, 0.9f, 0.92f);
-            background.raycastTarget = false;
-            var layout = go.GetComponent<UnityEngine.UI.VerticalLayoutGroup>();
-            layout.padding = new RectOffset(18, 18, 12, 12);
-            layout.spacing = 2f;
-            layout.childControlHeight = layout.childControlWidth = true;
-            layout.childForceExpandHeight = false;
-            go.GetComponent<UnityEngine.UI.ContentSizeFitter>().verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
-        }
-        players.Sort((a, b) => b.rank.CompareTo(a.rank));
-        _board.gameObject.SetActive(players.Count > 0);
-        // Always just under the LIVE chip, whose height changes with its lines (it used to cover the chip's text).
-        var chip = (RectTransform)_timer.transform.parent;
-        float chipBottom = chip.anchoredPosition.y - (_chipVisible ? chip.rect.height : 0f);
-        _board.anchoredPosition = new Vector2(-24f, Mathf.Min(-20f, chipBottom - 12f));
-        while (_rows.Count < players.Count) _rows.Add(CreateRow());
-        for (int i = 0; i < _rows.Count; i++)
-        {
-            bool on = i < players.Count;
-            _rows[i].name.transform.parent.gameObject.SetActive(on);
-            if (!on) continue;
-            var (player, value, _) = players[i];
-            bool mine = player == controller.Runner.LocalPlayer;
-            _rows[i].name.text = mine ? $"<b>{Nickname(player)}</b>" : Nickname(player);
-            _rows[i].value.text = value;
-            _rows[i].swatch.color = _spawner != null && _spawner.Players.TryGet(player, out var p) && p != null ? p.PlayerColor : Color.grey;
-        }
-    }
-
-    private (UnityEngine.UI.Image swatch, TMP_Text name, TMP_Text value) CreateRow()
-    {
-        var row = new GameObject("Row", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
-        row.transform.SetParent(_board, false);
-        row.GetComponent<UnityEngine.UI.LayoutElement>().preferredHeight = 38f;
-        var swatchGo = new GameObject("Swatch", typeof(RectTransform), typeof(UnityEngine.UI.Image));
-        swatchGo.transform.SetParent(row.transform, false);
-        var swatchRect = (RectTransform)swatchGo.transform;
-        swatchRect.anchorMin = swatchRect.anchorMax = swatchRect.pivot = new Vector2(0f, 0.5f);
-        swatchRect.sizeDelta = new Vector2(22f, 22f);
-        var swatch = swatchGo.GetComponent<UnityEngine.UI.Image>();
-        swatch.raycastTarget = false;
-        TMP_Text Label(string name, TextAlignmentOptions alignment, float left, float right)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(row.transform, false);
-            var rt = (RectTransform)go.transform;
-            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(left, 0f); rt.offsetMax = new Vector2(-right, 0f);
-            var text = go.AddComponent<TextMeshProUGUI>();
-            text.font = _timer.font;
-            text.fontSize = 26f;
-            text.color = new Color32(46, 26, 71, 255);
-            text.alignment = alignment;
-            text.enableWordWrapping = false;
-            text.overflowMode = TextOverflowModes.Ellipsis;
-            text.raycastTarget = false;
-            return text;
-        }
-        var nameText = Label("Name", TextAlignmentOptions.MidlineLeft, 32f, 70f);
-        var valueText = Label("Value", TextAlignmentOptions.MidlineRight, 0f, 0f);
-        valueText.color = new Color(0.91f, 0.35f, 0.05f);
-        valueText.fontStyle = FontStyles.Bold;
-        return (swatch, nameText, valueText);
-    }
-
-    private TMP_Text CreateBanner()
-    {
-        var go = new GameObject("TurnBanner", typeof(RectTransform));
-        go.transform.SetParent(transform, false);
-        var rt = (RectTransform)go.transform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.68f);
-        rt.sizeDelta = new Vector2(1400f, 200f);
-        var text = go.AddComponent<TextMeshProUGUI>();
-        text.font = _timer.font;
-        text.fontSize = 120f;
-        text.alignment = TextAlignmentOptions.Center;
-        text.color = new Color(1f, 0.79f, 0.24f);
-        text.outlineWidth = 0.28f;
-        text.outlineColor = new Color32(46, 26, 71, 255);
-        text.raycastTarget = false;
-        text.text = "";
-        go.SetActive(false);
-        return text;
-    }
-
     private void Update()
     {
         var controller = MinigameController.Current;
         bool visible = controller != null && controller.Object != null && controller.Object.IsValid
-                       && (controller.Phase == MinigamePhase.Countdown || controller.Phase == MinigamePhase.Playing);
-        _group.alpha = Mathf.MoveTowards(_group.alpha, visible ? 1f : 0f, Time.deltaTime * 4f);
+                       && (controller.Phase == MinigamePhase.Countdown || controller.Phase == MinigamePhase.Playing)
+                       && !PauseMenu.IsOpen;
+        _group.alpha = Mathf.MoveTowards(_group.alpha, visible ? 1f : 0f, Time.unscaledDeltaTime * 4f);
         if (!visible)
+        {
+            if (controller == null || controller.Object == null || !controller.Object.IsValid || controller.Phase != MinigamePhase.Countdown) _chaos.Unpin();
             return;
+        }
 
         if (controller != _shownFor)
         {
@@ -203,51 +109,67 @@ public class MinigameHud : MonoBehaviour
             _lastTurn = PlayerRef.None;
             _hint.text = "";
             _lastAnnouncement = controller.AnnouncementId;
-            ShowRoundSplash(controller);
+            ShowRoundTag(controller);
         }
 
         if (controller.AnnouncementId != _lastAnnouncement)
         {
             _lastAnnouncement = controller.AnnouncementId;
-            _bannerQueue.Enqueue(controller.Announcement.ToString());
+            string text = controller.Announcement.ToString();
+            // "SPEED RUSH IN 3..." is the chaos lower third's job (it counts down live); the start and end still stamp.
+            if (!text.Contains(" IN 3")) _bannerQueue.Enqueue((text, IsChaosLine(text)));
         }
         // One banner at a time: chaos warnings used to wipe out Color Code's call before anyone read it.
-        if (_bannerQueue.Count > 0 && !_banner.gameObject.activeSelf)
-            PopBanner(_bannerQueue.Dequeue());
+        if (_bannerQueue.Count > 0 && !_bannerUp)
+        {
+            var (text, chaos) = _bannerQueue.Dequeue();
+            PopBanner(text, chaos ? UiTheme.Tone.Paper : UiTheme.Tone.Accent, chaos ? 2.2f : 1.1f);
+        }
 
         // A persistent big call-out for the minigame's current instruction (Color Code's colour).
         string callout = controller.IsGameActive ? controller.Callout : null;
         bool showCallout = !string.IsNullOrEmpty(callout);
         if (_callout.gameObject.activeSelf != showCallout) _callout.gameObject.SetActive(showCallout);
-        if (showCallout && _callout.text != callout) _callout.text = callout;
+        if (showCallout && _callout.text != callout) { _callout.text = callout; UiMotion.Punch(_callout.rectTransform, 0.2f); }
+
+        if (controller.IsGameActive) _playingTime += Time.deltaTime;
+
+        // The timer bar every frame (it is cheap); the rest four times a second.
+        bool timed = controller.IsGameActive && controller.IsTimeLimited;
+        if (_timer.gameObject.activeSelf != timed) _timer.gameObject.SetActive(timed);
+        if (timed) _timer.Set(controller.TimeRemaining, controller.Definition.GameDuration * MatchSettings.LengthMultiplier);
+
+        if (Time.unscaledTime >= _nextStatus)
+        {
+            _nextStatus = Time.unscaledTime + 0.25f;
+            UpdateStatus(controller);
+            UpdateChaos(controller);
+            UpdateBoard(controller);
+        }
 
         var definition = controller.Definition;
-        if (controller.IsGameActive)
-            _playingTime += Time.deltaTime;
+        if (_hint.text.Length == 0 && definition != null && definition.Rules != null && definition.Rules.Length > 0)
+            _hint.text = definition.Rules[0];
+        bool showHint = GameSettings.ShowHints && controller.IsGameActive && _playingTime < HINT_SECONDS && _hint.text.Length > 0;
+        _hintGroup.alpha = Mathf.MoveTowards(_hintGroup.alpha, showHint ? 1f : 0f, Time.deltaTime * 2f);
+    }
 
-        // Timer text only changes once a second; the status line is refreshed four times a second.
-        int timerSeconds = controller.IsGameActive && controller.IsTimeLimited ? Mathf.CeilToInt(controller.TimeRemaining) : -1;
-        bool statusDue = Time.unscaledTime >= _nextStatus;
-        if (timerSeconds == _lastTimerSeconds && !statusDue)
-            goto Hint;
-        _lastTimerSeconds = timerSeconds;
-        _nextStatus = Time.unscaledTime + 0.25f;
+    /// <summary>ROUND 2/5 · PRIZE GRAB, top left for the whole round.</summary>
+    private void ShowRoundTag(MinigameController controller)
+    {
+        var gameManager = NetworkGameManager.Instance;
+        string round = gameManager != null && gameManager.RoundCount > 0 ? $"ROUND {gameManager.RoundIndex + 1}/{gameManager.RoundCount}" : "ROUND";
+        string name = controller.Definition != null ? controller.Definition.DisplayName.ToUpperInvariant() : "";
+        _roundTag.Pin(round, name);
+    }
 
-        string timer = "";
-        if (timerSeconds >= 0)
-        {
-            int seconds = timerSeconds;
-            timer = $"{seconds / 60}:{seconds % 60:00}";
-            if (seconds <= URGENT_SECONDS) timer = $"<color=#E03131>{timer}</color>";
-            timer = $"<size=55%><color=#E03131><size=180%>●</size></color> LIVE</size>  {timer}";
-        }
-        Set(_timer, timer, ref _lastTimer);
-
+    private void UpdateStatus(MinigameController controller)
+    {
         string status = controller.IsGameActive ? controller.GetStatusText() ?? "" : "";
         if (controller.IsGameActive && controller is TurnBasedMinigameController turnBased && turnBased.CurrentTurn != PlayerRef.None)
         {
             bool mine = turnBased.CurrentTurn == controller.Runner.LocalPlayer;
-            string turn = mine ? "<color=#E8590C>Your turn</color>" : $"{Nickname(turnBased.CurrentTurn)}'s turn";
+            string turn = mine ? $"<color=#{Hex(UiTheme.Instance.Accent)}>Your turn</color>" : $"{Nickname(turnBased.CurrentTurn)}'s turn";
             if (turnBased.HasTurnTimer)
             {
                 int left = Mathf.CeilToInt(turnBased.TurnTimeRemaining);
@@ -256,99 +178,147 @@ public class MinigameHud : MonoBehaviour
                 if (left <= 3 && left > 0 && left != _lastTurnSecond)
                 {
                     Sfx.Play(Sound.Tick, mine ? 1f : 0.4f, 0f);
-                    if (mine) PopBanner($"<color=#E03131>{left}</color>");
+                    if (mine) PopBanner(left.ToString(), UiTheme.Tone.Bad, 0.6f);
                 }
                 _lastTurnSecond = left;
             }
-            status = string.IsNullOrEmpty(status) ? turn : $"{turn}\n<size=75%>{status}</size>";
+            status = string.IsNullOrEmpty(status) ? turn : $"{turn}\n<size=80%>{status}</size>";
 
             if (turnBased.CurrentTurn != _lastTurn)
             {
                 _lastTurn = turnBased.CurrentTurn;
-                if (mine)
-                    PopBanner("YOUR TURN!");
+                if (mine) PopBanner("YOUR TURN!", UiTheme.Tone.Accent, 1.1f);
             }
         }
-        // Chaos about to start, then the active one (buff / debuff / hazard) on top of the status line, with countdowns.
-        if (controller.PendingChaos != ChaosModifier.None)
-        {
-            string incoming = $"<color=#{ColorUtility.ToHtmlStringRGB(ChaosInfo.KindColor(controller.PendingChaos) * 0.8f)}><b>{ChaosInfo.Title(controller.PendingChaos)}</b> in {Mathf.CeilToInt(controller.PendingTimeRemaining)}...</color>";
-            status = string.IsNullOrEmpty(status) ? incoming : $"{incoming}\n{status}";
-        }
-        else if (controller.ActiveChaos != ChaosModifier.None)
-        {
-            string chaos = $"<color=#{ColorUtility.ToHtmlStringRGB(ChaosInfo.KindColor(controller.ActiveChaos) * 0.8f)}><b>{ChaosInfo.Title(controller.ActiveChaos)}</b> {Mathf.CeilToInt(controller.ChaosTimeRemaining)}s</color>";
-            status = string.IsNullOrEmpty(status) ? chaos : $"{chaos}\n{status}";
-        }
-        Set(_status, status, ref _lastStatus);
-        _status.gameObject.SetActive(status.Length > 0);
-        UpdateBoard(controller);
-        _timer.gameObject.SetActive(timer.Length > 0);
-        _chipVisible = timer.Length + status.Length > 0;
-
-    Hint:
-        _chip.alpha = Mathf.MoveTowards(_chip.alpha, _chipVisible ? 1f : 0f, Time.deltaTime * 5f);
-        if (_hint.text.Length == 0 && definition != null && definition.Rules != null && definition.Rules.Length > 0)
-            _hint.text = definition.Rules[0];
-        bool showHint = GameSettings.ShowHints && controller.IsGameActive && _playingTime < HINT_SECONDS;
-        _hintGroup.alpha = Mathf.MoveTowards(_hintGroup.alpha, showHint ? 1f : 0f, Time.deltaTime * 2f);
+        if (status == _lastStatus) return;
+        _lastStatus = status;
+        _status.text = status;
+        bool show = status.Length > 0;
+        if (_statusBox.gameObject.activeSelf != show) _statusBox.gameObject.SetActive(show);
+        if (!show) return;
+        // The box fits its text, up to a width; long status lines wrap.
+        var size = _status.GetPreferredValues(status, STATUS_MAX_WIDTH - 28f, 0f);
+        ((RectTransform)_statusBox.transform).sizeDelta = new Vector2(Mathf.Clamp(size.x + 40f, 200f, STATUS_MAX_WIDTH), size.y + 32f);
     }
 
-    /// <summary>"ROUND 2 · BOMB RUSH" slides in from the left at the countdown and slides away again.</summary>
-    private void ShowRoundSplash(MinigameController controller)
+    /// <summary>Chaos coming ("SPEED RUSH in 3") and then running ("SPEED RUSH 8s"), as a pinned lower third.</summary>
+    private void UpdateChaos(MinigameController controller)
     {
-        var gameManager = NetworkGameManager.Instance;
-        string name = controller.Definition != null ? controller.Definition.DisplayName.ToUpperInvariant() : "";
-        string round = gameManager != null && gameManager.RoundCount > 0 ? $"<size=55%>ROUND {gameManager.RoundIndex + 1} OF {gameManager.RoundCount}</size>\n" : "";
-        string map = controller.VariantName != null ? $"\n<size=45%>{controller.VariantName.ToUpperInvariant()}</size>" : "";
-        _splash.text = round + name + map;
-        var t = (RectTransform)_splash.transform;
-        t.DOKill();
-        _splash.gameObject.SetActive(true);
-        t.anchoredPosition = new Vector2(-1400f, 0f);
-        DOTween.Sequence()
-            .Append(t.DOAnchorPosX(0f, 0.4f).SetEase(Ease.OutBack))
-            .AppendInterval(1.3f)
-            .Append(t.DOAnchorPosX(1400f, 0.35f).SetEase(Ease.InBack))
-            .OnComplete(() => _splash.gameObject.SetActive(false))
-            .SetLink(_splash.gameObject);
+        var chaos = controller.PendingChaos != ChaosModifier.None ? controller.PendingChaos : controller.ActiveChaos;
+        if (chaos == ChaosModifier.None)
+        {
+            _chaos.Unpin();
+            return;
+        }
+        string kind = ChaosInfo.Kind(chaos);
+        var tone = kind == "BUFF" ? UiTheme.Tone.Good : kind == "HAZARD" ? UiTheme.Tone.Bad : UiTheme.Tone.Brand;
+        string value = controller.PendingChaos != ChaosModifier.None
+            ? $"{Cap(kind)} in {Mathf.CeilToInt(controller.PendingTimeRemaining)}"
+            : $"{Cap(kind)} · {Mathf.CeilToInt(controller.ChaosTimeRemaining)}s left";
+        _chaos.Pin(ChaosInfo.Title(chaos), value, tone);
     }
 
-    private void PopBanner(string text)
+    private static string Cap(string kind) => kind.Length == 0 ? "" : kind.Substring(0, 1) + kind.Substring(1).ToLowerInvariant();
+
+    /// <summary>
+    /// Under the status line: one row per contestant (number disc in their colour, name, value), best first. Shown
+    /// when the minigame reports values (<see cref="MinigameController.ScoreboardValue"/>).
+    /// </summary>
+    private void UpdateBoard(MinigameController controller)
     {
-        // Chaos (incoming and started) gets its own look and stays up longer so nobody misses it.
-        bool chaos = text.Contains(" IN 3") || text.EndsWith(" OVER!") || text.StartsWith("BUFF:") || text.StartsWith("DEBUFF:") || text.StartsWith("HAZARD:");
-        _banner.fontSize = chaos ? 96f : 120f;
-        _banner.color = chaos ? new Color(0.78f, 0.62f, 1f) : new Color(1f, 0.79f, 0.24f);
-        float hold = chaos ? 2.2f : 1.1f;
+        var players = new List<(PlayerRef player, string value, float rank)>();
+        foreach (var player in controller.Runner.ActivePlayers)
+        {
+            string value = controller.ScoreboardValue(player);
+            if (value != null) players.Add((player, value, controller.ScoreboardRank(player)));
+        }
+        players.Sort((a, b) => b.rank.CompareTo(a.rank));
+        bool show = players.Count > 0;
+        if (_board.gameObject.activeSelf != show) _board.gameObject.SetActive(show);
+        if (!show) return;
+        // Always just under the status box, whose height changes with its lines.
+        var status = (RectTransform)_statusBox.transform;
+        float top = _statusBox.gameObject.activeSelf ? -status.sizeDelta.y - 16f : 0f;
+        _board.anchoredPosition = new Vector2(0f, top);
+        while (_rows.Count < players.Count) _rows.Add(CreateRow());
+        var match = NetworkGameManager.Instance;
+        if (_spawner == null || _spawner.Object == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        for (int i = 0; i < _rows.Count; i++)
+        {
+            bool on = i < players.Count;
+            _rows[i].root.SetActive(on);
+            if (!on) continue;
+            var (player, value, _) = players[i];
+            bool mine = player == controller.Runner.LocalPlayer;
+            int colour = match != null && match.Object != null && match.Object.IsValid ? match.ColorIndexOf(player) : -1;
+            _rows[i].name.text = mine ? $"{PlainName(player)} (you)" : PlainName(player);
+            _rows[i].name.fontStyle = mine ? FontStyles.Bold : FontStyles.Normal;
+            _rows[i].value.text = value;
+            _rows[i].number.text = colour >= 0 ? (colour + 1).ToString() : "";
+            _rows[i].disc.color = _spawner != null && _spawner.Object != null && _spawner.Players.TryGet(player, out var p) && p != null ? p.PlayerColor : Color.grey;
+        }
+    }
+
+    private (GameObject, Image, TextMeshProUGUI, TextMeshProUGUI, TextMeshProUGUI) CreateRow()
+    {
+        var theme = UiTheme.Instance;
+        var row = Ui.Rect(_board, "Row");
+        Ui.Size(row, BOARD_WIDTH - 34f, 48f);
+        var ring = Ui.Circle(row, "Ring", 40f, theme.Ink);
+        Ui.Place(ring.rectTransform, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(40f, 40f));
+        var disc = Ui.Circle(ring.transform, "Disc", 34f, Color.white);
+        var number = Ui.Text(disc.transform, "", UiTheme.TextRole.Label, UiTheme.Tone.Ink);
+        number.GetComponent<ThemedText>().ShrinkToFit = false;
+        number.GetComponent<ThemedText>().Spacing = 0f;
+        number.GetComponent<ThemedText>().Apply();
+        Ui.Stretch(number.rectTransform);
+        var name = Ui.Text(row, "", UiTheme.TextRole.Label, UiTheme.Tone.Paper, TextAlignmentOptions.Left);
+        name.GetComponent<ThemedText>().SingleLine = true;
+        name.GetComponent<ThemedText>().Apply();
+        name.overflowMode = TextOverflowModes.Ellipsis;
+        name.rectTransform.anchorMin = Vector2.zero; name.rectTransform.anchorMax = Vector2.one;
+        name.rectTransform.offsetMin = new Vector2(52f, 0f); name.rectTransform.offsetMax = new Vector2(-84f, 0f);
+        var value = Ui.Text(row, "", UiTheme.TextRole.Body, UiTheme.Tone.Accent, TextAlignmentOptions.Right);
+        value.fontStyle = FontStyles.Bold;
+        value.GetComponent<ThemedText>().SingleLine = true;
+        value.GetComponent<ThemedText>().Apply();
+        Ui.Place(value.rectTransform, new Vector2(1f, 0.5f), Vector2.zero, new Vector2(80f, 48f));
+        return (row.gameObject, disc, number, name, value);
+    }
+
+    private static bool IsChaosLine(string text) =>
+        text.Contains(" IN 3") || text.EndsWith(" OVER!") || text.StartsWith("BUFF:") || text.StartsWith("DEBUFF:") || text.StartsWith("HAZARD:");
+
+    /// <summary>A big stamped line in the upper middle ("YOUR TURN!", the announcer), one at a time.</summary>
+    private void PopBanner(string text, UiTheme.Tone tone, float hold)
+    {
+        _bannerUp = true;
         _banner.text = text;
-        var t = _banner.transform;
-        t.DOKill();
+        _banner.GetComponent<ThemedText>().Set(UiTheme.TextRole.DisplayXL, tone, true);
         _banner.gameObject.SetActive(true);
-        t.localScale = Vector3.zero;
-        DOTween.Sequence()
-            .Append(t.DOScale(1.1f, 0.25f).SetEase(Ease.OutBack))
-            .Append(t.DOScale(1f, 0.1f))
+        UiMotion.Stamp(_banner.rectTransform, _bannerGroup)
             .AppendInterval(hold)
-            .Append(t.DOScale(0f, 0.2f).SetEase(Ease.InBack))
-            .OnComplete(() => _banner.gameObject.SetActive(false))
+            .Append(_bannerGroup.DOFade(0f, UiTheme.Instance.PanelOut))
+            .OnComplete(() => { _banner.gameObject.SetActive(false); _bannerUp = false; })
             .SetLink(_banner.gameObject);
         Sfx.Play(Sound.Go, 0.8f, 0f);
     }
 
+    private static string Hex(Color c) => ColorUtility.ToHtmlStringRGB(c);
+
+    /// <summary>A name in its player colour (on the dark HUD, the colour itself reads well).</summary>
     private static string Nickname(PlayerRef player)
     {
-        if (_spawner == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
-        var spawner = _spawner;
-        if (spawner != null && spawner.Object != null && spawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname))
-            return $"<color=#{ColorUtility.ToHtmlStringRGB(Color.Lerp(p.PlayerColor, new Color(0.18f, 0.1f, 0.28f), 0.35f))}>{p.Nickname}</color>";
+        if (_spawner == null || _spawner.Object == null) _spawner = FindFirstObjectByType<BasePlayerSpawner>();
+        if (_spawner != null && _spawner.Object != null && _spawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname))
+            return $"<color=#{Hex(p.PlayerColor)}>{p.Nickname}</color>";
         return $"Player {player.PlayerId}";
     }
 
-    private static void Set(TMP_Text text, string value, ref string last)
+    private static string PlainName(PlayerRef player)
     {
-        if (value == last) return;
-        last = value;
-        text.text = value;
+        if (_spawner != null && _spawner.Object != null && _spawner.Players.TryGet(player, out var p) && p != null && !string.IsNullOrEmpty(p.Nickname))
+            return p.Nickname;
+        return $"Player {player.PlayerId}";
     }
 }

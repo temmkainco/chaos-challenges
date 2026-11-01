@@ -58,7 +58,7 @@ public class MinesMinigameController : TurnBasedMinigameController
             return null;
 
         string mines = _minefield.MinesLeft == 1 ? "1 mine left on the field" : $"{_minefield.MinesLeft} mines left on the field";
-        return TwistActive ? $"<color=#E03131>Press TWO plates!</color> {mines}" : mines;
+        return TwistActive ? $"<color=#FF3B4E>Press TWO plates!</color> {mines}" : mines;
     }
 
     /// <summary>Host only.</summary>

@@ -73,7 +73,7 @@ public class HotPotatoMinigameController : EliminationMinigameController
     {
         if (!IsGameActive || Holder == PlayerRef.None) return null;
         return Holder == Runner.LocalPlayer
-            ? "<color=#E03131>YOU have the bomb - click a rival to hand it over!</color>"
+            ? "<color=#FF3B4E>YOU have the bomb - click a rival to hand it over!</color>"
             : $"<b>{NameOf(Holder)}</b> has the bomb - run!";
     }
 

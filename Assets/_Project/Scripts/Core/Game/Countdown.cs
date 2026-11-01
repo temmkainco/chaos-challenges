@@ -3,12 +3,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// The 3-2-1 (lobby start, round start) as a numbered disc that stamps in on each second, then GO!; and a small
-/// version up top for the last seconds of a timed round. Built with the UI kit on its own canvas in this object's scene.
+/// The 3-2-1 (lobby start, round start) as a numbered disc that stamps in on each second, then GO!. Built with the UI
+/// kit on its own canvas in this object's scene.
 /// </summary>
 public class Countdown : MonoBehaviour
 {
-    private const float HERO = 1.9f, CORNER = 0.6f;
+    private const float HERO = 1.9f;
 
     private RectTransform _canvas, _disc;
     private CanvasGroup _group;
@@ -41,24 +41,20 @@ public class Countdown : MonoBehaviour
         if (_canvas != null) Destroy(_canvas.gameObject);
     }
 
-    /// <summary>Big, in the middle (<paramref name="corner"/>: small, top centre, so the arena stays in view).</summary>
-    protected void ShowCountdown(bool corner = false)
+    /// <summary>Big, in the middle.</summary>
+    protected void ShowCountdown()
     {
         Build();
         _shown = true;
         _disc.DOKill();
-        _disc.anchorMin = _disc.anchorMax = corner ? new Vector2(0.5f, 1f) : new Vector2(0.5f, 0.5f);
-        _disc.pivot = corner ? new Vector2(0.5f, 1f) : new Vector2(0.5f, 0.5f);
-        _disc.anchoredPosition = corner ? new Vector2(0f, -150f) : new Vector2(0f, 40f);
-        _disc.localScale = Vector3.one * (corner ? CORNER : HERO);
-        _box.SetFill(corner ? UiTheme.Tone.Bad : UiTheme.Tone.Brand);
+        _disc.anchoredPosition = new Vector2(0f, 40f);
+        _disc.localScale = Vector3.one * HERO;
+        _box.SetFill(UiTheme.Tone.Brand);
         _number.text = "";
         _disc.sizeDelta = new Vector2(220f, 220f);
         _disc.gameObject.SetActive(true);
         _group.alpha = 1f;
     }
-
-    protected void ShowCountdown() => ShowCountdown(false);
 
     protected virtual void HideCountdown()
     {
@@ -80,7 +76,7 @@ public class Countdown : MonoBehaviour
     /// <summary>GO! in Good, then away.</summary>
     protected void ShowGo()
     {
-        if (!_shown || _canvas == null || _disc.localScale.x < 1f) { HideCountdown(); return; }
+        if (!_shown || _canvas == null) { HideCountdown(); return; }
         _box.SetFill(UiTheme.Tone.Good);
         _disc.sizeDelta = new Vector2(330f, 220f);   // a pill: GO! is wider than a digit
         _number.text = "GO!";
@@ -96,7 +92,7 @@ public class Countdown : MonoBehaviour
 
     private void Stamp()
     {
-        float scale = _disc.localScale.x < 1f ? CORNER : HERO;
+        const float scale = HERO;
         _disc.DOKill();
         _group.alpha = 1f;
         _disc.localScale = Vector3.one * scale;

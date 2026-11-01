@@ -43,11 +43,11 @@ public class PistolRoundMinigameController : TurnBasedMinigameController
     public override string GetStatusText()
     {
         if (!IsGameActive) return null;
-        if (IsJammed(Runner.LocalPlayer)) return "<color=#E03131>Jammed!</color> Wait for the next draw";
+        if (IsJammed(Runner.LocalPlayer)) return "<color=#FF3B4E>Jammed!</color> Wait for the next draw";
         return Stage switch
         {
             DuelStage.Steady => "Steady... shoot only on DRAW!",
-            DuelStage.Draw => "<color=#E8590C>DRAW!</color>",
+            DuelStage.Draw => "<color=#FF8A00>DRAW!</color>",
             _ => "",
         };
     }

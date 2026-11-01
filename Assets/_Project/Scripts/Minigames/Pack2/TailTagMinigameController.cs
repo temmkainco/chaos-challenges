@@ -143,7 +143,7 @@ public class TailTagMinigameController : ScoreMinigameController
     }
 
     public override string Callout => IsGameActive && Runner.LocalPlayer.IsRealPlayer
-        ? HasTail(Runner.LocalPlayer) ? "<color=#E8590C>YOU HAVE A TAIL - RUN!</color>" : "<color=#1971C2>GRAB A TAIL! (E)</color>"
+        ? HasTail(Runner.LocalPlayer) ? "<color=#FF8A00>YOU HAVE A TAIL - RUN!</color>" : "<color=#FFC21A>GRAB A TAIL! (E)</color>"
         : null;
 
     protected override IReadOnlyList<IReadOnlyList<PlayerRef>> GetTimeUpStandings()

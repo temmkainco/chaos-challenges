@@ -1,7 +1,7 @@
 using UnityEngine;
 using Zenject;
 
-/// <summary>Start countdown, and the final seconds of a time-limited round.</summary>
+/// <summary>The 3-2-1 before a round, then GO! (A timed round's last seconds are the HUD's <see cref="ShowTimer"/>.)</summary>
 public class MinigameCountdown : Countdown
 {
     [Inject] private MinigameController _minigameController;
@@ -11,7 +11,6 @@ public class MinigameCountdown : Countdown
         _minigameController.OnCountdownStarted += ShowStartCountdown;
         _minigameController.OnCountdownTick += UpdateCountdown;
         _minigameController.OnMinigameStart += PlayGo;
-        _minigameController.OnTimeLimitTick += OnTimeLimitTick;
         _minigameController.OnMinigameEnd += HideCountdown;
     }
 
@@ -23,7 +22,6 @@ public class MinigameCountdown : Countdown
         _minigameController.OnCountdownStarted -= ShowStartCountdown;
         _minigameController.OnCountdownTick -= UpdateCountdown;
         _minigameController.OnMinigameStart -= PlayGo;
-        _minigameController.OnTimeLimitTick -= OnTimeLimitTick;
         _minigameController.OnMinigameEnd -= HideCountdown;
     }
 
@@ -34,12 +32,5 @@ public class MinigameCountdown : Countdown
     }
 
     /// <summary>The 3-2-1 before the round: big, in the middle.</summary>
-    private void ShowStartCountdown() => ShowCountdown(false);
-
-    /// <summary>The last seconds of the round: small and up top, so the arena stays visible.</summary>
-    private void OnTimeLimitTick(int seconds)
-    {
-        ShowCountdown(true);
-        UpdateCountdown(seconds);
-    }
+    private void ShowStartCountdown() => ShowCountdown();
 }
