@@ -15,6 +15,7 @@ public class PlayerMovement : NetworkBehaviour
     [Networked] public NetworkButtons PreviousButtons { get; private set; }
     /// <summary>Running while the player flies from a knockback; steering is weak meanwhile.</summary>
     [Networked] private TickTimer LaunchTimer { get; set; }
+    [Networked] private int LaunchTick { get; set; }
     [Networked] private int LastGroundedTick { get; set; }
     [Networked] private int JumpPressedTick { get; set; }
     [Networked] private NetworkBool JumpHeld { get; set; }
@@ -114,17 +115,22 @@ public class PlayerMovement : NetworkBehaviour
     }
 
     /// <summary>
-    /// Host only. Throws the player (explosions, hammers, shoves). Control is weak until they land again, so the
+    /// Host only. Throws the player (explosions, hammers, shoves). Control is weak until they land again (after at
+    /// least a quarter second) or <paramref name="controlLoss"/> seconds pass (default: the launch duration), so the
     /// hit reads clearly on every screen.
     /// </summary>
-    public void Launch(Vector3 velocity)
+    public void Launch(Vector3 velocity, float controlLoss = -1f)
     {
         CurrentVelocity = velocity;
         _characterController.Velocity = velocity;
         _characterController.IsGrounded = false;
         IsGrounded = false;
-        LaunchTimer = TickTimer.CreateFromSeconds(Runner, _launchDuration);
+        LaunchTimer = TickTimer.CreateFromSeconds(Runner, controlLoss > 0f ? controlLoss : _launchDuration);
+        LaunchTick = Runner.Tick;
     }
+
+    /// <summary>A launch ends on landing once it has lasted a quarter second (the take-off itself touches the ground).</summary>
+    private bool LaunchCanLand => (Runner.Tick - LaunchTick) * Runner.DeltaTime >= 0.25f;
 
     public override void FixedUpdateNetwork()
     {
@@ -241,7 +247,7 @@ public class PlayerMovement : NetworkBehaviour
         {
             LastGroundedTick = Runner.Tick;
             if (velocity.y < 0f) velocity.y = -2f;
-            if (launched && LaunchTimer.RemainingTime(Runner) < _launchDuration - 0.25f)
+            if (launched && LaunchCanLand)
                 LaunchTimer = TickTimer.None;
         }
         else if (_unityController.collisionFlags.HasFlag(CollisionFlags.Above) && velocity.y > 0f)
@@ -353,7 +359,7 @@ public class PlayerMovement : NetworkBehaviour
         if (grounded)
         {
             if (velocity.y < 0f) velocity.y = -2f;
-            if (launched && LaunchTimer.RemainingTime(Runner) < _launchDuration - 0.25f) LaunchTimer = TickTimer.None;
+            if (launched && LaunchCanLand) LaunchTimer = TickTimer.None;
         }
         IsGrounded = grounded;
         CurrentVelocity = velocity;

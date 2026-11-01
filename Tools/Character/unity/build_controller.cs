@@ -45,6 +45,8 @@ for (int m = 0; m < UnityEngine.HumanTrait.MuscleCount; m++)
     shove.SetCurve("", typeof(UnityEngine.Animator), UnityEngine.HumanTrait.MuscleName[m], curve);
 }
 UnityEngine.Object.DestroyImmediate(preview);
+// Contact frame (arms out, 0.16 s): PlayerAnimationController.OnShoveContact plays the whoosh.
+UnityEditor.AnimationUtility.SetAnimationEvents(shove, new[] { new UnityEngine.AnimationEvent { time = 0.16f, functionName = "OnShoveContact" } });
 UnityEditor.AssetDatabase.DeleteAsset($"{DIR}/Shove.anim");
 UnityEditor.AssetDatabase.CreateAsset(shove, $"{DIR}/Shove.anim");
 
@@ -109,6 +111,10 @@ layers = ctrl.layers; layers[1].defaultWeight = 1f; layers[1].avatarMask = mask;
 var sm1 = ctrl.layers[1].stateMachine;
 var empty = sm1.AddState("Empty"); sm1.defaultState = empty;
 var shoveState = sm1.AddState("Shove"); shoveState.motion = shove;
+// Played at the speed that puts its contact frame on PushConfig.ContactDelay (set by PlayerAnimationController).
+ctrl.AddParameter("ShoveSpeed", UnityEngine.AnimatorControllerParameterType.Float);
+var withSpeed = ctrl.parameters; foreach (var p in withSpeed) if (p.name == "ShoveSpeed") p.defaultFloat = 1f; ctrl.parameters = withSpeed;
+shoveState.speedParameterActive = true; shoveState.speedParameter = "ShoveSpeed";
 var anyShove = sm1.AddAnyStateTransition(shoveState); anyShove.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "Shove"); anyShove.duration = 0.03f; anyShove.hasFixedDuration = true; anyShove.canTransitionToSelf = true;
 var back = shoveState.AddTransition(empty); back.hasExitTime = true; back.exitTime = 0.9f; back.duration = 0.08f; back.hasFixedDuration = true;
 // Emotes with a clip (EmotePlayer.HasClip): full body, weight driven by PlayerAnimationController (0 while moving).

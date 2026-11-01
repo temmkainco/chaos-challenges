@@ -34,6 +34,9 @@ public class PlayerAnimationController : NetworkBehaviour
     private static readonly int LocoScaleParam = Animator.StringToHash("LocoScale");
     private static readonly int GroundedParam = Animator.StringToHash("Grounded");
     private static readonly int EmoteIdParam = Animator.StringToHash("EmoteId");
+    private static readonly int ShoveSpeedParam = Animator.StringToHash("ShoveSpeed");
+    /// <summary>Seconds into Shove.anim of its contact frame (arms fully out).</summary>
+    private const float SHOVE_CLIP_CONTACT = 0.16f;
     private static readonly int[] Triggers = { Animator.StringToHash("Jump"), Animator.StringToHash("Hit"), Animator.StringToHash("Shove"), Animator.StringToHash("Emote") };
     private const int JUMP = 0, HIT = 1, SHOVE = 2, EMOTE = 3;
 
@@ -43,6 +46,7 @@ public class PlayerAnimationController : NetworkBehaviour
         _interaction = GetComponentInParent<PlayerInteraction>();
         _player = GetComponentInParent<Player>();
         _emoteLayer = _animator.GetLayerIndex("Emote");
+        _animator.SetFloat(ShoveSpeedParam, SHOVE_CLIP_CONTACT / Mathf.Max(0.05f, PushConfig.Instance.ContactDelay));
     }
 
     private void Update()
@@ -95,6 +99,9 @@ public class PlayerAnimationController : NetworkBehaviour
         float weight = Mathf.MoveTowards(_animator.GetLayerWeight(_emoteLayer), on ? 1f : 0f, _emoteFade * Time.deltaTime);
         _animator.SetLayerWeight(_emoteLayer, weight);
     }
+
+    /// <summary>Animation event on Shove.anim's contact frame: the swing's whoosh (the hit's sound comes from the host).</summary>
+    public void OnShoveContact() => Sfx.Play(Sound.Whoosh, 0.8f, 0.15f);
 
     private void Fire(int trigger)
     {

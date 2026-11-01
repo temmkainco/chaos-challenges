@@ -21,6 +21,9 @@ public class PlayerInteraction : NetworkBehaviour
     [Networked] private TickTimer ShoveCooldown { get; set; }
     /// <summary>Tick of the last shove swing (predicted for the owner): drives the push animation on every peer.</summary>
     [Networked] public int ShoveTick { get; private set; }
+    /// <summary>Set by the host on whoever was just shoved: no shove lands on them until it runs out.</summary>
+    [Networked] private TickTimer ShoveImmunity { get; set; }
+    public bool IsShoveImmune => !ShoveImmunity.ExpiredOrNotRunning(Runner);
 
     public IInteractable CurrentTarget { get; private set; }
     public bool IsCharging => ChargeStartTick > 0 && HeldObject != null;
@@ -29,20 +32,17 @@ public class PlayerInteraction : NetworkBehaviour
     [SerializeField] private float _distance = 3f;
     [SerializeField, Tooltip("Radius of the grab zone in front of the player")] private float _reach = 1.6f;
     [SerializeField] private LayerMask _mask;
-    [Header("Shove")]
-    [SerializeField] private float _shoveRange = 1.8f;
-    [SerializeField] private float _shovePush = 9f;
-    [SerializeField] private float _shoveLift = 3.5f;
-    [SerializeField] private float _shoveCooldown = 0.9f;
     [SerializeField] private Transform _eyesPoint;
 
     private Player _player;
+    private PlayerMovement _movement;
     private readonly FocusHighlighter _focusHighlighter = new();
     private readonly Collider[] _overlap = new Collider[16];
 
     public override void Spawned()
     {
         _player = GetComponent<Player>();
+        _movement = GetComponent<PlayerMovement>();
 
         if (Object.HasInputAuthority)
             gameObject.AddComponent<ThrowPreview>();
@@ -72,13 +72,13 @@ public class PlayerInteraction : NetworkBehaviour
         {
             _focusHighlighter.Clear();
             CurrentTarget = null;
-            HighlightShoveTarget(FindShoveTarget(_player.Camera.transform.forward));
+            HighlightShoveTarget(FindShoveTarget(false));
             return;
         }
 
         CurrentTarget = FindTarget(Physics.defaultPhysicsScene, _player.Camera.transform.forward);
         _focusHighlighter.Highlight(CurrentTarget);
-        HighlightShoveTarget(CurrentTarget == null ? FindShoveTarget(_player.Camera.transform.forward) : null);
+        HighlightShoveTarget(CurrentTarget == null && ShoveCooldown.ExpiredOrNotRunning(Runner) ? FindShoveTarget(false) : null);
     }
 
     private Transform _shoveMarker;
@@ -116,23 +116,40 @@ public class PlayerInteraction : NetworkBehaviour
         if (_shoveMarker != null) Destroy(_shoveMarker.gameObject);
     }
 
-    /// <summary>Same pick as the host's shove: the closest contestant within reach in front.</summary>
-    private Player FindShoveTarget(Vector3 look)
+    /// <summary>
+    /// The contestant a shove from here would hit, the same way on every peer: within <see cref="PushConfig.Range"/>
+    /// and <see cref="PushConfig.ConeAngle"/> of the character's facing (never the camera), in line of sight; the
+    /// smallest angle wins, the nearer one when angles are about equal. <paramref name="seenByShover"/>: the host
+    /// measures where the shover saw each contestant (<see cref="Rewind"/>), the owner's ring where they are now.
+    /// </summary>
+    private Player FindShoveTarget(bool seenByShover)
     {
-        var flat = new Vector3(look.x, 0f, look.z);
-        flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
-        int count = Physics.OverlapSphereNonAlloc(transform.position + flat * (_shoveRange * 0.6f) + Vector3.up, _shoveRange, _overlap, ~0, QueryTriggerInteraction.Ignore);
+        var config = PushConfig.Instance;
+        var forward = transform.forward.WithY(0f).normalized;
+        var origin = transform.position;
         Player best = null;
-        float bestDistance = float.MaxValue;
-        for (int i = 0; i < count; i++)
+        float bestAngle = float.MaxValue, bestDistance = float.MaxValue;
+        foreach (var controller in PlayerMovement.Controllers)
         {
-            var other = _overlap[i].GetComponentInParent<Player>();
-            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator != _player.IsSpectator) continue;
-            var to = other.transform.position - transform.position;
+            var other = controller != null ? controller.GetComponent<Player>() : null;
+            if (other == null || other == _player || other.Object == null || !other.Object.IsValid || other.ControlsLocked
+                || other.IsSpectator != _player.IsSpectator || (other.Interaction != null && other.Interaction.IsShoveImmune))
+                continue;
+            var position = seenByShover ? Rewind.PositionSeenBy(_player, other) : other.transform.position;
+            var to = position - origin;
+            if (Mathf.Abs(to.y) > config.MaxHeightDifference) continue;
             to.y = 0f;
-            if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;
-            best = other;
-            bestDistance = to.magnitude;
+            float distance = to.magnitude - controller.radius;
+            float angle = to.sqrMagnitude > 1e-4f ? Vector3.Angle(forward, to) : 0f;
+            if (distance > config.Range || angle > config.ConeAngle) continue;
+            if (Physics.Linecast(origin + Vector3.up, position + Vector3.up, config.LineOfSight, QueryTriggerInteraction.Ignore)) continue;
+            bool better = angle < bestAngle - config.AngleTie || (Mathf.Abs(angle - bestAngle) <= config.AngleTie && distance < bestDistance);
+            if (best == null || better)
+            {
+                best = other;
+                bestAngle = angle;
+                bestDistance = distance;
+            }
         }
         return best;
     }
@@ -179,7 +196,12 @@ public class PlayerInteraction : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         if (HasStateAuthority)
+        {
             ClearStaleHeldObject();
+            // The swing's contact frame: the push lands now, not on the press.
+            if (ShoveTick > 0 && Runner.Tick == ShoveTick + ShoveContactTicks)
+                LandShove();
+        }
 
         if (!GetInput(out NetworkInputData input)) return;
         // Ghosts (knocked out) can't grab or throw; their shove only reaches other ghosts.
@@ -248,54 +270,79 @@ public class PlayerInteraction : NetworkBehaviour
             InteractWithTarget();
     }
 
+    /// <summary>Ticks from the press to the swing's contact frame (<see cref="PushConfig.ContactDelay"/>).</summary>
+    private int ShoveContactTicks => Mathf.Max(1, Mathf.RoundToInt(PushConfig.Instance.ContactDelay / Runner.DeltaTime));
+
+    private bool CanShove(MinigameController minigame) =>
+        !_player.ControlsLocked && (_movement == null || !_movement.IsLaunched)
+        // Ghosts may always shove each other (it can't touch the game).
+        && (minigame == null || ((minigame.AllowShove || _player.IsSpectator) && minigame.IsGameActive));
+
     /// <summary>
-    /// Empty-handed throw button: a push with both arms (the swing is predicted for the owner so it animates
-    /// instantly); the host shoves the closest contestant in front. A minigame can use the button instead
-    /// (Hot Potato: the bomb holder hands the bomb over).
+    /// Empty-handed throw button: starts a two-handed push (the swing is predicted for the owner so it animates
+    /// instantly). The host lands it at the contact frame (<see cref="LandShove"/>). A minigame can use the button
+    /// instead (Hot Potato: the bomb holder hands the bomb over; Tail Tag: a grab), straight away.
     /// </summary>
     private void TryShove()
     {
         var minigame = MinigameController.Current;
         if (HasStateAuthority && !_player.IsSpectator && minigame != null && minigame.IsGameActive && minigame.HandleShove(_player))
             return;
-        // Ghosts may always shove each other (it can't touch the game).
-        if (!ShoveCooldown.ExpiredOrNotRunning(Runner) || (minigame != null && ((!minigame.AllowShove && !_player.IsSpectator) || !minigame.IsGameActive)))
+        // No shoving while knocked about (stunned) or during the cooldown.
+        if (!ShoveCooldown.ExpiredOrNotRunning(Runner) || !CanShove(minigame))
             return;
-        ShoveCooldown = TickTimer.CreateFromSeconds(Runner, _shoveCooldown);
+        ShoveCooldown = TickTimer.CreateFromSeconds(Runner, PushConfig.Instance.Cooldown);
         ShoveTick = Runner.Tick;
-        if (!HasStateAuthority)
-            return;
+    }
 
-        var flat = new Vector3(LookDirection.x, 0f, LookDirection.z);
-        flat = flat.sqrMagnitude > 0.001f ? flat.normalized : transform.forward;
-        // Contestants where the shover saw them (lag compensation), within the reach sphere ahead.
-        var reachCentre = transform.position + flat * (_shoveRange * 0.6f) + Vector3.up;
-        Player best = null;
-        float bestDistance = float.MaxValue;
-        foreach (var controller in PlayerMovement.Controllers)
-        {
-            var other = controller != null ? controller.GetComponent<Player>() : null;
-            if (other == null || other == _player || other.Object == null || other.ControlsLocked || other.IsSpectator != _player.IsSpectator) continue;
-            var seen = Rewind.PositionSeenBy(_player, other);
-            if ((seen + Vector3.up - reachCentre).magnitude > _shoveRange + controller.radius) continue;
-            var to = seen - transform.position;
-            to.y = 0f;
-            if (Vector3.Angle(flat, to) > 70f || to.magnitude >= bestDistance) continue;
-            best = other;
-            bestDistance = to.magnitude;
-        }
-        if (best == null)
-            return;
+    /// <summary>
+    /// Host, at the swing's contact frame: the best contestant in the cone in front of the shover (as the shover saw
+    /// them) is pushed along the shover's facing, loses control briefly and can't be shoved again for a moment.
+    /// Nothing happens if the shover was knocked about or the round stopped during the wind-up.
+    /// </summary>
+    private void LandShove()
+    {
+        var minigame = MinigameController.Current;
+        if (!CanShove(minigame)) return;
+        var target = FindShoveTarget(true);
+        if (target == null) return;
 
-        var push = (best.transform.position - transform.position).WithY(0f).normalized;
-        if (best.TryGetComponent<PlayerMovement>(out var movement))
+        var config = PushConfig.Instance;
+        var push = transform.forward.WithY(0f).normalized;
+        if (target.TryGetComponent<PlayerMovement>(out var movement))
         {
             float strength = minigame != null ? minigame.ShoveStrength : 1f;
-            movement.Launch(push * _shovePush * strength + Vector3.up * _shoveLift);
+            movement.Launch(push * config.Force * strength + Vector3.up * config.Lift, config.ControlLoss);
         }
-        if ((minigame == null || minigame.ShoveDropsHeldItem) && best.Interaction != null)
-            best.Interaction.ForceDrop();
-        RPC_Shoved(best.transform.position);
+        if (target.Interaction != null)
+        {
+            target.Interaction.ShoveImmunity = TickTimer.CreateFromSeconds(Runner, config.Immunity);
+            if (minigame == null || minigame.ShoveDropsHeldItem) target.Interaction.ForceDrop();
+        }
+        RPC_Shoved(target.transform.position);
+    }
+
+    /// <summary>Scene view: every contestant's shove reach and cone (<see cref="PushConfig.DrawGizmos"/>).</summary>
+    private void OnDrawGizmos()
+    {
+        var config = PushConfig.Instance;
+        if (!config.DrawGizmos) return;
+        bool ready = Object == null || !Object.IsValid || ShoveCooldown.ExpiredOrNotRunning(Runner);
+        Gizmos.color = ready ? new Color(1f, 0.35f, 0.3f) : new Color(0.6f, 0.6f, 0.6f);
+        var origin = transform.position + Vector3.up * 0.05f;
+        var forward = transform.forward.WithY(0f).normalized;
+        float radius = TryGetComponent<CharacterController>(out var own) ? own.radius : 0.4f;
+        float reach = config.Range + radius;   // a target's centre can be this far (its body at Range)
+        const int SEGMENTS = 16;
+        var previous = origin + Quaternion.Euler(0f, -config.ConeAngle, 0f) * forward * reach;
+        Gizmos.DrawLine(origin, previous);
+        for (int i = 1; i <= SEGMENTS; i++)
+        {
+            var next = origin + Quaternion.Euler(0f, Mathf.Lerp(-config.ConeAngle, config.ConeAngle, i / (float)SEGMENTS), 0f) * forward * reach;
+            Gizmos.DrawLine(previous, next);
+            previous = next;
+        }
+        Gizmos.DrawLine(origin, previous);
     }
 
     /// <summary>Host only: let go of whatever is held (shoves, hits).</summary>
@@ -309,7 +356,7 @@ public class PlayerInteraction : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_Shoved(Vector3 position)
     {
-        Sfx.Play(Sound.Whoosh, 1f, 0.15f);
+        Sfx.Play(Sound.Pop, 0.9f, 0.15f);
         WorldPopup.Show(position + Vector3.up * 2.6f, "OOF!", new Color(1f, 0.79f, 0.24f), 6f);
     }
 
