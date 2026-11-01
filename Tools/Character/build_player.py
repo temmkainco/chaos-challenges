@@ -305,7 +305,8 @@ bm = bmesh.new()
 uv = bm.loops.layers.uv.new("UVMap")
 part_of_face = []
 vpart = []   # part name of each vertex, in creation order (= mesh vertex index)
-for name, pb in parts.items():
+# Unity numbers submeshes by the order materials first appear in the file: write Body, then Hands, then Head parts.
+for name, pb in sorted(parts.items(), key=lambda kv: part_slot(kv[0])):
     pb.verts.ensure_lookup_table()
     mapping = {}
     for v in pb.verts:
@@ -335,6 +336,9 @@ body = bpy.data.objects.new("Body", me)
 
 # ---------------------------------------------------------------- the rig (Mixamo names, the old joint positions)
 for o in list(scene.objects): bpy.data.objects.remove(o)
+for m in list(bpy.data.meshes):
+    if m != me and m.users == 0: bpy.data.meshes.remove(m)
+body.name = "Body"; me.name = "Body"   # the old model's "Body" is gone now: take its name (no ".001")
 arm_data = bpy.data.armatures.new("Armature")
 rig = bpy.data.objects.new("Armature", arm_data)
 scene.collection.objects.link(rig); scene.collection.objects.link(body)

@@ -63,32 +63,32 @@ MonoBehaviour:
     WorldSpace: 0
   - Name: Top Hat
     Prefab: {fileID: 3952692635883924369, guid: 679aa667854bc994ba1f0d7669e8427a, type: 3}
-    LocalPosition: {x: -0.00000932934, y: 0.004246168, z: -0.00015724951}
-    LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
-    Scale: 0.019577809
+    LocalPosition: {x: 0.00093293295, y: 0.42490575, z: 0.0014038162}
+    LocalEuler: {x: 0.01999841, y: 0.0000031356478, z: 0.00000006317786}
+    Scale: 1.9577818
     AttachTo: 0
-    WorldSpace: 0
+    WorldSpace: 1
   - Name: Crown
     Prefab: {fileID: 3781446964664321474, guid: 9b615b4df41053a42a407d386b2241b4, type: 3}
-    LocalPosition: {x: -0.000010978309, y: 0.0036651264, z: -0.00020607989}
-    LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
-    Scale: 0.017050529
+    LocalPosition: {x: 0.00109783, y: 0.36699915, z: 0.008242552}
+    LocalEuler: {x: 0.01999841, y: 0.0000031356478, z: 0.00000006317786}
+    Scale: 1.7050537
     AttachTo: 0
-    WorldSpace: 0
+    WorldSpace: 1
   - Name: Headphones
     Prefab: {fileID: 6425698344607842257, guid: caa9fa9b44b152e4dbb67b7978597ef5, type: 3}
-    LocalPosition: {x: 0.000015876587, y: -0.0032502678, z: -0.000076026714}
-    LocalEuler: {x: 1.9515853, y: 180, z: 8.6561287e-13}
-    Scale: 0.027595995
+    LocalPosition: {x: -0.0015876592, y: -0.32458597, z: 0.01855377}
+    LocalEuler: {x: 0.01999841, y: 0.0000031356478, z: 0.00000006317786}
+    Scale: 2.7596009
     AttachTo: 0
-    WorldSpace: 0
+    WorldSpace: 1
   - Name: Cooking Pot
     Prefab: {fileID: 2104011583568910299, guid: 75ba208b04d53e5469a6429a3b2fa813, type: 3}
-    LocalPosition: {x: 0.000000002634519, y: 0.006552725, z: -0.00039696845}
-    LocalEuler: {x: 358.0484, y: 0.0000068833465, z: 180}
-    Scale: 0.018116426
+    LocalPosition: {x: -0.0000002666836, y: 0.6562385, z: 0.017587585}
+    LocalEuler: {x: 359.97998, y: 180, z: 180}
+    Scale: 1.8116434
     AttachTo: 0
-    WorldSpace: 0
+    WorldSpace: 1
   - Name: Party Hat
     Prefab: {fileID: 7280523132738051734, guid: 15c375a8accb9b441862473b9817d992, type: 3}
     LocalPosition: {x: 0.06, y: 0.5, z: 0.02}
