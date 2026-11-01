@@ -16,7 +16,6 @@ public class PauseMenu : MonoBehaviour
     public static bool IsOpen { get; private set; }
 
     [Inject] private INetworkRunner _networkRunner;
-    [InjectOptional] private MessagePanel _messagePanel;
 
     private GameObject _scrim;
     private RectTransform _main, _settingsColumn;
@@ -103,7 +102,7 @@ public class PauseMenu : MonoBehaviour
 
     private void UpdateCursor()
     {
-        bool messageOpen = (_messagePanel != null && _messagePanel.gameObject.activeSelf) || UiModal.OpenCount > 0;
+        bool messageOpen = UiModal.OpenCount > 0;
         bool playing = Player.Local != null && !IsOpen && !messageOpen && Application.isFocused && !SteamInviteListener.OverlayActive
                        && SceneManager.GetActiveScene().path != GameScenes.Intermission && !RulesCard.WantsCursor && !GamePackPanel.IsOpen && !PlayerListPanel.IsOpen;
         var lockState = playing ? CursorLockMode.Locked : CursorLockMode.None;

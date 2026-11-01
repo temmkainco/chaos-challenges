@@ -393,28 +393,9 @@ public class MainMenuView : MonoBehaviour
             ("QUIT", UiButton.Variant.Danger, _controller.OnExitButtonClicked));
     }
 
-    // Static: a failed join reloads the menu scene, and these notices outlive it (the new menu sees them too).
-    private static UiModal _busy, _notice;
+    private static UiModal Busy(string title) => UiNotice.Busy(title);
 
-    private static UiModal Busy(string title)
-    {
-        _busy = UiModal.Show(title, null, null);
-        _busy.Cancelable = false;
-        var dots = Ui.Text(_busy.Content, "• • •", UiTheme.TextRole.Title, UiTheme.Tone.Accent);
-        Ui.Size(dots, 200f, 56f);
-        if (!UiTheme.ReduceMotion)
-            dots.DOFade(0.2f, 0.5f).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo).SetUpdate(true).SetLink(dots.gameObject);
-        DontDestroyOnLoad(_busy.gameObject);
-        return _busy;
-    }
-
-    /// <summary>One error notice at a time: a newer one replaces it (a retried join reports more than once).</summary>
-    private static void Error(string title, string text)
-    {
-        if (_notice != null) _notice.Close();
-        _notice = UiModal.Show(title, text, null, ("OK", UiButton.Variant.Primary, null));
-        DontDestroyOnLoad(_notice.gameObject);
-    }
+    private static void Error(string title, string text) => UiNotice.Error(title, text);
 
     private async void Host()
     {
@@ -435,8 +416,7 @@ public class MainMenuView : MonoBehaviour
         }
         finally
         {
-            if (busy != null) busy.Close();
-            if (_busy == busy) _busy = null;
+            UiNotice.EndBusy();
         }
     }
 
@@ -459,8 +439,7 @@ public class MainMenuView : MonoBehaviour
         }
         finally
         {
-            if (busy != null) busy.Close();
-            if (_busy == busy) _busy = null;
+            UiNotice.EndBusy();
         }
     }
 
@@ -482,8 +461,7 @@ public class MainMenuView : MonoBehaviour
         }
         finally
         {
-            if (busy != null) busy.Close();
-            if (_busy == busy) _busy = null;
+            UiNotice.EndBusy();
         }
     }
 
@@ -494,7 +472,7 @@ public class MainMenuView : MonoBehaviour
         string reason = _networkRunner.ConsumeDisconnectReason();
         if (reason == null) return;
         Debug.LogWarning($"Returned to menu: {reason}");
-        if (_busy == null) Error("OFF AIR", reason);   // during a host / join, its own result says what went wrong
+        if (!UiNotice.IsBusy) Error("OFF AIR", reason);   // during a host / join, its own result says what went wrong
     }
 
     #endregion

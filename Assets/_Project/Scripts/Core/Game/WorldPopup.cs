@@ -23,11 +23,12 @@ public static class WorldPopup
         go.transform.position = position;
         tmp.text = text;
         tmp.fontSize = size;
-        tmp.fontStyle = FontStyles.Bold;
+        // The show's display face with its Ink outline (one shared material, no copy per popup).
+        var theme = UiTheme.Instance;
+        if (theme.Display != null && tmp.font != theme.Display) tmp.font = theme.Display;
+        if (theme.DisplayOutline != null) tmp.fontSharedMaterial = theme.DisplayOutline;
         tmp.color = color;
         tmp.alignment = TextAlignmentOptions.Center;
-        tmp.outlineWidth = 0.2f;
-        tmp.outlineColor = Color.black;
 
         var camera = Camera.main;
         if (camera != null)

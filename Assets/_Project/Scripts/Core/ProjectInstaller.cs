@@ -12,8 +12,6 @@ namespace Core
         public bool UseSteam = true;
 
         [Header("UI Prefabs")]
-        [field: SerializeField] public LoadingPanel LoadingPanelPrefab { get; private set; }
-        [field: SerializeField] public MessagePanel MessagePanelPrefab { get; private set; }
         [field: SerializeField] public PauseMenu PauseMenuPrefab { get; private set; }
 
         [Header("NetworkRunner Prefab")]
@@ -43,22 +41,6 @@ namespace Core
                          .FromComponentInNewPrefab(NetworkRunnerPrefab)
                          .AsSingle()
                          .NonLazy();
-            }
-
-            if (LoadingPanelPrefab != null)
-            {
-                Container.Bind<LoadingPanel>()
-                    .FromComponentInNewPrefab(LoadingPanelPrefab)
-                    .AsSingle()
-                    .NonLazy();
-            }
-
-            if (MessagePanelPrefab != null)
-            {
-                Container.Bind<MessagePanel>()
-                    .FromComponentInNewPrefab(MessagePanelPrefab)
-                    .AsSingle()
-                    .NonLazy();
             }
 
             if (PauseMenuPrefab != null)

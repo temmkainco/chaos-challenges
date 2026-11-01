@@ -54,4 +54,17 @@ public class PlayerChip : MonoBehaviour
         _status.sprite = UiShapes.Icon(status);
         _status.color = UiTheme.Instance.Color(status == "cross" ? UiTheme.Tone.Bad : status == "star" ? UiTheme.Tone.Accent : UiTheme.Tone.Good);
     }
+
+    /// <summary>Sizes the chip to its name (the status icon keeps its slot), within <paramref name="min"/>..<paramref name="max"/>.</summary>
+    public void FitToName(float min = 160f, float max = 520f)
+    {
+        var rt = (RectTransform)transform;
+        float height = rt.sizeDelta.y;
+        // Measured without the "…" truncation (which would measure the cut name).
+        var overflow = _name.overflowMode;
+        _name.overflowMode = TextOverflowModes.Overflow;
+        float width = _name.GetPreferredValues(_name.text).x + (height - 16f) + 24f + 60f + 8f;   // disc, gap, the status slot
+        _name.overflowMode = overflow;
+        rt.sizeDelta = new Vector2(Mathf.Clamp(width, min, max), height);
+    }
 }

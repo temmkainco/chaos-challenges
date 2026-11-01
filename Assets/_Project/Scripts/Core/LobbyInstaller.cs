@@ -8,7 +8,6 @@ public class LobbyInstaller : MonoInstaller, IInitializable
     [field: SerializeField] public NetworkPrefabRef NetworkGameManagerPrefab { get; private set; }
     [field: SerializeField] public MinigameSceneDatabaseSO MinigameSceneDatabase { get; private set; }
 
-    [Inject] private LoadingPanel _loadingPanel;
     public override void InstallBindings()
     {
         Container.BindInterfacesTo<LobbyInstaller>().FromInstance(this).AsSingle();
@@ -21,9 +20,6 @@ public class LobbyInstaller : MonoInstaller, IInitializable
     public void Initialize()
     {
         Cursor.visible = false;
-        if (_loadingPanel != null)
-        {
-            _loadingPanel.Close();
-        }
+        UiNotice.EndBusy();   // in the lobby: whatever was connecting is done
     }
 }

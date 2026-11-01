@@ -19,7 +19,7 @@ public class PromptBar : MonoBehaviour
         [Action.Back] = ("Esc", "B"),
         [Action.Interact] = ("E", "Y"),
         [Action.Jump] = ("Space", "A"),
-        [Action.Emote] = ("T", "Y"),
+        [Action.Emote] = ("T", "D-pad Up"),
         [Action.Players] = ("Tab", "View"),
         [Action.Games] = ("L", "LB"),
         [Action.Throw] = ("LMB", "RT"),

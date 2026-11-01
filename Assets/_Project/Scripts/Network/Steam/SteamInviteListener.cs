@@ -16,8 +16,6 @@ public class SteamInviteListener : MonoBehaviour
     public static bool OverlayActive { get; private set; }
 
     private FusionNetworkRunner _networkRunner;
-    private LoadingPanel _loadingPanel;
-    private MessagePanel _messagePanel;
 
     private Callback<GameLobbyJoinRequested_t> _lobbyJoinRequested;
     private Callback<GameRichPresenceJoinRequested_t> _richPresenceJoinRequested;
@@ -28,11 +26,9 @@ public class SteamInviteListener : MonoBehaviour
     private CursorLockMode _cursorLockMode;
 
     [Inject]
-    public void Construct(INetworkRunner runner, LoadingPanel loadingPanel, MessagePanel messagePanel)
+    public void Construct(INetworkRunner runner)
     {
         _networkRunner = runner as FusionNetworkRunner;
-        _loadingPanel = loadingPanel;
-        _messagePanel = messagePanel;
     }
 
     private void OnEnable()
@@ -76,21 +72,20 @@ public class SteamInviteListener : MonoBehaviour
             return;
 
         _isJoining = true;
-        _messagePanel.Close();
-        _loadingPanel.Open();
+        UiNotice.Busy("TUNING IN");
         try
         {
             if (!await _networkRunner.JoinSteamLobbyAsync(lobby))
-                _messagePanel.Show(_networkRunner.LastError ?? "Could not join your friend's game.");
+                UiNotice.Error("NO SIGNAL", _networkRunner.LastError ?? "Could not join your friend's game.");
         }
         catch (Exception e)
         {
             Debug.LogException(e);
-            _messagePanel.Show("Could not join your friend's game.");
+            UiNotice.Error("NO SIGNAL", "Could not join your friend's game.");
         }
         finally
         {
-            _loadingPanel.Close();
+            UiNotice.EndBusy();
             _isJoining = false;
         }
     }
