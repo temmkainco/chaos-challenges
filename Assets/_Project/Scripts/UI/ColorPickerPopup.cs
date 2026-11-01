@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// Customizer colour picker for one body part: a saturation/value square, a hue bar, a hex field and the catalogue's
 /// preset swatches. Every change is applied at once (<see cref="LocalLook.SetColor"/>), so the preview and, in a
 /// session, the other players see it live; drags are written to disk when they end. Built from code with
-/// <see cref="UiKit"/>, over the customizer's rows.
+/// the UI kit (<see cref="UiTheme"/>), over the customizer's rows.
 /// </summary>
 public class ColorPickerPopup : MonoBehaviour
 {
@@ -36,7 +36,7 @@ public class ColorPickerPopup : MonoBehaviour
     public void Open(CosmeticsCatalog.Part part)
     {
         _part = part;
-        _title.text = part.ToString().ToUpperInvariant() + " COLOUR";
+        _title.text = part + " colour";
         Color.RGBToHSV(LocalLook.GetColor(part), out _hue, out _saturation, out _value);
         transform.SetAsLastSibling();
         gameObject.SetActive(true);
@@ -104,24 +104,25 @@ public class ColorPickerPopup : MonoBehaviour
 
     private void Build(Rect area)
     {
-        var kit = UiKit.Instance;
+        var theme = UiTheme.Instance;
         var root = (RectTransform)transform;
         Place(root, area.center.x, area.center.y, area.width, area.height);
-        var card = MakeImage(transform, "Card", kit.Panel, UiKit.Cream);
-        card.type = Image.Type.Sliced;
-        card.raycastTarget = true;   // the rows underneath don't take clicks while it's open
-        Stretch(card.rectTransform);
+        // A kit panel; its fill takes clicks, so the rows underneath don't while it's open.
+        var card = Ui.Box(transform, "Card", UiTheme.Tone.Studio);
+        Ui.Stretch((RectTransform)card.transform);
 
-        float w = area.width, h = area.height, pad = 20f;
-        _title = MakeText(transform, "Title", 34f, UiKit.Orange, true, 0f, h / 2f - 34f, w - 2f * pad, 48f);
+        float w = area.width, h = area.height, pad = 24f;
+        _title = Ui.Text(transform, "", UiTheme.TextRole.Title, UiTheme.Tone.Paper);
+        Place(_title.rectTransform, 0f, h / 2f - 40f, w - 2f * pad, 52f);
 
-        float cell = Mathf.Min((w - 2f * pad) / 10f, 52f);
-        float top = h / 2f - 70f;
+        float cell = Mathf.Min((w - 2f * pad) / 10f, 54f);
+        float top = h / 2f - 80f;
         float squareSize = Mathf.Min(h - 70f - 2f * cell - pad - 24f, w * 0.45f);
         float left = -w / 2f + pad;
 
         // Saturation (across) / value (up) square for the current hue.
         _squareTexture = new Texture2D(SV_TEXTURE, SV_TEXTURE, TextureFormat.RGB24, false) { wrapMode = TextureWrapMode.Clamp };
+        Frame(left + squareSize / 2f, top - squareSize / 2f, squareSize, squareSize);
         _square = MakeRaw(transform, "SaturationValue", _squareTexture, left + squareSize / 2f, top - squareSize / 2f, squareSize, squareSize);
         Drag(_square.rectTransform, (p, save) => SetHsv(_hue, p.x, p.y, save));
         _squareMarker = Marker(_square.transform, 26f);
@@ -131,20 +132,21 @@ public class ColorPickerPopup : MonoBehaviour
         for (int y = 0; y < 128; y++) _hueTexture.SetPixel(0, y, Color.HSVToRGB(y / 127f, 1f, 1f));
         _hueTexture.Apply(false);
         float hueX = left + squareSize + 16f + 18f;
+        Frame(hueX, top - squareSize / 2f, 36f, squareSize);
         _hueBar = MakeRaw(transform, "Hue", _hueTexture, hueX, top - squareSize / 2f, 36f, squareSize);
         Drag(_hueBar.rectTransform, (p, save) => SetHsv(Mathf.Clamp(p.y, 0f, 0.999f), _saturation, _value, save));
-        _hueMarker = (RectTransform)MakeImage(_hueBar.transform, "Marker", kit.Button, Color.white).transform;
-        Place(_hueMarker, 0f, 0f, 48f, 12f);
-        var hueOutline = _hueMarker.gameObject.AddComponent<UnityEngine.UI.Outline>();
-        hueOutline.effectColor = UiKit.Ink; hueOutline.effectDistance = new Vector2(2f, -2f);
+        var hueMarker = Ui.Box(_hueBar.transform, "Marker", UiTheme.Tone.Paper, 6f, false);
+        _hueMarker = (RectTransform)hueMarker.transform;
+        Place(_hueMarker, 0f, 0f, 52f, 18f);
 
         // Right column: the colour, its hex code, OK.
         float columnLeft = hueX + 18f + 24f, columnWidth = w / 2f - pad - columnLeft, columnX = columnLeft + columnWidth / 2f;
-        var ring = MakeImage(transform, "CurrentRing", kit.Circle, UiKit.Ink);
-        Place(ring.rectTransform, columnX, top - 50f, 100f, 100f);
-        _current = MakeImage(transform, "Current", kit.Circle, Color.white);
-        Place(_current.rectTransform, columnX, top - 50f, 88f, 88f);
-        MakeText(transform, "HexLabel", 24f, UiKit.Ink, false, columnX, top - 124f, columnWidth, 32f).text = "HEX";
+        var ring = Ui.Circle(transform, "CurrentRing", 104f, theme.Ink);
+        Place(ring.rectTransform, columnX, top - 52f, 104f, 104f);
+        _current = Ui.Circle(transform, "Current", 90f, Color.white);
+        Place(_current.rectTransform, columnX, top - 52f, 90f, 90f);
+        var hexLabel = Ui.Text(transform, "HEX", UiTheme.TextRole.Label, UiTheme.Tone.Haze);
+        Place(hexLabel.rectTransform, columnX, top - 128f, columnWidth, 34f);
         _hex = MakeInput(transform, columnX, top - 166f, Mathf.Min(columnWidth, 190f), 50f);
         _hex.onValueChanged.AddListener(text =>
         {
@@ -155,8 +157,8 @@ public class ColorPickerPopup : MonoBehaviour
             if (LocalLook.TryParseHex(text, out var color)) SetColor(color);
             else Show(false);   // not a colour: back to the current one
         });
-        var ok = MakeButton(transform, "OK", UiKit.Mint, columnX, top - squareSize + 28f, Mathf.Min(columnWidth, 170f), 56f);
-        ok.onClick.AddListener(Close);
+        var ok = Ui.Button(transform, "OK", UiButton.Variant.Primary, "tick", Close);
+        Place((RectTransform)ok.transform, columnX, top - squareSize + 34f, Mathf.Min(columnWidth, 190f), 76f);
 
         // Presets, two rows of ten.
         var presets = CosmeticsCatalog.Instance != null ? CosmeticsCatalog.Instance.Colors : Array.Empty<CosmeticsCatalog.Swatch>();
@@ -165,13 +167,16 @@ public class ColorPickerPopup : MonoBehaviour
         for (int i = 0; i < presets.Length; i++)
         {
             float x = (i % perRow - (perRow - 1) * 0.5f) * cell, y = presetsTop - (i / perRow) * cell;
-            var outline = MakeImage(transform, "PresetRing " + presets[i].Name, kit.Circle, UiKit.Ink);
-            Place(outline.rectTransform, x, y, cell * 0.86f, cell * 0.86f);
-            var swatch = MakeImage(outline.transform, "Preset", kit.Circle, presets[i].Color);
-            Place(swatch.rectTransform, 0f, 0f, cell * 0.74f, cell * 0.74f);
+            var outline = Ui.Circle(transform, "PresetRing " + presets[i].Name, cell * 0.88f, theme.Ink);
+            Place(outline.rectTransform, x, y, cell * 0.88f, cell * 0.88f);
+            var swatch = Ui.Circle(outline.transform, "Preset", cell * 0.72f, presets[i].Color);
+            Place(swatch.rectTransform, 0f, 0f, cell * 0.72f, cell * 0.72f);
             swatch.raycastTarget = true;
             var color = presets[i].Color;
-            swatch.gameObject.AddComponent<Button>().onClick.AddListener(() => SetColor(color));
+            var button = swatch.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.onClick.AddListener(() => SetColor(color));
+            swatch.gameObject.AddComponent<UiFocus>().Target = outline.rectTransform;   // gamepad focus
         }
     }
 
@@ -202,22 +207,28 @@ public class ColorPickerPopup : MonoBehaviour
 
     private static RectTransform Marker(Transform parent, float size)
     {
-        var kit = UiKit.Instance;
-        var outer = MakeImage(parent, "Marker", kit.Circle, UiKit.Ink);
+        var theme = UiTheme.Instance;
+        var outer = Ui.Circle(parent, "Marker", size, theme.Ink);
         Place(outer.rectTransform, 0f, 0f, size, size);
-        var inner = MakeImage(outer.transform, "Inner", kit.Circle, Color.white);
-        Place(inner.rectTransform, 0f, 0f, size - 8f, size - 8f);
+        var inner = Ui.Circle(outer.transform, "Inner", size - 10f, theme.Paper);
+        Place(inner.rectTransform, 0f, 0f, size - 10f, size - 10f);
         return outer.rectTransform;
+    }
+
+    /// <summary>An Ink frame behind the square and the hue bar (the kit's outline).</summary>
+    private void Frame(float x, float y, float w, float h)
+    {
+        float o = UiTheme.Instance.Outline;
+        var frame = Ui.Box(transform, "Frame", UiTheme.Tone.Ink, 8f);
+        Place((RectTransform)frame.transform, x, y, w + 2f * o, h + 2f * o);
     }
 
     private static TMP_InputField MakeInput(Transform parent, float x, float y, float w, float h)
     {
-        var kit = UiKit.Instance;
-        var go = new GameObject("Hex", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        var theme = UiTheme.Instance;
+        var box = Ui.Box(parent, "Hex", UiTheme.Tone.Paper, 14f);
+        var go = box.gameObject;
         go.SetActive(false);   // TMP_InputField wants its parts before it is enabled
-        go.transform.SetParent(parent, false);
-        var background = go.GetComponent<Image>();
-        background.sprite = kit.Button; background.type = Image.Type.Sliced; background.color = Color.white;
         Place((RectTransform)go.transform, x, y, w, h);
 
         var viewport = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
@@ -226,31 +237,22 @@ public class ColorPickerPopup : MonoBehaviour
         var text = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
         text.rectTransform.SetParent(viewport, false);
         Stretch(text.rectTransform);
-        text.font = kit.Font; text.fontSize = 28f; text.color = UiKit.Ink; text.alignment = TextAlignmentOptions.Center;
+        text.font = theme.UiBlack; text.fontSize = theme.Body; text.color = theme.Ink; text.alignment = TextAlignmentOptions.Center;
 
         var input = go.AddComponent<TMP_InputField>();
         input.textViewport = viewport;
         input.textComponent = text;
-        input.fontAsset = kit.Font;
-        input.pointSize = 28f;
+        input.fontAsset = theme.UiBlack;
+        input.pointSize = theme.Body;
         input.characterLimit = 7;
         input.lineType = TMP_InputField.LineType.SingleLine;
-        input.targetGraphic = background;
+        input.targetGraphic = box.FillImage;
+        input.selectionColor = new Color(theme.Brand.r, theme.Brand.g, theme.Brand.b, 0.35f);
+        input.caretColor = theme.Ink;
+        input.caretWidth = 3;
+        go.AddComponent<UiFocus>().Target = (RectTransform)go.transform;
         go.SetActive(true);
         return input;
-    }
-
-    private static Button MakeButton(Transform parent, string label, Color color, float x, float y, float w, float h)
-    {
-        var kit = UiKit.Instance;
-        var image = MakeImage(parent, label, kit.Button, color);
-        image.type = Image.Type.Sliced;
-        image.raycastTarget = true;
-        Place(image.rectTransform, x, y, w, h);
-        var button = image.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        MakeText(image.transform, "Label", 30f, UiKit.Ink, false, 0f, 3f, w, h).text = label;
-        return button;
     }
 
     private static RawImage MakeRaw(Transform parent, string name, Texture texture, float x, float y, float w, float h)
@@ -274,33 +276,6 @@ public class ColorPickerPopup : MonoBehaviour
     {
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
         rt.offsetMin = new Vector2(inset, inset); rt.offsetMax = new Vector2(-inset, -inset);
-    }
-
-    private static Image MakeImage(Transform parent, string name, Sprite sprite, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        go.transform.SetParent(parent, false);
-        var image = go.GetComponent<Image>();
-        image.sprite = sprite;
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static TMP_Text MakeText(Transform parent, string name, float size, Color color, bool outline, float x, float y, float w, float h)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent, false);
-        var text = go.GetComponent<TextMeshProUGUI>();
-        var kit = UiKit.Instance;
-        text.font = kit.Font;
-        if (outline && kit.OutlineThick != null) text.fontSharedMaterial = kit.OutlineThick;
-        text.fontSize = size;
-        text.color = color;
-        text.alignment = TextAlignmentOptions.Center;
-        text.raycastTarget = false;
-        Place(text.rectTransform, x, y, w, h);
-        return text;
     }
 
     #endregion
